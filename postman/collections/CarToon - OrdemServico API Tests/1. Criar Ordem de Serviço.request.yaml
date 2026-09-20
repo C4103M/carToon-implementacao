@@ -1,0 +1,32 @@
+$kind: http-request
+description: Cria uma nova Ordem de Serviço e armazena o ID retornado na variável {{ordemId}}.
+url: "{{baseUrl}}"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "veiculoId": 1,
+      "oficinaId": 1,
+      "mecanicoId": 1,
+      "descricao": "Troca de óleo e alinhamento"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 201 Created ou 200 OK', function () {
+          pm.expect(pm.response.code).to.be.oneOf([200, 201]);
+      });
+
+      pm.test('Retornou ID da Ordem de Serviço', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('id');
+          if (jsonData.id) {
+              pm.collectionVariables.set('ordemId', jsonData.id);
+              console.log('OrdemID salva na variável: ' + jsonData.id);
+          }
+      });
+    language: text/javascript
+order: 1000

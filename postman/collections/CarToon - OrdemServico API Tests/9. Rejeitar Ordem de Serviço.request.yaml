@@ -1,0 +1,12 @@
+$kind: http-request
+description: Cancela/rejeita a ordem de serviço.
+url: "{{baseUrl}}/{{ordemId}}/rejeitar"
+method: POST
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+    language: text/javascript
+order: 9000

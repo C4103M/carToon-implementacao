@@ -1,0 +1,17 @@
+$kind: http-request
+description: Busca os detalhes da Ordem de Serviço salva na variável {{ordemId}}.
+url: "{{baseUrl}}/{{ordemId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Estrutura de resposta válida', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('id');
+      });
+    language: text/javascript
+order: 2000

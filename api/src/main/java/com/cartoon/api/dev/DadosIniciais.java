@@ -48,6 +48,9 @@ public class DadosIniciais implements ApplicationRunner {
 
         Veiculo veiculo = new Veiculo();
         veiculo.setPlaca("ABC1D23");
+        veiculo.setModelo("Gol 1.0");
+        veiculo.setAno(2020);
+        veiculo.setMontadora("Volkswagen");
         veiculo.setCliente(cliente);
         veiculoRepository.save(veiculo);
 
