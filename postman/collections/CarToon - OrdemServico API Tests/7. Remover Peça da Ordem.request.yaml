@@ -1,0 +1,12 @@
+$kind: http-request
+description: Remove o item peça especificado da ordem.
+url: "{{baseUrl}}/{{ordemId}}/itens-peca/{{itemId}}"
+method: DELETE
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+    language: text/javascript
+order: 7000

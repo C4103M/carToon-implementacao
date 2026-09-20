@@ -1,0 +1,359 @@
+{
+	"info": {
+		"_postman_id": "cartoon-ordem-servico-v1",
+		"name": "CarToon - OrdemServico API Tests",
+		"description": "Coleção de testes automatizados para os endpoints de Ordem de Serviço.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api/ordem-servico",
+			"type": "string"
+		},
+		{
+			"key": "ordemId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "itemId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Criar Ordem de Serviço",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 201 Created ou 200 OK', function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+							"});",
+							"",
+							"pm.test('Retornou ID da Ordem de Serviço', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    if (jsonData.id) {",
+							"        pm.collectionVariables.set('ordemId', jsonData.id);",
+							"        console.log('OrdemID salva na variável: ' + jsonData.id);",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"veiculoId\": 1,\n  \"oficinaId\": 1,\n  \"mecanicoId\": 1,\n  \"descricao\": \"Troca de óleo e alinhamento\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": [
+						"{{baseUrl}}"
+					]
+				},
+				"description": "Cria uma nova Ordem de Serviço e armazena o ID retornado na variável {{ordemId}}."
+			},
+			"response": []
+		},
+		{
+			"name": "2. Buscar Ordem por ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Estrutura de resposta válida', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{ordemId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"{{ordemId}}"
+					]
+				},
+				"description": "Busca os detalhes da Ordem de Serviço salva na variável {{ordemId}}."
+			},
+			"response": []
+		},
+		{
+			"name": "3. Listar Ordens com Filtro e Paginação",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Retornou paginação Spring Data', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('content');",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}?oficinaId=1&page=0&size=10",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"query": [
+						{
+							"key": "oficinaId",
+							"value": "1"
+						},
+						{
+							"key": "page",
+							"value": "0"
+						},
+						{
+							"key": "size",
+							"value": "10"
+						}
+					]
+				},
+				"description": "Lista as ordens de serviço filtradas por oficinaId."
+			},
+			"response": []
+		},
+		{
+			"name": "4. Aceitar Ordem de Serviço",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{ordemId}}/aceitar",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"{{ordemId}}",
+						"aceitar"
+					]
+				},
+				"description": "Altera o status da ordem para aceito."
+			},
+			"response": []
+		},
+		{
+			"name": "5. Iniciar Ordem de Serviço",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{ordemId}}/iniciar",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"{{ordemId}}",
+						"iniciar"
+					]
+				},
+				"description": "Inicia a execução da ordem de serviço."
+			},
+			"response": []
+		},
+		{
+			"name": "6. Adicionar Peça na Ordem",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"pecaId\": 1,\n  \"quantidade\": 2\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/{{ordemId}}/itens-peca",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"{{ordemId}}",
+						"itens-peca"
+					]
+				},
+				"description": "Associa um item peça à ordem de serviço."
+			},
+			"response": []
+		},
+		{
+			"name": "7. Remover Peça da Ordem",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{ordemId}}/itens-peca/{{itemId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"{{ordemId}}",
+						"itens-peca",
+						"{{itemId}}"
+					]
+				},
+				"description": "Remove o item peça especificado da ordem."
+			},
+			"response": []
+		},
+		{
+			"name": "8. Finalizar Ordem de Serviço",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{ordemId}}/finalizar",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"{{ordemId}}",
+						"finalizar"
+					]
+				},
+				"description": "Finaliza a ordem de serviço."
+			},
+			"response": []
+		},
+		{
+			"name": "9. Rejeitar Ordem de Serviço",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{ordemId}}/rejeitar",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"{{ordemId}}",
+						"rejeitar"
+					]
+				},
+				"description": "Cancela/rejeita a ordem de serviço."
+			},
+			"response": []
+		}
+	]
+}

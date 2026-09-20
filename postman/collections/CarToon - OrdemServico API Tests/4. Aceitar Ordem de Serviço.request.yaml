@@ -1,0 +1,12 @@
+$kind: http-request
+description: Altera o status da ordem para aceito.
+url: "{{baseUrl}}/{{ordemId}}/aceitar"
+method: POST
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+    language: text/javascript
+order: 4000

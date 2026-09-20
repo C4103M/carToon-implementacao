@@ -1,0 +1,15 @@
+$kind: collection
+description: Coleção de testes automatizados para os endpoints de Ordem de Serviço.
+variables:
+  baseUrl: http://localhost:8080/api/ordem-servico
+  ordemId: "1"
+  itemId: "1"
+  username: user
+  password: cole-a-senha-do-log-aqui
+auth:
+  - id: 0ff55bf5-2a17-46e7-abd2-f97a9ebc528e
+    type: basic
+    name: basic auth
+    credentials:
+      username: "{{username}}"
+      password: "{{password}}"

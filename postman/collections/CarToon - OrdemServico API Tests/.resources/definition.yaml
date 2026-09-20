@@ -1,0 +1,6 @@
+$kind: collection
+description: Coleção de testes automatizados para os endpoints de Ordem de Serviço.
+variables:
+  baseUrl: http://localhost:8080/api/ordem-servico
+  ordemId: "1"
+  itemId: "1"

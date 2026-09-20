@@ -40,7 +40,7 @@ public class OrdemServico {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    StatusServico statusServico;
+    StatusServico statusServico = StatusServico.PENDENTE;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "oficina_id", nullable = false)

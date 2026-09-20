@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 
 @RestController
-@RequestMapping("api/ordem-servico/")
+@RequestMapping("/api/ordem-servico")
 @AllArgsConstructor
 public class OrdemServicoController {
     private final OrdemServicoService ordemServicoService;

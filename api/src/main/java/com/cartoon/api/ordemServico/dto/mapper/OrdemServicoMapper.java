@@ -8,6 +8,7 @@ import com.cartoon.api.ordemServico.dto.response.ItemPecaResponse;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.models.ItemPeca;
 import com.cartoon.api.ordemServico.models.OrdemServico;
+import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.peca.Peca;
 import com.cartoon.api.usuario.Usuario;
 import com.cartoon.api.veiculo.Veiculo;
