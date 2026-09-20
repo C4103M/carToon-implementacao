@@ -10,6 +10,8 @@ import lombok.Setter;
 
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter
@@ -23,8 +25,8 @@ public class ItemPeca {
     Integer id;
     Integer quantidade;
     @Column(name = "valor_unitario")
-    Double valorUnitario;
-    Double subtotal;
+    BigDecimal valorUnitario;
+    BigDecimal subtotal;
 
     @ManyToOne
     Peca peca;
@@ -32,4 +34,8 @@ public class ItemPeca {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "ordem_servico_id", nullable = false)
     private OrdemServico ordemServico;
+
+    public void calcSubtotal(){
+        this.subtotal = valorUnitario.multiply(BigDecimal.valueOf(quantidade));
+    }
 }
