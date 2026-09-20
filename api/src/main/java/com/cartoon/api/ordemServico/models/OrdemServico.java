@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,8 +24,8 @@ public class OrdemServico {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
-    @Column(name = "descricao_problema", nullable = false)
-    String descricaoProblema;
+    @Column(name = "descricao", nullable = false)
+    String descricao;
 
     @Column(name = "data_orcamento")
     LocalDate dataOrcamento;
@@ -34,6 +35,8 @@ public class OrdemServico {
     LocalDate dataInicio;
     @Column(name = "data_finalizacao")
     LocalDate dataFinalizacao;
+
+    BigDecimal total;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)

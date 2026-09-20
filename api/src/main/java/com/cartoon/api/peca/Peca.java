@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,5 +22,5 @@ public class Peca {
     @Column(nullable = false)
     String fabricante;
     @Column(name = "valor_base", nullable = false)
-    Double valorBase;
+    BigDecimal valorBase;
 }
