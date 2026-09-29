@@ -1,5 +1,6 @@
 package com.cartoon.api.auth;
 
+import com.cartoon.api.compartilhado.exceptions.CredenciaisInvalidasException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.seguranca.JwtService;
 import com.cartoon.api.usuario.Usuario;
@@ -14,25 +15,27 @@ import org.springframework.stereotype.Service;
 @AllArgsConstructor
 public class AuthService {
     private final UsuarioRepository usuarioRepository;
-    private final JwtService jtwService;
+    private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
+    public AuthService(UsuarioRepository usuarioRepository,
+                       PasswordEncoder encoder,
+                       JwtService jwtService) {
+        this.usuarioRepository = usuarioRepository;
+        this.passwordEncoder = encoder;
+        this.jwtService = jwtService;
+    }
 
 
     public String login(LoginDTO loginDTO) {
         Usuario usuario = usuarioRepository.findByEmail(loginDTO.email()).orElse(null);
         if (usuario == null) {
-            throw new RecursoNaoEncontradoException("Email ou senha incorreto" );
+            throw new CredenciaisInvalidasException("Email ou senha incorreto");
         }
-
-
-
-
-
-
-
-
-
+        if(!passwordEncoder.matches(loginDTO.password(), usuario.getSenha())) {
+            throw new CredenciaisInvalidasException("Email ou senha incorreto");
+        }
+        return jwtService.gerar(usuario.getEmail(), usuario.getId(), usuario.getRole());
     }
 
 }
