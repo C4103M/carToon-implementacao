@@ -1,15 +1,12 @@
 package com.cartoon.api.ordemServico.service;
 
-import com.cartoon.api.cliente.Cliente;
-import com.cartoon.api.cliente.ClienteRepository;
-import com.cartoon.api.cliente.ClienteService;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.oficina.Oficina;
-import com.cartoon.api.oficina.OficinaService;
+import com.cartoon.api.oficina.model.Oficina;
+import com.cartoon.api.oficina.service.OficinaService;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
-import com.cartoon.api.ordemServico.dto.mapper.OrdemServicoMapper;
+import com.cartoon.api.ordemServico.mapper.OrdemServicoMapper;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
@@ -30,8 +27,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor

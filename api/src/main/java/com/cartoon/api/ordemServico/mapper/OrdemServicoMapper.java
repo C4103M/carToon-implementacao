@@ -1,6 +1,6 @@
-package com.cartoon.api.ordemServico.dto.mapper;
+package com.cartoon.api.ordemServico.mapper;
 
-import com.cartoon.api.oficina.Oficina;
+import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
@@ -8,7 +8,6 @@ import com.cartoon.api.ordemServico.dto.response.ItemPecaResponse;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.models.ItemPeca;
 import com.cartoon.api.ordemServico.models.OrdemServico;
-import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.peca.Peca;
 import com.cartoon.api.usuario.Usuario;
 import com.cartoon.api.veiculo.Veiculo;

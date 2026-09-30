@@ -1,6 +1,6 @@
 package com.cartoon.api.usuario;
 
-import com.cartoon.api.oficina.Oficina;
+import com.cartoon.api.oficina.model.Oficina;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
