@@ -2,7 +2,7 @@
   "info": {
     "name": "CarToon - Oficina API Tests",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Rode na ordem (Runner). Pré-requisitos: banco no ar, API com perfil dev, e a variável 'password' preenchida com a senha do log."
+    "description": "Rodar com o Runner, na ordem. Pre-requisitos: banco no ar e API com perfil dev. Cada rodada gera nome e telefone unicos."
   },
   "auth": {
     "type": "basic",
@@ -22,7 +22,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080/api/oficina"
+      "value": "http://localhost:8080"
     },
     {
       "key": "username",
@@ -35,27 +35,29 @@
     {
       "key": "oficinaId",
       "value": "1"
-    },
-    {
-      "key": "nomeGrande",
-      "value": ""
     }
   ],
   "item": [
     {
-      "name": "A - Fluxo feliz (rodar em ordem)",
+      "name": "A - Fluxo sem Erros",
       "item": [
         {
-          "name": "01 - Listar (seeder criou id 1)",
+          "name": "01 - Listar oficinas ativas",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('Retorna um array', () => pm.expect(pm.response.json()).to.be.an('array'));",
-                  "pm.test('Tem ao menos 1 oficina (seeder dev)', () => pm.expect(pm.response.json().length).to.be.above(0));"
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Retorna array com ao menos 1 oficina', function () {",
+                  "    var j = pm.response.json();",
+                  "    pm.expect(j).to.be.an('array');",
+                  "    pm.expect(j.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -63,23 +65,47 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}",
-            "description": "Exige o perfil dev ativo para o seeder ter criado a oficina id 1."
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "Exige perfil dev ativo (o seeder cria a oficina id 1)."
           }
         },
         {
-          "name": "02 - Criar oficina válida",
+          "name": "02 - Criar oficina valida",
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const rnd = function () { return '119' + Math.floor(10000000 + Math.random() * 90000000); };",
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set('nomeUnico', 'Oficina Teste ' + ts);",
+                  "pm.collectionVariables.set('telefoneUnico', rnd());",
+                  "pm.collectionVariables.set('nomeAtualizado', 'Oficina Atualizada ' + ts);",
+                  "pm.collectionVariables.set('telefoneAtualizado', rnd());"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
-                  "const j = pm.response.json();",
-                  "pm.test('Tem id', () => pm.expect(j).to.have.property('id'));",
-                  "pm.test('Nasce ativa', () => pm.expect(j.ativo).to.eql(true));",
-                  "pm.test('Dados conferem', () => { pm.expect(j.nome).to.eql('Oficina Centro'); pm.expect(j.endereco).to.eql('Rua das Flores, 200'); });",
+                  "pm.test('Status code é 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "var j = pm.response.json();",
+                  "",
+                  "pm.test('Retornou id e nasceu ativa', function () {",
+                  "    pm.expect(j).to.have.property('id');",
+                  "    pm.expect(j.ativo).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test('Nome confere', function () {",
+                  "    pm.expect(j.nome).to.eql(pm.collectionVariables.get('nomeUnico'));",
+                  "});",
+                  "",
                   "pm.collectionVariables.set('oficinaId', j.id);"
                 ]
               }
@@ -93,11 +119,11 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}",
-            "description": "",
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "Gera nome e telefone unicos a cada rodada e guarda o id em {{oficinaId}}.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Oficina Centro\",\n  \"endereco\": \"Rua das Flores, 200\",\n  \"telefone\": \"11988887777\"\n}",
+              "raw": "{\n  \"nome\": \"{{nomeUnico}}\",\n  \"endereco\": \"Rua das Flores, 200\",\n  \"telefone\": \"{{telefoneUnico}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -114,8 +140,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('Id confere', () => pm.expect(pm.response.json().id).to.eql(parseInt(pm.collectionVariables.get('oficinaId'))));"
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Id confere', function () {",
+                  "    pm.expect(pm.response.json().id).to.eql(parseInt(pm.collectionVariables.get('oficinaId')));",
+                  "});"
                 ]
               }
             }
@@ -123,7 +154,7 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/{{oficinaId}}",
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
             "description": ""
           }
         },
@@ -135,11 +166,21 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "const j = pm.response.json();",
-                  "pm.test('Nome atualizado', () => pm.expect(j.nome).to.eql('Oficina Centro Atualizada'));",
-                  "pm.test('Endereço atualizado', () => pm.expect(j.endereco).to.eql('Av. Brasil, 1500'));",
-                  "pm.test('Id e ativo preservados', () => { pm.expect(j.id).to.eql(parseInt(pm.collectionVariables.get('oficinaId'))); pm.expect(j.ativo).to.eql(true); });"
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var j = pm.response.json();",
+                  "",
+                  "pm.test('Dados atualizados', function () {",
+                  "    pm.expect(j.nome).to.eql(pm.collectionVariables.get('nomeAtualizado'));",
+                  "    pm.expect(j.endereco).to.eql('Av. Brasil, 1500');",
+                  "});",
+                  "",
+                  "pm.test('Id e ativo preservados', function () {",
+                  "    pm.expect(j.id).to.eql(parseInt(pm.collectionVariables.get('oficinaId')));",
+                  "    pm.expect(j.ativo).to.eql(true);",
+                  "});"
                 ]
               }
             }
@@ -152,11 +193,11 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/{{oficinaId}}",
-            "description": "",
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
+            "description": "Atualiza os dados cadastrais; nao altera id nem ativo.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Oficina Centro Atualizada\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"11977776666\"\n}",
+              "raw": "{\n  \"nome\": \"{{nomeAtualizado}}\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -166,14 +207,56 @@
           }
         },
         {
-          "name": "05 - Desativar",
+          "name": "05 - Atualizar mantendo o proprio nome e telefone",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Endereco atualizado', function () {",
+                  "    pm.expect(pm.response.json().endereco).to.eql('Rua Nova, 10');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
+            "description": "A oficina nao pode conflitar consigo mesma.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"{{nomeAtualizado}}\",\n  \"endereco\": \"Rua Nova, 10\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "06 - Desativar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
                 ]
               }
             }
@@ -181,22 +264,65 @@
           "request": {
             "method": "PATCH",
             "header": [],
-            "url": "{{baseUrl}}/{{oficinaId}}/desativar",
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}/desativar",
             "description": ""
           }
         },
         {
-          "name": "06 - Listar: oficina desativada NÃO aparece",
+          "name": "07 - Atualizar oficina inativa (409)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('Oficina desativada fora da lista', () => {",
-                  "  const id = parseInt(pm.collectionVariables.get('oficinaId'));",
-                  "  pm.expect(pm.response.json().map(o => o.id)).to.not.include(id);",
+                  "pm.test('Status code é 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('Mensagem cita \"inativa\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('inativa');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
+            "description": "Regra: oficina inativa nao pode ser editada.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"{{nomeAtualizado}}\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "08 - Listar: desativada nao aparece",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Oficina desativada fora da lista', function () {",
+                  "    var ids = pm.response.json().map(function (o) { return o.id; });",
+                  "    pm.expect(ids).to.not.include(parseInt(pm.collectionVariables.get('oficinaId')));",
                   "});"
                 ]
               }
@@ -205,63 +331,24 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}",
+            "url": "{{baseUrl}}/api/oficina",
             "description": ""
           }
         },
         {
-          "name": "07 - Buscar por id: desativada continua acessível",
+          "name": "09 - Buscar desativada por id",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('ativo = false', () => pm.expect(pm.response.json().ativo).to.eql(false));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/{{oficinaId}}",
-            "description": ""
-          }
-        },
-        {
-          "name": "08 - Ativar",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('204 No Content', () => pm.response.to.have.status(204));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "PATCH",
-            "header": [],
-            "url": "{{baseUrl}}/{{oficinaId}}/ativar",
-            "description": ""
-          }
-        },
-        {
-          "name": "09 - Listar: oficina reativada volta",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
-                  "pm.test('Oficina reativada na lista', () => {",
-                  "  const id = parseInt(pm.collectionVariables.get('oficinaId'));",
-                  "  pm.expect(pm.response.json().map(o => o.id)).to.include(id);",
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('ativo é false', function () {",
+                  "    pm.expect(pm.response.json().ativo).to.eql(false);",
                   "});"
                 ]
               }
@@ -270,160 +357,74 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}",
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
+            "description": "A inativa continua acessivel por id."
+          }
+        },
+        {
+          "name": "10 - Ativar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}/ativar",
+            "description": ""
+          }
+        },
+        {
+          "name": "11 - Listar: reativada volta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Oficina reativada na lista', function () {",
+                  "    var ids = pm.response.json().map(function (o) { return o.id; });",
+                  "    pm.expect(ids).to.include(parseInt(pm.collectionVariables.get('oficinaId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/oficina",
             "description": ""
           }
         }
       ]
     },
     {
-      "name": "B - Validação e erros",
+      "name": "B - Regras de negocio (409)",
       "item": [
         {
-          "name": "10 - Criar com nome vazio",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}",
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"\",\n  \"endereco\": \"Rua das Flores, 200\",\n  \"telefone\": \"11988887777\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "11 - Criar com endereço vazio",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}",
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Oficina Centro\",\n  \"endereco\": \"\",\n  \"telefone\": \"11988887777\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "12 - Criar com telefone inválido",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}",
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Oficina Centro\",\n  \"endereco\": \"Rua das Flores, 200\",\n  \"telefone\": \"123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "13 - Criar com telefone com letras",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": "{{baseUrl}}",
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nome\": \"Oficina Centro\",\n  \"endereco\": \"Rua das Flores, 200\",\n  \"telefone\": \"abc12345678\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
-          "name": "14 - Criar com nome > 250 caracteres",
+          "name": "12 - Criar com nome repetido (409)",
           "event": [
             {
               "listen": "prerequest",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('nomeGrande', 'A'.repeat(251));"
+                  "const rnd = function () { return '119' + Math.floor(10000000 + Math.random() * 90000000); };",
+                  "pm.collectionVariables.set('telefoneOutro', rnd());"
                 ]
               }
             },
@@ -432,7 +433,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                  "pm.test('Status code é 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('Mensagem cita \"nome\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('nome');",
+                  "});"
                 ]
               }
             }
@@ -445,11 +452,11 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}",
-            "description": "",
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "Usa o nome da oficina criada no fluxo A.",
             "body": {
               "mode": "raw",
-              "raw": "{ \"nome\": \"{{nomeGrande}}\", \"endereco\": \"Rua X\", \"telefone\": \"11988887777\" }",
+              "raw": "{\n  \"nome\": \"{{nomeAtualizado}}\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"{{telefoneOutro}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -459,14 +466,29 @@
           }
         },
         {
-          "name": "15 - Criar sem campos obrigatórios (corpo vazio {})",
+          "name": "13 - Criar com telefone repetido (409)",
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('nomeOutro', 'Oficina Outra ' + Date.now());"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                  "pm.test('Status code é 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('Mensagem cita \"telefone\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('telefone');",
+                  "});"
                 ]
               }
             }
@@ -479,7 +501,319 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}",
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "Usa o telefone da oficina criada no fluxo A.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"{{nomeOutro}}\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "14 - Criar com telefone repetido formatado (409)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const t = pm.collectionVariables.get('telefoneAtualizado');",
+                  "pm.collectionVariables.set('nomeOutro', 'Oficina Outra ' + Date.now());",
+                  "pm.collectionVariables.set('telefoneFormatado', '(' + t.substring(0, 2) + ') ' + t.substring(2, 7) + '-' + t.substring(7));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('Mensagem cita \"telefone\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('telefone');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "O telefone com mascara deve ser comparado ja normalizado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"{{nomeOutro}}\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"{{telefoneFormatado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "15 - Atualizar com nome de outra oficina (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('Mensagem cita \"nome\"', function () {",
+                  "    pm.expect(pm.response.json().message).to.include('nome');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
+            "description": "Depende do seeder dev: a oficina 'Oficina Matriz' precisa existir.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Oficina Matriz\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "C - Validacao (400)",
+      "item": [
+        {
+          "name": "16 - Criar com nome vazio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"11988887777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "17 - Criar com endereco vazio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Oficina Valida\",\n  \"endereco\": \"\",\n  \"telefone\": \"11988887777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "18 - Criar com telefone invalido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Oficina Valida\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "19 - Criar com telefone com letras",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Oficina Valida\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"abc12345678\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "20 - Criar com nome acima de 250 caracteres",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"11988887777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "21 - Criar com corpo vazio {}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina",
             "description": "",
             "body": {
               "mode": "raw",
@@ -493,14 +827,16 @@
           }
         },
         {
-          "name": "16 - Atualizar com dados inválidos",
+          "name": "22 - Atualizar com dados invalidos",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('400 Bad Request', () => pm.response.to.have.status(400));"
+                  "pm.test('Status code é 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
                 ]
               }
             }
@@ -513,11 +849,11 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/{{oficinaId}}",
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"11977776666\"\n}",
+              "raw": "{\n  \"nome\": \"\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"11988887777\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -525,16 +861,23 @@
               }
             }
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "D - Ids inexistentes (404)",
+      "item": [
         {
-          "name": "17 - Buscar id inexistente",
+          "name": "23 - Buscar id inexistente",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                  "pm.test('Status code é 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
                 ]
               }
             }
@@ -542,19 +885,21 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/999999",
+            "url": "{{baseUrl}}/api/oficina/999999",
             "description": ""
           }
         },
         {
-          "name": "18 - Atualizar id inexistente",
+          "name": "24 - Atualizar id inexistente",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                  "pm.test('Status code é 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
                 ]
               }
             }
@@ -567,11 +912,11 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/999999",
+            "url": "{{baseUrl}}/api/oficina/999999",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"Oficina Centro Atualizada\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"11977776666\"\n}",
+              "raw": "{\n  \"nome\": \"Oficina Valida\",\n  \"endereco\": \"Rua X\",\n  \"telefone\": \"11988887777\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -581,14 +926,16 @@
           }
         },
         {
-          "name": "19 - Desativar id inexistente",
+          "name": "25 - Desativar id inexistente",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                  "pm.test('Status code é 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
                 ]
               }
             }
@@ -596,19 +943,21 @@
           "request": {
             "method": "PATCH",
             "header": [],
-            "url": "{{baseUrl}}/999999/desativar",
+            "url": "{{baseUrl}}/api/oficina/999999/desativar",
             "description": ""
           }
         },
         {
-          "name": "20 - Ativar id inexistente",
+          "name": "26 - Ativar id inexistente",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
+                  "pm.test('Status code é 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
                 ]
               }
             }
@@ -616,19 +965,26 @@
           "request": {
             "method": "PATCH",
             "header": [],
-            "url": "{{baseUrl}}/999999/ativar",
+            "url": "{{baseUrl}}/api/oficina/999999/ativar",
             "description": ""
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "E - Seguranca",
+      "item": [
         {
-          "name": "21 - Listar SEM autenticação",
+          "name": "27 - Listar SEM autenticacao (falha enquanto a API estiver aberta)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('401 Unauthorized', () => pm.response.to.have.status(401));"
+                  "pm.test('Status code é 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});"
                 ]
               }
             }
@@ -636,8 +992,8 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}",
-            "description": "",
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "Lembrete: passa a ser verde quando o Spring Security estiver ativo.",
             "auth": {
               "type": "noauth"
             }

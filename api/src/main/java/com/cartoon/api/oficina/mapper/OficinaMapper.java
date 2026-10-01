@@ -8,13 +8,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class OficinaMapper {
 
-    public Oficina toEntity(OficinaRequest request){
+    public Oficina toEntity(OficinaRequest request) {
         Oficina oficina = new Oficina();
-        oficina.setNome(request.nome());
-        oficina.setEndereco(request.endereco());
-        oficina.setTelefone(request.telefone().replaceAll("\\D", ""));
+        updateEntity(oficina, request);
         return oficina;
-
     }
 
     public OficinaResponse toResponse(Oficina oficina) {
@@ -27,9 +24,13 @@ public class OficinaMapper {
         );
     }
 
-    public void updateEntity(Oficina oficina,OficinaRequest request){
+    public void updateEntity(Oficina oficina, OficinaRequest request) {
         oficina.setNome(request.nome());
         oficina.setEndereco(request.endereco());
-        oficina.setTelefone(request.telefone().replaceAll("\\D", ""));
+        oficina.setTelefone(normalizarTelefone(request.telefone()));
+    }
+
+    public String normalizarTelefone(String telefone) {
+        return telefone.replaceAll("\\D", "");
     }
 }
