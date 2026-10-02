@@ -38,9 +38,8 @@
 							"pm.test('Status code é 201 Created', function () {",
 							"    pm.response.to.have.status(201);",
 							"});",
-							"pm.test('Mensagem de sucesso e vinculação correta', function () {",
+							"pm.test('Vinculação correta e dados do veículo', function () {",
 							"    var json = pm.response.json();",
-							"    pm.expect(json.mensagem).to.eql('Veículo cadastrado com sucesso');",
 							"    pm.expect(json.placa).to.eql('XYZ-9876');",
 							"    pm.expect(json.montadora).to.eql('Ford');",
 							"    pm.expect(json.modelo).to.eql('Ka');",
@@ -120,7 +119,6 @@
 							"pm.test('Dados atualizados com sucesso', function () {",
 							"    var json = pm.response.json();",
 							"    pm.expect(json.modelo).to.eql('Ka Sedan');",
-							"    pm.expect(json.mensagem).to.eql('Dados atualizados com sucesso');",
 							"});"
 						],
 						"type": "text/javascript"

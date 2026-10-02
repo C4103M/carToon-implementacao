@@ -75,14 +75,13 @@ public class VeiculoController {
     public VeiculoResponse reativar(@PathVariable Integer id) {
         return veiculoService.reativar(id);
     }
-
-    @GetMapping("/{placa}/historico")
+    @GetMapping({"/placa/{placa}/historico", "/{placa}/historico"})
     @Operation(summary = "Consultar histórico de manutenção pela placa", description = "UC06 - Retorna todas as ordens de serviço do veículo ordenadas da mais recente para a mais antiga")
     public HistoricoVeiculoResponse consultarHistorico(@PathVariable String placa) {
         return veiculoService.consultarHistorico(placa);
     }
 
-    @GetMapping("/{placa}/historico/paginado")
+    @GetMapping({"/placa/{placa}/historico/paginado", "/{placa}/historico/paginado"})
     @Operation(summary = "Consultar histórico paginado", description = "UC06 - Histórico paginado para veículos com grande volume de ordens")
     public Page<OrdemServicoResumo> consultarHistoricoPaginado(@PathVariable String placa,
                                                                Pageable pageable) {

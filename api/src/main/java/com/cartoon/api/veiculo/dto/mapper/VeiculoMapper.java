@@ -27,7 +27,7 @@ public final class VeiculoMapper {
         return veiculo;
     }
 
-    public static VeiculoResponse paraVeiculoResponse(Veiculo veiculo, String mensagem) {
+    public static VeiculoResponse paraVeiculoResponse(Veiculo veiculo) {
         Integer clienteId = veiculo.getCliente() != null ? veiculo.getCliente().getId() : null;
         String clienteNome = veiculo.getCliente() != null ? veiculo.getCliente().getNome() : null;
         String clienteCpf = veiculo.getCliente() != null ? veiculo.getCliente().getCpf() : null;
@@ -42,13 +42,8 @@ public final class VeiculoMapper {
                 veiculo.getAtivo(),
                 clienteId,
                 clienteNome,
-                clienteCpf,
-                mensagem
+                clienteCpf
         );
-    }
-
-    public static VeiculoResponse paraVeiculoResponse(Veiculo veiculo) {
-        return paraVeiculoResponse(veiculo, null);
     }
 
     public static VeiculoResumo paraVeiculoResumo(Veiculo veiculo) {
@@ -68,19 +63,11 @@ public final class VeiculoMapper {
 
     public static HistoricoVeiculoResponse paraHistoricoVeiculoResponse(Veiculo veiculo, List<OrdemServicoResumo> ordens) {
         VeiculoResumo veiculoResumo = paraVeiculoResumo(veiculo);
-        if (ordens == null || ordens.isEmpty()) {
-            return new HistoricoVeiculoResponse(
-                    veiculoResumo,
-                    "Nenhuma ordem de serviço encontrada para este veículo.",
-                    List.of(),
-                    0
-            );
-        }
+        List<OrdemServicoResumo> lista = ordens != null ? ordens : List.of();
         return new HistoricoVeiculoResponse(
                 veiculoResumo,
-                "Histórico recuperado com sucesso.",
-                ordens,
-                ordens.size()
+                lista,
+                lista.size()
         );
     }
 

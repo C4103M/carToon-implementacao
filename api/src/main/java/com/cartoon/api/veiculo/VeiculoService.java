@@ -57,7 +57,7 @@ public class VeiculoService {
         veiculo.setPlaca(placaNormalizada);
         veiculo = veiculoRepository.save(veiculo);
 
-        return VeiculoMapper.paraVeiculoResponse(veiculo, "Veículo cadastrado com sucesso");
+        return VeiculoMapper.paraVeiculoResponse(veiculo);
     }
 
     @Transactional
@@ -85,7 +85,7 @@ public class VeiculoService {
         VeiculoMapper.atualizarDados(veiculo, request, novoCliente);
         veiculo = veiculoRepository.save(veiculo);
 
-        return VeiculoMapper.paraVeiculoResponse(veiculo, "Dados atualizados com sucesso");
+        return VeiculoMapper.paraVeiculoResponse(veiculo);
     }
 
     @Transactional(readOnly = true)
@@ -120,7 +120,7 @@ public class VeiculoService {
         Veiculo veiculo = buscarEntidade(id);
         veiculo.setAtivo(false);
         veiculo = veiculoRepository.save(veiculo);
-        return VeiculoMapper.paraVeiculoResponse(veiculo, "Veículo inativado com sucesso");
+        return VeiculoMapper.paraVeiculoResponse(veiculo);
     }
 
     @Transactional
@@ -128,7 +128,7 @@ public class VeiculoService {
         Veiculo veiculo = buscarEntidade(id);
         veiculo.setAtivo(true);
         veiculo = veiculoRepository.save(veiculo);
-        return VeiculoMapper.paraVeiculoResponse(veiculo, "Veículo reativado com sucesso");
+        return VeiculoMapper.paraVeiculoResponse(veiculo);
     }
 
     @Transactional(readOnly = true)

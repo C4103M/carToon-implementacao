@@ -103,7 +103,7 @@ class VeiculoServiceTest {
         assertThat(response.valorFipe()).isNull();
         assertThat(response.clienteId()).isEqualTo(1);
         assertThat(response.clienteNome()).isEqualTo("João da Silva");
-        assertThat(response.mensagem()).isEqualTo("Veículo cadastrado com sucesso");
+
 
         verify(clienteService).buscarEntidade(1);
         verify(veiculoRepository).existsByPlacaIgnoreCase("XYZ-9876");
@@ -134,7 +134,7 @@ class VeiculoServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.placa()).isEqualTo("ABC1D23");
         assertThat(response.valorFipe()).isNull();
-        assertThat(response.mensagem()).isEqualTo("Veículo cadastrado com sucesso");
+
     }
 
     @Test
@@ -181,7 +181,7 @@ class VeiculoServiceTest {
         assertThat(response.ano()).isEqualTo(2020);
         assertThat(response.valorFipe()).isNull();
         assertThat(response.clienteNome()).isEqualTo("João da Silva");
-        assertThat(response.mensagem()).isEqualTo("Dados atualizados com sucesso");
+
 
         verify(veiculoRepository).save(veiculoValido);
     }
