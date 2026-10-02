@@ -1,0 +1,359 @@
+{
+	"info": {
+		"_postman_id": "cartoon-veiculo-historico-v1",
+		"name": "CarToon - Veiculo & Historico API Tests (UC05 & UC06)",
+		"description": "Coleção de testes para UC05 - Manter Veículo do Cliente e UC06 - Consultar Histórico do Veículo.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api/veiculos",
+			"type": "string"
+		},
+		{
+			"key": "baseUrlOrdem",
+			"value": "http://localhost:8080/api/ordem-servico",
+			"type": "string"
+		},
+		{
+			"key": "veiculoId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "placa",
+			"value": "XYZ-9876",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Cadastrar Veículo Válido (UC05 - Teste 01)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 201 Created', function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"pm.test('Mensagem de sucesso e vinculação correta', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.mensagem).to.eql('Veículo cadastrado com sucesso');",
+							"    pm.expect(json.placa).to.eql('XYZ-9876');",
+							"    pm.expect(json.montadora).to.eql('Ford');",
+							"    pm.expect(json.modelo).to.eql('Ka');",
+							"    pm.expect(json.ano).to.eql(2019);",
+							"    pm.expect(json.valorFipe).to.eql(35000);",
+							"    if (json.id) pm.collectionVariables.set('veiculoId', json.id);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019,\n  \"valorFipe\": 35000.0\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "2. Impedir Cadastro de Placa Duplicada (UC05 - Teste 02)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 409 Conflict', function () {",
+							"    pm.response.to.have.status(409);",
+							"});",
+							"pm.test('Mensagem de alerta de duplicidade', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.message).to.eql('Já existe um veículo cadastrado com esta placa no sistema.');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019,\n  \"valorFipe\": 35000.0\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "3. Editar Dados do Veículo (UC05 - Teste 03)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Valor FIPE atualizado para 33000', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.valorFipe).to.eql(33000);",
+							"    pm.expect(json.mensagem).to.eql('Dados atualizados com sucesso');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"valorFipe\": 33000.0\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/{{veiculoId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{veiculoId}}"]
+				}
+			}
+		},
+		{
+			"name": "4. Validar Formato de Placa Inválida (UC05 - Teste 04)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 400 Bad Request', function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"pm.test('Alerta de formato de placa inválido', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.message).to.eql('Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"ABC-12\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019,\n  \"valorFipe\": 35000.0\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "5. Buscar Veículo por Placa",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Retornou veículo correto', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.placa).to.eql('XYZ-9876');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/placa/{{placa}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["placa", "{{placa}}"]
+				}
+			}
+		},
+		{
+			"name": "6. Consultar Histórico de Manutenção por Placa (UC06 - Teste 01)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Histórico veicular com ordens ordenadas', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json).to.have.property('veiculo');",
+							"    pm.expect(json).to.have.property('ordensServico');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{placa}}/historico",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{placa}}", "historico"]
+				}
+			}
+		},
+		{
+			"name": "7. Consultar Histórico por Placa Inexistente (UC06 - Teste 03)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 404 Not Found', function () {",
+							"    pm.response.to.have.status(404);",
+							"});",
+							"pm.test('Mensagem de erro: Veículo não encontrado.', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.message).to.eql('Veículo não encontrado.');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/NAO-0000/historico",
+					"host": ["{{baseUrl}}"],
+					"path": ["NAO-0000", "historico"]
+				}
+			}
+		},
+		{
+			"name": "8. Consultar Histórico Paginado (UC06 - Teste 05)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Retornou página de ordens', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json).to.have.property('content');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{placa}}/historico/paginado?page=0&size=5",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{placa}}", "historico", "paginado"],
+					"query": [
+						{"key": "page", "value": "0"},
+						{"key": "size", "value": "5"}
+					]
+				}
+			}
+		},
+		{
+			"name": "9. Inativar Veículo (UC05)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 204 No Content', function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{veiculoId}}/inativar",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{veiculoId}}", "inativar"]
+				}
+			}
+		},
+		{
+			"name": "10. Reativar Veículo (UC05)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 204 No Content', function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/{{veiculoId}}/reativar",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{veiculoId}}", "reativar"]
+				}
+			}
+		}
+	]
+}

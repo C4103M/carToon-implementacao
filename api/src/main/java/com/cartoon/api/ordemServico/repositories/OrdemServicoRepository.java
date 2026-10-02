@@ -8,7 +8,26 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Integer>, JpaSpecificationExecutor<OrdemServico> {
+
     @EntityGraph(attributePaths = {"veiculo", "mecanico"})
     Page<OrdemServico> findAll(Specification<OrdemServico> spec, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"veiculo", "mecanico", "oficina", "itensPeca", "itensServico"})
+    List<OrdemServico> findByVeiculoPlacaIgnoreCaseOrderByDataOrcamentoDescIdDesc(String placa);
+
+    @EntityGraph(attributePaths = {"veiculo", "mecanico", "oficina", "itensPeca", "itensServico"})
+    Page<OrdemServico> findByVeiculoPlacaIgnoreCaseOrderByDataOrcamentoDescIdDesc(String placa, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"veiculo", "mecanico", "oficina", "itensPeca", "itensServico"})
+    List<OrdemServico> findByVeiculoIdOrderByDataOrcamentoDescIdDesc(Integer veiculoId);
+
+    @EntityGraph(attributePaths = {"veiculo", "mecanico", "oficina", "itensPeca", "itensServico"})
+    Page<OrdemServico> findByVeiculoIdOrderByDataOrcamentoDescIdDesc(Integer veiculoId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"veiculo", "mecanico", "oficina", "itensPeca", "itensServico"})
+    Optional<OrdemServico> findDetalhadaById(Integer id);
 }
