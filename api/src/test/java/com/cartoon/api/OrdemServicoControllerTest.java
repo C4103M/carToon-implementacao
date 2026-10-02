@@ -3,14 +3,14 @@ package com.cartoon.api;
 import com.cartoon.api.compartilhado.exceptions.GlobalExceptionHandler;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.ordemServico.controller.OrdemServicoController;
-import com.cartoon.api.ordemServico.dto.response.ItemPecaResponse;
-import com.cartoon.api.ordemServico.dto.response.ItemServicoResponse;
-import com.cartoon.api.ordemServico.dto.response.OrdemServicoHistoricoResponse;
+import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
+import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
+import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
 import com.cartoon.api.seguranca.SecurityConfig;
-import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
-import com.cartoon.api.veiculo.dto.response.VeiculoResumo;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,20 +20,20 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(OrdemServicoController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
@@ -42,14 +42,15 @@ public class OrdemServicoControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+
     @MockitoBean
     private OrdemServicoService ordemServicoService;
 
     @Test
-    @DisplayName("UC06: GET /api/ordem-servico/historico/{placa} retorna histórico com status 200 OK")
-    void deveConsultarHistoricoPorPlaca() throws Exception {
-        VeiculoResumo veiculoResumo = new VeiculoResumo(1, "XYZ-9876", "Ka", "Ford", 2019, 35000.0, true, "João da Silva");
-        OrdemServicoHistoricoResponse ordem = new OrdemServicoHistoricoResponse(
+    @DisplayName("GET /api/ordem-servico com filtro por placa retorna Page<OrdemServicoResumo>")
+    void deveListarOrdensComFiltroPorPlaca() throws Exception {
+        OrdemServicoResumo resumo = new OrdemServicoResumo(
                 10,
                 LocalDate.of(2026, 10, 1),
                 LocalDate.of(2026, 10, 2),
@@ -57,99 +58,95 @@ public class OrdemServicoControllerTest {
                 null,
                 StatusServico.FINALIZADO,
                 "Revisão preventiva",
+                "XYZ-9876",
                 "Carlos Mecânico",
                 "Oficina Central",
-                List.of(new ItemServicoResponse(1, 1, "Troca de óleo", 1, 100.0, 100.0, LocalTime.of(1, 0))),
-                List.of(new ItemPecaResponse(1, 1, "Filtro", 1, BigDecimal.valueOf(50.0), BigDecimal.valueOf(50.0))),
                 BigDecimal.valueOf(150.0)
         );
 
-        HistoricoVeiculoResponse historico = new HistoricoVeiculoResponse(
-                veiculoResumo,
-                "Histórico recuperado com sucesso.",
-                List.of(ordem),
-                1
-        );
+        Page<OrdemServicoResumo> page = new PageImpl<>(List.of(resumo), PageRequest.of(0, 10), 1);
 
-        when(ordemServicoService.consultarHistoricoPorPlaca("XYZ-9876")).thenReturn(historico);
+        when(ordemServicoService.listar(any(OrdemServicoFiltro.class), any(Pageable.class))).thenReturn(page);
 
-        mockMvc.perform(get("/api/ordem-servico/historico/XYZ-9876"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.veiculo.placa").value("XYZ-9876"))
-                .andExpect(jsonPath("$.mensagem").value("Histórico recuperado com sucesso."))
-                .andExpect(jsonPath("$.ordensServico[0].id").value(10))
-                .andExpect(jsonPath("$.ordensServico[0].itensServico[0].servicoNome").value("Troca de óleo"))
-                .andExpect(jsonPath("$.ordensServico[0].itensPeca[0].pecaNome").value("Filtro"))
-                .andExpect(jsonPath("$.ordensServico[0].valorTotal").value(150.0));
-    }
-
-    @Test
-    @DisplayName("UC06: GET /api/ordem-servico/historico/{placa}/paginado retorna histórico paginado com 200 OK")
-    void deveConsultarHistoricoPaginado() throws Exception {
-        OrdemServicoHistoricoResponse ordem = new OrdemServicoHistoricoResponse(
-                10,
-                LocalDate.of(2026, 10, 1),
-                null,
-                null,
-                null,
-                StatusServico.PENDENTE,
-                "Orçamento inicial",
-                "Carlos Mecânico",
-                "Oficina Central",
-                List.of(),
-                List.of(),
-                BigDecimal.valueOf(200.0)
-        );
-
-        Page<OrdemServicoHistoricoResponse> page = new PageImpl<>(List.of(ordem), PageRequest.of(0, 10), 1);
-
-        when(ordemServicoService.consultarHistoricoPaginadoPorPlaca(eq("XYZ-9876"), any(Pageable.class))).thenReturn(page);
-
-        mockMvc.perform(get("/api/ordem-servico/historico/XYZ-9876/paginado"))
+        mockMvc.perform(get("/api/ordem-servico")
+                        .param("placa", "XYZ-9876"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(10))
+                .andExpect(jsonPath("$.content[0].placa").value("XYZ-9876"))
+                .andExpect(jsonPath("$.content[0].mecanicoNome").value("Carlos Mecânico"))
+                .andExpect(jsonPath("$.content[0].statusServico").value("FINALIZADO"))
                 .andExpect(jsonPath("$.totalElements").value(1));
     }
 
     @Test
-    @DisplayName("UC06: GET /api/ordem-servico/{id}/detalhado retorna detalhes completos da ordem")
-    void deveDetalharOrdem() throws Exception {
-        OrdemServicoHistoricoResponse ordem = new OrdemServicoHistoricoResponse(
-                10,
-                LocalDate.of(2026, 10, 1),
-                LocalDate.of(2026, 10, 2),
-                LocalDate.of(2026, 10, 3),
-                null,
-                StatusServico.FINALIZADO,
-                "Revisão geral",
+    @DisplayName("GET /api/ordem-servico/{id} retorna ordem de serviço por ID")
+    void deveBuscarOrdemPorId() throws Exception {
+        OrdemServicoResponse response = new OrdemServicoResponse(
+                1,
+                StatusServico.PENDENTE,
+                "Troca de óleo",
+                1,
+                "XYZ-9876",
+                1,
+                1,
                 "Carlos Mecânico",
-                "Oficina Central",
-                List.of(new ItemServicoResponse(1, 1, "Alinhamento", 1, 80.0, 80.0, LocalTime.of(0, 45))),
-                List.of(new ItemPecaResponse(1, 1, "Pastilha de freio", 2, BigDecimal.valueOf(60.0), BigDecimal.valueOf(120.0))),
-                BigDecimal.valueOf(200.0)
+                List.of(),
+                BigDecimal.valueOf(100.0)
         );
 
-        when(ordemServicoService.detalharOrdem(10)).thenReturn(ordem);
+        when(ordemServicoService.buscar(1)).thenReturn(response);
 
-        mockMvc.perform(get("/api/ordem-servico/10/detalhado"))
+        mockMvc.perform(get("/api/ordem-servico/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(10))
-                .andExpect(jsonPath("$.mecanicoNome").value("Carlos Mecânico"))
-                .andExpect(jsonPath("$.status").value("FINALIZADO"))
-                .andExpect(jsonPath("$.itensServico[0].servicoNome").value("Alinhamento"))
-                .andExpect(jsonPath("$.itensPeca[0].pecaNome").value("Pastilha de freio"))
-                .andExpect(jsonPath("$.valorTotal").value(200.0));
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.descricao").value("Troca de óleo"))
+                .andExpect(jsonPath("$.placa").value("XYZ-9876"));
     }
 
     @Test
-    @DisplayName("UC06: GET /api/ordem-servico/historico/{placa} para placa inexistente retorna 404")
-    void deveRetornar404QuandoPlacaInexistente() throws Exception {
-        when(ordemServicoService.consultarHistoricoPorPlaca("NAO-0000"))
-                .thenThrow(new RecursoNaoEncontradoException("Veículo não encontrado."));
+    @DisplayName("GET /api/ordem-servico/{id} inexistente retorna 404 Not Found com ErroResposta DTO")
+    void deveRetornar404QuandoOrdemInexistente() throws Exception {
+        when(ordemServicoService.buscar(999))
+                .thenThrow(new RecursoNaoEncontradoException("Ordem de servico", 999));
 
-        mockMvc.perform(get("/api/ordem-servico/historico/NAO-0000"))
+        mockMvc.perform(get("/api/ordem-servico/999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.message").value("Veículo não encontrado."));
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Ordem de servico não encontrado(a): 999"));
+    }
+
+    @Test
+    @DisplayName("POST /api/ordem-servico cria ordem e retorna 201 Created")
+    void deveCriarOrdemServico() throws Exception {
+        OrdemServicoRequest request = new OrdemServicoRequest(
+                1,
+                1,
+                1,
+                "Revisão 10k"
+        );
+
+        OrdemServicoResponse response = new OrdemServicoResponse(
+                1,
+                StatusServico.PENDENTE,
+                "Revisão 10k",
+                1,
+                "XYZ-9876",
+                1,
+                1,
+                "Carlos Mecânico",
+                List.of(),
+                BigDecimal.ZERO
+        );
+
+        when(ordemServicoService.salvar(any(OrdemServicoRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/api/ordem-servico")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/api/ordem-servico/1"))
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.descricao").value("Revisão 10k"));
     }
 }

@@ -3,9 +3,9 @@ package com.cartoon.api.ordemServico;
 import com.cartoon.api.cliente.Cliente;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.Oficina;
-import com.cartoon.api.ordemServico.dto.response.ItemPecaResponse;
-import com.cartoon.api.ordemServico.dto.response.ItemServicoResponse;
-import com.cartoon.api.ordemServico.dto.response.OrdemServicoHistoricoResponse;
+import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
+import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.models.ItemPeca;
 import com.cartoon.api.ordemServico.models.ItemServico;
 import com.cartoon.api.ordemServico.models.OrdemServico;
@@ -17,8 +17,7 @@ import com.cartoon.api.servico.Servico;
 import com.cartoon.api.usuario.Role;
 import com.cartoon.api.usuario.Usuario;
 import com.cartoon.api.veiculo.Veiculo;
-import com.cartoon.api.veiculo.VeiculoService;
-import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
+import com.cartoon.api.veiculo.VeiculoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +29,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,7 +39,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class HistoricoVeiculoServiceTest {
@@ -48,7 +50,7 @@ class HistoricoVeiculoServiceTest {
     private OrdemServicoRepository ordemServicoRepository;
 
     @Mock
-    private VeiculoService veiculoService;
+    private VeiculoRepository veiculoRepository;
 
     @InjectMocks
     private OrdemServicoService ordemServicoService;
@@ -72,7 +74,7 @@ class HistoricoVeiculoServiceTest {
         veiculo.setModelo("Ka");
         veiculo.setMontadora("Ford");
         veiculo.setAno(2019);
-        veiculo.setValorFipe(35000.0);
+        veiculo.setValorFipe(null);
         veiculo.setAtivo(true);
         veiculo.setCliente(cliente);
 
@@ -139,107 +141,63 @@ class HistoricoVeiculoServiceTest {
     }
 
     @Test
-    @DisplayName("UC06 - Teste 01: Consulta por placa existente com ordens da mais recente para a mais antiga")
-    void deveConsultarHistoricoPorPlacaExistenteComOrdens() {
-        when(veiculoService.buscarEntidadePorPlaca("XYZ-9876")).thenReturn(veiculo);
+    @DisplayName("UC06: Buscar histórico por placa retorna OrdemServicoResumo ordenado por data")
+    void deveBuscarHistoricoPorPlaca() {
         when(ordemServicoRepository.findByVeiculoPlacaIgnoreCaseOrderByDataOrcamentoDescIdDesc("XYZ-9876"))
                 .thenReturn(List.of(ordemRecente, ordemAntiga));
 
-        HistoricoVeiculoResponse response = ordemServicoService.consultarHistoricoPorPlaca("XYZ-9876");
+        List<OrdemServicoResumo> ordens = ordemServicoService.buscarHistoricoPorPlaca("XYZ-9876");
 
-        assertThat(response).isNotNull();
-        assertThat(response.veiculo().placa()).isEqualTo("XYZ-9876");
-        assertThat(response.mensagem()).isEqualTo("Histórico recuperado com sucesso.");
-        assertThat(response.totalOrdens()).isEqualTo(2);
-
-        List<OrdemServicoHistoricoResponse> ordens = response.ordensServico();
         assertThat(ordens).hasSize(2);
+        assertThat(ordens.get(0).id()).isEqualTo(10);
+        assertThat(ordens.get(0).placa()).isEqualTo("XYZ-9876");
+        assertThat(ordens.get(0).mecanicoNome()).isEqualTo("Carlos Mecânico");
+        assertThat(ordens.get(0).oficinaNome()).isEqualTo("Oficina Central");
+        assertThat(ordens.get(0).valorTotal()).isEqualTo(BigDecimal.valueOf(350.0));
 
-        // Ordem mais recente em primeiro lugar
-        OrdemServicoHistoricoResponse primeira = ordens.get(0);
-        assertThat(primeira.id()).isEqualTo(10);
-        assertThat(primeira.dataOrcamento()).isEqualTo(LocalDate.of(2026, 10, 1));
-        assertThat(primeira.status()).isEqualTo(StatusServico.FINALIZADO);
-        assertThat(primeira.mecanicoNome()).isEqualTo("Carlos Mecânico");
-        assertThat(primeira.valorTotal()).isEqualByComparingTo(BigDecimal.valueOf(350.0));
-        assertThat(primeira.itensServico()).hasSize(1);
-        assertThat(primeira.itensPeca()).hasSize(1);
-
-        // Ordem mais antiga em segundo lugar
-        OrdemServicoHistoricoResponse segunda = ordens.get(1);
-        assertThat(segunda.id()).isEqualTo(5);
-        assertThat(segunda.dataOrcamento()).isEqualTo(LocalDate.of(2026, 5, 15));
+        assertThat(ordens.get(1).id()).isEqualTo(5);
+        assertThat(ordens.get(1).dataOrcamento()).isEqualTo(LocalDate.of(2026, 5, 15));
     }
 
     @Test
-    @DisplayName("UC06 - Teste 02: Consulta de veículo sem histórico exibe mensagem amigável")
-    void deveRetornarMensagemQuandoVeiculoNaoPossuiOrdens() {
-        when(veiculoService.buscarEntidadePorPlaca("XYZ-9876")).thenReturn(veiculo);
-        when(ordemServicoRepository.findByVeiculoPlacaIgnoreCaseOrderByDataOrcamentoDescIdDesc("XYZ-9876"))
-                .thenReturn(List.of());
+    @DisplayName("UC06: Buscar detalhes de uma ordem existente através de buscar(id)")
+    void deveBuscarDetalhesDaOrdemPorId() {
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemRecente));
 
-        HistoricoVeiculoResponse response = ordemServicoService.consultarHistoricoPorPlaca("XYZ-9876");
+        OrdemServicoResponse response = ordemServicoService.buscar(10);
 
         assertThat(response).isNotNull();
-        assertThat(response.veiculo().placa()).isEqualTo("XYZ-9876");
-        assertThat(response.mensagem()).isEqualTo("Nenhuma ordem de serviço encontrada para este veículo.");
-        assertThat(response.ordensServico()).isEmpty();
-        assertThat(response.totalOrdens()).isEqualTo(0);
+        assertThat(response.id()).isEqualTo(10);
+        assertThat(response.descricao()).isEqualTo("Revisão de 50.000 km");
+        assertThat(response.mecanicoNome()).isEqualTo("Carlos Mecânico");
+        assertThat(response.itensPeca()).hasSize(1);
+        assertThat(response.itensPeca().get(0).pecaNome()).isEqualTo("Filtro de Óleo");
     }
 
     @Test
-    @DisplayName("UC06 - Teste 03: Consulta por placa inexistente retorna erro 'Veículo não encontrado.'")
-    void deveLancarExcecaoQuandoPlacaNaoCadastrada() {
-        when(veiculoService.buscarEntidadePorPlaca("NAO-9999"))
-                .thenThrow(new RecursoNaoEncontradoException("Veículo não encontrado."));
+    @DisplayName("UC06: Buscar ordem inexistente lança RecursoNaoEncontradoException")
+    void deveLancarExcecaoQuandoOrdemNaoEncontrada() {
+        when(ordemServicoRepository.findById(99)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> ordemServicoService.consultarHistoricoPorPlaca("NAO-9999"))
+        assertThatThrownBy(() -> ordemServicoService.buscar(99))
                 .isInstanceOf(RecursoNaoEncontradoException.class)
-                .hasMessage("Veículo não encontrado.");
-
-        verify(ordemServicoRepository, never()).findByVeiculoPlacaIgnoreCaseOrderByDataOrcamentoDescIdDesc(anyString());
+                .hasMessage("Ordem de servico não encontrado(a): 99");
     }
 
     @Test
-    @DisplayName("UC06 - Teste 04: Detalhar uma ordem do histórico exibindo itens de serviço, itens de peça, mecânico e status")
-    void deveDetalharOrdemDoHistorico() {
-        when(ordemServicoRepository.findDetalhadaById(10)).thenReturn(Optional.of(ordemRecente));
+    @DisplayName("UC06: Listar ordens paginadas com filtro por placa")
+    void deveListarOrdensPaginadasComFiltroPlaca() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<OrdemServico> page = new PageImpl<>(List.of(ordemRecente), pageable, 1);
 
-        OrdemServicoHistoricoResponse detalhe = ordemServicoService.detalharOrdem(10);
+        when(ordemServicoRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
-        assertThat(detalhe).isNotNull();
-        assertThat(detalhe.id()).isEqualTo(10);
-        assertThat(detalhe.mecanicoNome()).isEqualTo("Carlos Mecânico");
-        assertThat(detalhe.status()).isEqualTo(StatusServico.FINALIZADO);
-        assertThat(detalhe.descricao()).isEqualTo("Revisão de 50.000 km");
-
-        assertThat(detalhe.itensServico()).hasSize(1);
-        ItemServicoResponse servicoItem = detalhe.itensServico().get(0);
-        assertThat(servicoItem.servicoNome()).isEqualTo("Troca de Óleo");
-        assertThat(servicoItem.subtotal()).isEqualTo(100.0);
-
-        assertThat(detalhe.itensPeca()).hasSize(1);
-        ItemPecaResponse pecaItem = detalhe.itensPeca().get(0);
-        assertThat(pecaItem.pecaNome()).isEqualTo("Filtro de Óleo");
-        assertThat(pecaItem.subtotal()).isEqualByComparingTo(BigDecimal.valueOf(50.0));
-    }
-
-    @Test
-    @DisplayName("UC06 - Teste 05: Listagem paginada do histórico veicular")
-    void deveConsultarHistoricoPaginado() {
-        Pageable pageable = PageRequest.of(0, 1);
-        Page<OrdemServico> page = new PageImpl<>(List.of(ordemRecente), pageable, 2);
-
-        when(veiculoService.buscarEntidadePorPlaca("XYZ-9876")).thenReturn(veiculo);
-        when(ordemServicoRepository.findByVeiculoPlacaIgnoreCaseOrderByDataOrcamentoDescIdDesc("XYZ-9876", pageable))
-                .thenReturn(page);
-
-        Page<OrdemServicoHistoricoResponse> resultado =
-                ordemServicoService.consultarHistoricoPaginadoPorPlaca("XYZ-9876", pageable);
+        OrdemServicoFiltro filtro = new OrdemServicoFiltro(null, null, "XYZ-9876", null, null);
+        Page<OrdemServicoResumo> resultado = ordemServicoService.listar(filtro, pageable);
 
         assertThat(resultado).isNotNull();
-        assertThat(resultado.getTotalElements()).isEqualTo(2);
-        assertThat(resultado.getContent()).hasSize(1);
+        assertThat(resultado.getTotalElements()).isEqualTo(1);
         assertThat(resultado.getContent().get(0).id()).isEqualTo(10);
+        assertThat(resultado.getContent().get(0).placa()).isEqualTo("XYZ-9876");
     }
 }

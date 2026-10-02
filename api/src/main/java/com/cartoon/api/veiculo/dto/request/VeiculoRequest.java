@@ -4,7 +4,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
 
 public record VeiculoRequest(
         @NotNull(message = "O ID do cliente é obrigatório")
@@ -25,8 +24,5 @@ public record VeiculoRequest(
 
         @NotNull(message = "O ano é obrigatório")
         @Min(value = 1900, message = "Ano inválido")
-        Integer ano,
-
-        @Positive(message = "O valor FIPE deve ser positivo")
-        Double valorFipe
+        Integer ano
 ) {}

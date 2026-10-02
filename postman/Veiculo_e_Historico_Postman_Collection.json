@@ -45,7 +45,6 @@
 							"    pm.expect(json.montadora).to.eql('Ford');",
 							"    pm.expect(json.modelo).to.eql('Ka');",
 							"    pm.expect(json.ano).to.eql(2019);",
-							"    pm.expect(json.valorFipe).to.eql(35000);",
 							"    if (json.id) pm.collectionVariables.set('veiculoId', json.id);",
 							"});"
 						],
@@ -63,7 +62,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019,\n  \"valorFipe\": 35000.0\n}"
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}",
@@ -100,7 +99,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019,\n  \"valorFipe\": 35000.0\n}"
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}",
@@ -118,9 +117,9 @@
 							"pm.test('Status code é 200 OK', function () {",
 							"    pm.response.to.have.status(200);",
 							"});",
-							"pm.test('Valor FIPE atualizado para 33000', function () {",
+							"pm.test('Dados atualizados com sucesso', function () {",
 							"    var json = pm.response.json();",
-							"    pm.expect(json.valorFipe).to.eql(33000);",
+							"    pm.expect(json.modelo).to.eql('Ka Sedan');",
 							"    pm.expect(json.mensagem).to.eql('Dados atualizados com sucesso');",
 							"});"
 						],
@@ -138,7 +137,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"valorFipe\": 33000.0\n}"
+					"raw": "{\n  \"modelo\": \"Ka Sedan\"\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}/{{veiculoId}}",
@@ -176,7 +175,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"ABC-12\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019,\n  \"valorFipe\": 35000.0\n}"
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"ABC-12\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}",
@@ -312,8 +311,12 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test('Status code é 204 No Content', function () {",
-							"    pm.response.to.have.status(204);",
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Veículo inativado com sucesso', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.ativo).to.eql(false);",
 							"});"
 						],
 						"type": "text/javascript"
@@ -337,8 +340,12 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test('Status code é 204 No Content', function () {",
-							"    pm.response.to.have.status(204);",
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Veículo reativado com sucesso', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json.ativo).to.eql(true);",
 							"});"
 						],
 						"type": "text/javascript"

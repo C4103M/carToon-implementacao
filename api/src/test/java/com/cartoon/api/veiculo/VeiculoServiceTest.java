@@ -4,10 +4,14 @@ import com.cartoon.api.cliente.Cliente;
 import com.cartoon.api.cliente.ClienteService;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.compartilhado.exceptions.ValidacaoException;
+import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
+import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.models.StatusServico;
+import com.cartoon.api.ordemServico.service.OrdemServicoService;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
+import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
 import com.cartoon.api.veiculo.dto.response.VeiculoResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +26,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,6 +44,9 @@ class VeiculoServiceTest {
 
     @Mock
     private ClienteService clienteService;
+
+    @Mock
+    private OrdemServicoService ordemServicoService;
 
     @InjectMocks
     private VeiculoService veiculoService;
@@ -59,21 +68,20 @@ class VeiculoServiceTest {
         veiculoValido.setMontadora("Ford");
         veiculoValido.setModelo("Ka");
         veiculoValido.setAno(2019);
-        veiculoValido.setValorFipe(35000.0);
+        veiculoValido.setValorFipe(null);
         veiculoValido.setAtivo(true);
         veiculoValido.setCliente(clienteValido);
     }
 
     @Test
-    @DisplayName("UC05 - Teste 01: Cadastrar veículo válido com sucesso")
+    @DisplayName("UC05 - Teste 01: Cadastrar veículo válido com sucesso e valor FIPE null")
     void deveCadastrarVeiculoValido() {
         VeiculoRequest request = new VeiculoRequest(
                 1,
                 "XYZ-9876",
                 "Ford",
                 "Ka",
-                2019,
-                35000.0
+                2019
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -92,7 +100,7 @@ class VeiculoServiceTest {
         assertThat(response.montadora()).isEqualTo("Ford");
         assertThat(response.modelo()).isEqualTo("Ka");
         assertThat(response.ano()).isEqualTo(2019);
-        assertThat(response.valorFipe()).isEqualTo(35000.0);
+        assertThat(response.valorFipe()).isNull();
         assertThat(response.clienteId()).isEqualTo(1);
         assertThat(response.clienteNome()).isEqualTo("João da Silva");
         assertThat(response.mensagem()).isEqualTo("Veículo cadastrado com sucesso");
@@ -110,8 +118,7 @@ class VeiculoServiceTest {
                 "ABC1D23",
                 "Volkswagen",
                 "Gol 1.0",
-                2020,
-                42000.0
+                2020
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -126,6 +133,7 @@ class VeiculoServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.placa()).isEqualTo("ABC1D23");
+        assertThat(response.valorFipe()).isNull();
         assertThat(response.mensagem()).isEqualTo("Veículo cadastrado com sucesso");
     }
 
@@ -137,8 +145,7 @@ class VeiculoServiceTest {
                 "XYZ-9876",
                 "Ford",
                 "Ka",
-                2019,
-                35000.0
+                2019
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -152,13 +159,12 @@ class VeiculoServiceTest {
     }
 
     @Test
-    @DisplayName("UC05 - Teste 03: Editar dados do veículo alterando valor FIPE de 35000 para 33000 mantendo cliente")
+    @DisplayName("UC05 - Teste 03: Editar dados do veículo mantendo cliente")
     void deveEditarDadosDoVeiculoMantendoCliente() {
         VeiculoAtualizacaoRequest request = new VeiculoAtualizacaoRequest(
-                null,
-                null,
-                null,
-                33000.0,
+                "Ford Atualizada",
+                "Ka Sedan",
+                2020,
                 null,
                 null,
                 null
@@ -170,7 +176,10 @@ class VeiculoServiceTest {
         VeiculoResponse response = veiculoService.atualizar(1, request);
 
         assertThat(response).isNotNull();
-        assertThat(response.valorFipe()).isEqualTo(33000.0);
+        assertThat(response.montadora()).isEqualTo("Ford Atualizada");
+        assertThat(response.modelo()).isEqualTo("Ka Sedan");
+        assertThat(response.ano()).isEqualTo(2020);
+        assertThat(response.valorFipe()).isNull();
         assertThat(response.clienteNome()).isEqualTo("João da Silva");
         assertThat(response.mensagem()).isEqualTo("Dados atualizados com sucesso");
 
@@ -185,14 +194,13 @@ class VeiculoServiceTest {
                 "ABC-12",
                 "Ford",
                 "Ka",
-                2019,
-                35000.0
+                2019
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
         assertThatThrownBy(() -> veiculoService.cadastrar(request))
-                .isInstanceOf(ValidacaoException.class)
+                .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessage("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
 
         verify(veiculoRepository, never()).save(any(Veiculo.class));
@@ -206,14 +214,13 @@ class VeiculoServiceTest {
                 "123-ABCD",
                 "Ford",
                 "Ka",
-                2019,
-                35000.0
+                2019
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
         assertThatThrownBy(() -> veiculoService.cadastrar(request))
-                .isInstanceOf(ValidacaoException.class)
+                .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessage("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
 
         verify(veiculoRepository, never()).save(any(Veiculo.class));
@@ -228,14 +235,13 @@ class VeiculoServiceTest {
                 "XYZ-9876",
                 "Ford",
                 "Ka",
-                2019,
-                35000.0
+                2019
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
         assertThatThrownBy(() -> veiculoService.cadastrar(request))
-                .isInstanceOf(ValidacaoException.class)
+                .isInstanceOf(RegraDeNegocioException.class)
                 .hasMessage("Cliente inativo no sistema.");
 
         verify(veiculoRepository, never()).save(any(Veiculo.class));
@@ -245,9 +251,12 @@ class VeiculoServiceTest {
     @DisplayName("UC05: Inativar veículo com sucesso")
     void deveInativarVeiculo() {
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
+        when(veiculoRepository.save(any(Veiculo.class))).thenAnswer(i -> i.getArgument(0));
 
-        veiculoService.inativar(1);
+        VeiculoResponse response = veiculoService.inativar(1);
 
+        assertThat(response).isNotNull();
+        assertThat(response.ativo()).isFalse();
         assertThat(veiculoValido.getAtivo()).isFalse();
         verify(veiculoRepository).save(veiculoValido);
     }
@@ -257,9 +266,12 @@ class VeiculoServiceTest {
     void deveReativarVeiculo() {
         veiculoValido.setAtivo(false);
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
+        when(veiculoRepository.save(any(Veiculo.class))).thenAnswer(i -> i.getArgument(0));
 
-        veiculoService.reativar(1);
+        VeiculoResponse response = veiculoService.reativar(1);
 
+        assertThat(response).isNotNull();
+        assertThat(response.ativo()).isTrue();
         assertThat(veiculoValido.getAtivo()).isTrue();
         verify(veiculoRepository).save(veiculoValido);
     }
@@ -300,7 +312,7 @@ class VeiculoServiceTest {
     @Test
     @DisplayName("UC05: Listar veículos com filtros e paginação")
     void deveListarVeiculosComFiltros() {
-        VeiculoFiltro filtro = new VeiculoFiltro(1, null, null, null, true);
+        VeiculoFiltro filtro = new VeiculoFiltro(1, "XYZ-9876", "Ka", "Ford", true);
         Pageable pageable = PageRequest.of(0, 10);
         Page<Veiculo> page = new PageImpl<>(List.of(veiculoValido));
 
@@ -323,5 +335,35 @@ class VeiculoServiceTest {
 
         assertThat(lista).hasSize(1);
         assertThat(lista.get(0).clienteId()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("UC06: Consultar histórico de ordens via VeiculoService acessando OrdemServicoService")
+    void deveConsultarHistoricoVeicular() {
+        when(veiculoRepository.findComClienteByPlacaIgnoreCase("XYZ-9876")).thenReturn(Optional.of(veiculoValido));
+
+        OrdemServicoResumo osResumo = new OrdemServicoResumo(
+                10,
+                LocalDate.of(2026, 10, 1),
+                LocalDate.of(2026, 10, 2),
+                LocalDate.of(2026, 10, 3),
+                null,
+                StatusServico.FINALIZADO,
+                "Revisão 50k",
+                "XYZ-9876",
+                "Carlos",
+                "Oficina Central",
+                BigDecimal.valueOf(350.0)
+        );
+
+        when(ordemServicoService.buscarHistoricoPorPlaca("XYZ-9876")).thenReturn(List.of(osResumo));
+
+        HistoricoVeiculoResponse historico = veiculoService.consultarHistorico("XYZ-9876");
+
+        assertThat(historico).isNotNull();
+        assertThat(historico.veiculo().placa()).isEqualTo("XYZ-9876");
+        assertThat(historico.totalOrdens()).isEqualTo(1);
+        assertThat(historico.ordensServico().get(0).id()).isEqualTo(10);
+        assertThat(historico.ordensServico().get(0).valorTotal()).isEqualTo(BigDecimal.valueOf(350.0));
     }
 }

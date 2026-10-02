@@ -1,7 +1,6 @@
 package com.cartoon.api.veiculo;
 
-import com.cartoon.api.ordemServico.dto.response.OrdemServicoHistoricoResponse;
-import com.cartoon.api.ordemServico.service.OrdemServicoService;
+import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
@@ -26,7 +25,6 @@ import java.util.List;
 public class VeiculoController {
 
     private final VeiculoService veiculoService;
-    private final OrdemServicoService ordemServicoService;
 
     @PostMapping
     @Operation(summary = "Cadastrar veículo", description = "UC05 - Cadastra um novo veículo vinculado a um cliente")
@@ -37,66 +35,57 @@ public class VeiculoController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Atualizar veículo", description = "UC05 - Edita os dados cadastrais de um veículo existente")
-    public ResponseEntity<VeiculoResponse> atualizar(@PathVariable Integer id,
-                                                    @Valid @RequestBody VeiculoAtualizacaoRequest request) {
-        VeiculoResponse atualizada = veiculoService.atualizar(id, request);
-        return ResponseEntity.ok(atualizada);
+    public VeiculoResponse atualizar(@PathVariable Integer id,
+                                    @Valid @RequestBody VeiculoAtualizacaoRequest request) {
+        return veiculoService.atualizar(id, request);
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Buscar veículo por ID", description = "UC05 - Consulta os detalhes de um veículo pelo ID")
-    public ResponseEntity<VeiculoResponse> buscarPorId(@PathVariable Integer id) {
-        return ResponseEntity.ok(veiculoService.buscarPorId(id));
+    public VeiculoResponse buscarPorId(@PathVariable Integer id) {
+        return veiculoService.buscarPorId(id);
     }
 
     @GetMapping("/placa/{placa}")
     @Operation(summary = "Buscar veículo por placa", description = "UC05 - Consulta os detalhes de um veículo pela placa")
-    public ResponseEntity<VeiculoResponse> buscarPorPlaca(@PathVariable String placa) {
-        return ResponseEntity.ok(veiculoService.buscarPorPlaca(placa));
+    public VeiculoResponse buscarPorPlaca(@PathVariable String placa) {
+        return veiculoService.buscarPorPlaca(placa);
     }
 
     @GetMapping
     @Operation(summary = "Listar veículos", description = "UC05 - Consulta paginada com filtros opcionais")
-    public ResponseEntity<Page<VeiculoResponse>> listar(VeiculoFiltro filtro, Pageable pageable) {
-        return ResponseEntity.ok(veiculoService.listar(filtro, pageable));
+    public Page<VeiculoResponse> listar(VeiculoFiltro filtro, Pageable pageable) {
+        return veiculoService.listar(filtro, pageable);
     }
 
     @GetMapping("/cliente/{clienteId}")
     @Operation(summary = "Listar veículos por cliente", description = "UC05 - Retorna todos os veículos pertencentes a um cliente")
-    public ResponseEntity<List<VeiculoResponse>> listarPorCliente(@PathVariable Integer clienteId) {
-        return ResponseEntity.ok(veiculoService.listarPorCliente(clienteId));
+    public List<VeiculoResponse> listarPorCliente(@PathVariable Integer clienteId) {
+        return veiculoService.listarPorCliente(clienteId);
     }
 
     @PatchMapping("/{id}/inativar")
     @Operation(summary = "Inativar veículo", description = "UC05 - Inativa o veículo (soft delete) preservando o histórico de ordens")
-    public ResponseEntity<Void> inativar(@PathVariable Integer id) {
-        veiculoService.inativar(id);
-        return ResponseEntity.noContent().build();
+    public VeiculoResponse inativar(@PathVariable Integer id) {
+        return veiculoService.inativar(id);
     }
 
     @PatchMapping("/{id}/reativar")
     @Operation(summary = "Reativar veículo", description = "UC05 - Reativa um veículo previamente inativado")
-    public ResponseEntity<Void> reativar(@PathVariable Integer id) {
-        veiculoService.reativar(id);
-        return ResponseEntity.noContent().build();
+    public VeiculoResponse reativar(@PathVariable Integer id) {
+        return veiculoService.reativar(id);
     }
 
     @GetMapping("/{placa}/historico")
     @Operation(summary = "Consultar histórico de manutenção pela placa", description = "UC06 - Retorna todas as ordens de serviço do veículo ordenadas da mais recente para a mais antiga")
-    public ResponseEntity<HistoricoVeiculoResponse> consultarHistorico(@PathVariable String placa) {
-        return ResponseEntity.ok(ordemServicoService.consultarHistoricoPorPlaca(placa));
-    }
-
-    @GetMapping("/placa/{placa}/historico")
-    @Operation(summary = "Consultar histórico pela placa (rota alternativa)", description = "UC06 - Consulta histórico veicular")
-    public ResponseEntity<HistoricoVeiculoResponse> consultarHistoricoAlternativa(@PathVariable String placa) {
-        return ResponseEntity.ok(ordemServicoService.consultarHistoricoPorPlaca(placa));
+    public HistoricoVeiculoResponse consultarHistorico(@PathVariable String placa) {
+        return veiculoService.consultarHistorico(placa);
     }
 
     @GetMapping("/{placa}/historico/paginado")
     @Operation(summary = "Consultar histórico paginado", description = "UC06 - Histórico paginado para veículos com grande volume de ordens")
-    public ResponseEntity<Page<OrdemServicoHistoricoResponse>> consultarHistoricoPaginado(@PathVariable String placa,
-                                                                                          Pageable pageable) {
-        return ResponseEntity.ok(ordemServicoService.consultarHistoricoPaginadoPorPlaca(placa, pageable));
+    public Page<OrdemServicoResumo> consultarHistoricoPaginado(@PathVariable String placa,
+                                                               Pageable pageable) {
+        return veiculoService.consultarHistoricoPaginado(placa, pageable);
     }
 }

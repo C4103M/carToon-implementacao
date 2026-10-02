@@ -6,19 +6,15 @@ import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.ItemPecaResponse;
 import com.cartoon.api.ordemServico.dto.response.ItemServicoResponse;
-import com.cartoon.api.ordemServico.dto.response.OrdemServicoHistoricoResponse;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.models.ItemPeca;
 import com.cartoon.api.ordemServico.models.ItemServico;
 import com.cartoon.api.ordemServico.models.OrdemServico;
-import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.peca.Peca;
 import com.cartoon.api.usuario.Usuario;
 import com.cartoon.api.veiculo.Veiculo;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Objects;
 
 public final class OrdemServicoMapper {
 
@@ -35,16 +31,22 @@ public final class OrdemServicoMapper {
     }
 
     public static OrdemServicoResponse paraOrdemServicoResponse(OrdemServico ordem) {
+        String veiculoPlaca = ordem.getVeiculo() != null ? ordem.getVeiculo().getPlaca() : null;
+        Integer veiculoId = ordem.getVeiculo() != null ? ordem.getVeiculo().getId() : null;
+        Integer oficinaId = ordem.getOficina() != null ? ordem.getOficina().getId() : null;
+        Integer mecanicoId = ordem.getMecanico() != null ? ordem.getMecanico().getId() : null;
+        String mecanicoNome = ordem.getMecanico() != null ? ordem.getMecanico().getNome() : null;
+
         return new OrdemServicoResponse(
                 ordem.getId(),
                 ordem.getStatusServico(),
                 ordem.getDescricao(),
-                ordem.getVeiculo().getId(),
-                ordem.getVeiculo().getPlaca(),
-                ordem.getOficina().getId(),
-                ordem.getMecanico().getId(),
-                ordem.getMecanico().getNome(),
-                ordem.getItensPeca().stream().map(OrdemServicoMapper::paraItemPecaResponse).toList(),
+                veiculoId,
+                veiculoPlaca,
+                oficinaId,
+                mecanicoId,
+                mecanicoNome,
+                ordem.getItensPeca() != null ? ordem.getItensPeca().stream().map(OrdemServicoMapper::paraItemPecaResponse).toList() : java.util.List.of(),
                 ordem.getTotal());
     }
 
@@ -80,31 +82,12 @@ public final class OrdemServicoMapper {
         );
     }
 
-    public static OrdemServicoHistoricoResponse paraOrdemServicoHistoricoResponse(OrdemServico ordem) {
+    public static OrdemServicoResumo paraOrdemServicoResumo(OrdemServico ordem) {
+        String placa = ordem.getVeiculo() != null ? ordem.getVeiculo().getPlaca() : null;
         String mecanicoNome = ordem.getMecanico() != null ? ordem.getMecanico().getNome() : null;
         String oficinaNome = ordem.getOficina() != null ? ordem.getOficina().getNome() : null;
 
-        List<ItemServicoResponse> servicos = ordem.getItensServico() != null ?
-                ordem.getItensServico().stream().map(OrdemServicoMapper::paraItemServicoResponse).toList() : List.of();
-
-        List<ItemPecaResponse> pecas = ordem.getItensPeca() != null ?
-                ordem.getItensPeca().stream().map(OrdemServicoMapper::paraItemPecaResponse).toList() : List.of();
-
-        BigDecimal total = ordem.getTotal();
-        if (total == null) {
-            BigDecimal totalPecas = pecas.stream()
-                    .map(ItemPecaResponse::subtotal)
-                    .filter(Objects::nonNull)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            BigDecimal totalServicos = servicos.stream()
-                    .map(ItemServicoResponse::subtotal)
-                    .filter(Objects::nonNull)
-                    .map(BigDecimal::valueOf)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            total = totalPecas.add(totalServicos);
-        }
-
-        return new OrdemServicoHistoricoResponse(
+        return new OrdemServicoResumo(
                 ordem.getId(),
                 ordem.getDataOrcamento(),
                 ordem.getDataInicio(),
@@ -112,20 +95,11 @@ public final class OrdemServicoMapper {
                 ordem.getDataRejeicao(),
                 ordem.getStatusServico(),
                 ordem.getDescricao(),
+                placa,
                 mecanicoNome,
                 oficinaNome,
-                servicos,
-                pecas,
-                total
+                ordem.getTotal()
         );
-    }
-
-    public static OrdemServicoResumo paraOrdemServicoResumo(OrdemServico ordem) {
-        return new OrdemServicoResumo(
-                ordem.getId(),
-                ordem.getStatusServico(),
-                ordem.getVeiculo().getPlaca(),
-                ordem.getMecanico().getNome());
     }
 
     public static ItemPeca paraItemPeca(ItemPecaRequest request, Peca peca) {

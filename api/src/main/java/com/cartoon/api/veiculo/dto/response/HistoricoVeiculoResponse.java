@@ -1,6 +1,6 @@
 package com.cartoon.api.veiculo.dto.response;
 
-import com.cartoon.api.ordemServico.dto.response.OrdemServicoHistoricoResponse;
+import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.List;
@@ -9,6 +9,6 @@ import java.util.List;
 public record HistoricoVeiculoResponse(
         VeiculoResumo veiculo,
         String mensagem,
-        List<OrdemServicoHistoricoResponse> ordensServico,
+        List<OrdemServicoResumo> ordensServico,
         int totalOrdens
 ) {}

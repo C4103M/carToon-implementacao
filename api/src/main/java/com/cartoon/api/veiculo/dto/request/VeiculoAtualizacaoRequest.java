@@ -2,7 +2,6 @@ package com.cartoon.api.veiculo.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
 
 public record VeiculoAtualizacaoRequest(
         String montadora,
@@ -10,9 +9,6 @@ public record VeiculoAtualizacaoRequest(
 
         @Min(value = 1900, message = "Ano inválido")
         Integer ano,
-
-        @Positive(message = "O valor FIPE deve ser positivo")
-        Double valorFipe,
 
         @Pattern(
                 regexp = "^([A-Za-z]{3}-?[0-9]{4}|[A-Za-z]{3}-?[0-9][A-Za-z][0-9]{2})$",

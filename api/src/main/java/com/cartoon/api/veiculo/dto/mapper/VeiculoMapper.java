@@ -1,11 +1,15 @@
 package com.cartoon.api.veiculo.dto.mapper;
 
 import com.cartoon.api.cliente.Cliente;
+import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.veiculo.Veiculo;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
+import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
 import com.cartoon.api.veiculo.dto.response.VeiculoResponse;
 import com.cartoon.api.veiculo.dto.response.VeiculoResumo;
+
+import java.util.List;
 
 public final class VeiculoMapper {
 
@@ -17,7 +21,7 @@ public final class VeiculoMapper {
         veiculo.setModelo(request.modelo().trim());
         veiculo.setMontadora(request.montadora().trim());
         veiculo.setAno(request.ano());
-        veiculo.setValorFipe(request.valorFipe());
+        veiculo.setValorFipe(null); // Valor FIPE permanece null por enquanto até integração com API externa
         veiculo.setAtivo(true);
         veiculo.setCliente(cliente);
         return veiculo;
@@ -62,6 +66,24 @@ public final class VeiculoMapper {
         );
     }
 
+    public static HistoricoVeiculoResponse paraHistoricoVeiculoResponse(Veiculo veiculo, List<OrdemServicoResumo> ordens) {
+        VeiculoResumo veiculoResumo = paraVeiculoResumo(veiculo);
+        if (ordens == null || ordens.isEmpty()) {
+            return new HistoricoVeiculoResponse(
+                    veiculoResumo,
+                    "Nenhuma ordem de serviço encontrada para este veículo.",
+                    List.of(),
+                    0
+            );
+        }
+        return new HistoricoVeiculoResponse(
+                veiculoResumo,
+                "Histórico recuperado com sucesso.",
+                ordens,
+                ordens.size()
+        );
+    }
+
     public static void atualizarDados(Veiculo veiculo, VeiculoAtualizacaoRequest request, Cliente novoCliente) {
         if (request.montadora() != null && !request.montadora().isBlank()) {
             veiculo.setMontadora(request.montadora().trim());
@@ -71,9 +93,6 @@ public final class VeiculoMapper {
         }
         if (request.ano() != null) {
             veiculo.setAno(request.ano());
-        }
-        if (request.valorFipe() != null) {
-            veiculo.setValorFipe(request.valorFipe());
         }
         if (request.placa() != null && !request.placa().isBlank()) {
             veiculo.setPlaca(request.placa());

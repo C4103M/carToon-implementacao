@@ -4,11 +4,15 @@ import com.cartoon.api.cliente.Cliente;
 import com.cartoon.api.cliente.ClienteService;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.compartilhado.exceptions.ValidacaoException;
+import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
+import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
+import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.service.OrdemServicoService;
 import com.cartoon.api.veiculo.dto.mapper.VeiculoMapper;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
+import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
 import com.cartoon.api.veiculo.dto.response.VeiculoResponse;
 import com.cartoon.api.veiculo.specs.VeiculoSpecs;
 import lombok.RequiredArgsConstructor;
@@ -31,16 +35,17 @@ public class VeiculoService {
 
     private final VeiculoRepository veiculoRepository;
     private final ClienteService clienteService;
+    private final OrdemServicoService ordemServicoService;
 
     @Transactional
     public VeiculoResponse cadastrar(VeiculoRequest request) {
         Cliente cliente = clienteService.buscarEntidade(request.clienteId());
         if (!cliente.isAtivo()) {
-            throw new ValidacaoException("Cliente inativo no sistema.");
+            throw new RegraDeNegocioException("Cliente inativo no sistema.");
         }
 
         if (request.placa() == null || !PADRAO_PLACA.matcher(request.placa().trim()).matches()) {
-            throw new ValidacaoException("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
+            throw new RegraDeNegocioException("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
         }
 
         String placaNormalizada = normalizarPlaca(request.placa());
@@ -63,13 +68,13 @@ public class VeiculoService {
         if (request.clienteId() != null && !request.clienteId().equals(veiculo.getCliente().getId())) {
             novoCliente = clienteService.buscarEntidade(request.clienteId());
             if (!novoCliente.isAtivo()) {
-                throw new ValidacaoException("Cliente inativo no sistema.");
+                throw new RegraDeNegocioException("Cliente inativo no sistema.");
             }
         }
 
         if (request.placa() != null && !request.placa().isBlank()) {
             if (!PADRAO_PLACA.matcher(request.placa().trim()).matches()) {
-                throw new ValidacaoException("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
+                throw new RegraDeNegocioException("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
             }
             String placaNormalizada = normalizarPlaca(request.placa());
             if (veiculoRepository.existsByPlacaIgnoreCaseAndIdNot(placaNormalizada, id)) {
@@ -111,17 +116,33 @@ public class VeiculoService {
     }
 
     @Transactional
-    public void inativar(Integer id) {
+    public VeiculoResponse inativar(Integer id) {
         Veiculo veiculo = buscarEntidade(id);
         veiculo.setAtivo(false);
-        veiculoRepository.save(veiculo);
+        veiculo = veiculoRepository.save(veiculo);
+        return VeiculoMapper.paraVeiculoResponse(veiculo, "Veículo inativado com sucesso");
     }
 
     @Transactional
-    public void reativar(Integer id) {
+    public VeiculoResponse reativar(Integer id) {
         Veiculo veiculo = buscarEntidade(id);
         veiculo.setAtivo(true);
-        veiculoRepository.save(veiculo);
+        veiculo = veiculoRepository.save(veiculo);
+        return VeiculoMapper.paraVeiculoResponse(veiculo, "Veículo reativado com sucesso");
+    }
+
+    @Transactional(readOnly = true)
+    public HistoricoVeiculoResponse consultarHistorico(String placa) {
+        Veiculo veiculo = buscarEntidadePorPlaca(placa);
+        List<OrdemServicoResumo> ordens = ordemServicoService.buscarHistoricoPorPlaca(veiculo.getPlaca());
+        return VeiculoMapper.paraHistoricoVeiculoResponse(veiculo, ordens);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrdemServicoResumo> consultarHistoricoPaginado(String placa, Pageable pageable) {
+        Veiculo veiculo = buscarEntidadePorPlaca(placa);
+        OrdemServicoFiltro filtro = new OrdemServicoFiltro(null, null, veiculo.getPlaca(), null, null);
+        return ordemServicoService.listar(filtro, pageable);
     }
 
     @Transactional(readOnly = true)

@@ -18,6 +18,8 @@ public final class OrdemServicoSpecs {
                 condicoes.add(cb.equal(root.get("oficina").get("id"), filtro.oficinaId()));
             if (filtro.veiculoId() != null)
                 condicoes.add(cb.equal(root.get("veiculo").get("id"), filtro.veiculoId()));
+            if (filtro.placa() != null && !filtro.placa().isBlank())
+                condicoes.add(cb.equal(cb.upper(root.get("veiculo").get("placa")), filtro.placa().trim().toUpperCase()));
             if (filtro.mecanicoId() != null)
                 condicoes.add(cb.equal(root.get("mecanico").get("id"), filtro.mecanicoId()));
             if (filtro.statusServico() != null)

@@ -3,10 +3,10 @@ package com.cartoon.api.veiculo;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.GlobalExceptionHandler;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.seguranca.SecurityConfig;
-import com.cartoon.api.ordemServico.dto.response.OrdemServicoHistoricoResponse;
+import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
+import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.models.StatusServico;
-import com.cartoon.api.ordemServico.service.OrdemServicoService;
+import com.cartoon.api.seguranca.SecurityConfig;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
 import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
@@ -28,7 +28,6 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -45,19 +44,15 @@ class VeiculoControllerTest {
     @MockitoBean
     private VeiculoService veiculoService;
 
-    @MockitoBean
-    private OrdemServicoService ordemServicoService;
-
     @Test
-    @DisplayName("UC05 - Teste 01: POST /api/veiculos cadastra veículo válido e retorna 201 Created")
+    @DisplayName("UC05 - Teste 01: POST /api/veiculos cadastra veículo válido e retorna 201 Created com valor FIPE null")
     void deveCadastrarVeiculoComSucesso() throws Exception {
         VeiculoRequest request = new VeiculoRequest(
                 1,
                 "XYZ-9876",
                 "Ford",
                 "Ka",
-                2019,
-                35000.0
+                2019
         );
 
         VeiculoResponse response = new VeiculoResponse(
@@ -66,7 +61,7 @@ class VeiculoControllerTest {
                 "Ka",
                 2019,
                 "Ford",
-                35000.0,
+                null,
                 true,
                 1,
                 "João da Silva",
@@ -86,7 +81,7 @@ class VeiculoControllerTest {
                 .andExpect(jsonPath("$.montadora").value("Ford"))
                 .andExpect(jsonPath("$.modelo").value("Ka"))
                 .andExpect(jsonPath("$.ano").value(2019))
-                .andExpect(jsonPath("$.valorFipe").value(35000.0))
+                .andExpect(jsonPath("$.valorFipe").doesNotExist())
                 .andExpect(jsonPath("$.clienteNome").value("João da Silva"))
                 .andExpect(jsonPath("$.mensagem").value("Veículo cadastrado com sucesso"));
     }
@@ -99,8 +94,7 @@ class VeiculoControllerTest {
                 "XYZ-9876",
                 "Ford",
                 "Ka",
-                2019,
-                35000.0
+                2019
         );
 
         when(veiculoService.cadastrar(any(VeiculoRequest.class)))
@@ -121,7 +115,6 @@ class VeiculoControllerTest {
                 null,
                 null,
                 null,
-                33000.0,
                 null,
                 null,
                 null
@@ -133,7 +126,7 @@ class VeiculoControllerTest {
                 "Ka",
                 2019,
                 "Ford",
-                33000.0,
+                null,
                 true,
                 1,
                 "João da Silva",
@@ -147,7 +140,6 @@ class VeiculoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.valorFipe").value(33000.0))
                 .andExpect(jsonPath("$.mensagem").value("Dados atualizados com sucesso"));
     }
 
@@ -159,8 +151,7 @@ class VeiculoControllerTest {
                 "ABC-12",
                 "Ford",
                 "Ka",
-                2019,
-                35000.0
+                2019
         );
 
         mockMvc.perform(post("/api/veiculos")
@@ -172,19 +163,24 @@ class VeiculoControllerTest {
     }
 
     @Test
-    @DisplayName("UC05: PATCH /api/veiculos/{id}/inativar inativa veículo com 204 No Content")
+    @DisplayName("UC05: PATCH /api/veiculos/{id}/inativar inativa veículo e retorna 200 OK com DTO")
     void deveInativarVeiculo() throws Exception {
-        doNothing().when(veiculoService).inativar(1);
+        VeiculoResponse response = new VeiculoResponse(
+                1, "XYZ-9876", "Ka", 2019, "Ford", null, false, 1, "João", "12345678901", "Veículo inativado com sucesso"
+        );
+        when(veiculoService.inativar(1)).thenReturn(response);
 
         mockMvc.perform(patch("/api/veiculos/1/inativar"))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ativo").value(false))
+                .andExpect(jsonPath("$.mensagem").value("Veículo inativado com sucesso"));
     }
 
     @Test
     @DisplayName("UC06 - Teste 01: GET /api/veiculos/{placa}/historico retorna ordens da mais recente para a mais antiga")
     void deveConsultarHistoricoComSucesso() throws Exception {
-        VeiculoResumo veiculoResumo = new VeiculoResumo(1, "XYZ-9876", "Ka", "Ford", 2019, 35000.0, true, "João da Silva");
-        OrdemServicoHistoricoResponse ordem = new OrdemServicoHistoricoResponse(
+        VeiculoResumo veiculoResumo = new VeiculoResumo(1, "XYZ-9876", "Ka", "Ford", 2019, null, true, "João da Silva");
+        OrdemServicoResumo ordem = new OrdemServicoResumo(
                 10,
                 LocalDate.of(2026, 10, 1),
                 LocalDate.of(2026, 10, 2),
@@ -192,10 +188,9 @@ class VeiculoControllerTest {
                 null,
                 StatusServico.FINALIZADO,
                 "Revisão de 50.000 km",
+                "XYZ-9876",
                 "Carlos Mecânico",
                 "Oficina Central",
-                List.of(),
-                List.of(),
                 BigDecimal.valueOf(350.0)
         );
 
@@ -206,7 +201,7 @@ class VeiculoControllerTest {
                 1
         );
 
-        when(ordemServicoService.consultarHistoricoPorPlaca("XYZ-9876")).thenReturn(historico);
+        when(veiculoService.consultarHistorico("XYZ-9876")).thenReturn(historico);
 
         mockMvc.perform(get("/api/veiculos/XYZ-9876/historico"))
                 .andExpect(status().isOk())
@@ -214,13 +209,14 @@ class VeiculoControllerTest {
                 .andExpect(jsonPath("$.mensagem").value("Histórico recuperado com sucesso."))
                 .andExpect(jsonPath("$.totalOrdens").value(1))
                 .andExpect(jsonPath("$.ordensServico[0].id").value(10))
+                .andExpect(jsonPath("$.ordensServico[0].mecanicoNome").value("Carlos Mecânico"))
                 .andExpect(jsonPath("$.ordensServico[0].valorTotal").value(350.0));
     }
 
     @Test
     @DisplayName("UC06 - Teste 02: GET /api/veiculos/{placa}/historico para veículo sem ordens")
     void deveConsultarHistoricoVeiculoSemOrdens() throws Exception {
-        VeiculoResumo veiculoResumo = new VeiculoResumo(1, "XYZ-9876", "Ka", "Ford", 2019, 35000.0, true, "João da Silva");
+        VeiculoResumo veiculoResumo = new VeiculoResumo(1, "XYZ-9876", "Ka", "Ford", 2019, null, true, "João da Silva");
         HistoricoVeiculoResponse historico = new HistoricoVeiculoResponse(
                 veiculoResumo,
                 "Nenhuma ordem de serviço encontrada para este veículo.",
@@ -228,7 +224,7 @@ class VeiculoControllerTest {
                 0
         );
 
-        when(ordemServicoService.consultarHistoricoPorPlaca("XYZ-9876")).thenReturn(historico);
+        when(veiculoService.consultarHistorico("XYZ-9876")).thenReturn(historico);
 
         mockMvc.perform(get("/api/veiculos/XYZ-9876/historico"))
                 .andExpect(status().isOk())
@@ -240,7 +236,7 @@ class VeiculoControllerTest {
     @Test
     @DisplayName("UC06 - Teste 03: GET /api/veiculos/{placa}/historico para placa inexistente retorna 404")
     void deveRetornar404ParaPlacaInexistenteNoHistorico() throws Exception {
-        when(ordemServicoService.consultarHistoricoPorPlaca("NAO-0000"))
+        when(veiculoService.consultarHistorico("NAO-0000"))
                 .thenThrow(new RecursoNaoEncontradoException("Veículo não encontrado."));
 
         mockMvc.perform(get("/api/veiculos/NAO-0000/historico"))
