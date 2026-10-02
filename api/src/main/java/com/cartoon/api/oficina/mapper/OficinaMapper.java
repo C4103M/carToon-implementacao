@@ -6,7 +6,7 @@ import com.cartoon.api.oficina.model.Oficina;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OficinaMapper {
+public class OficinaMapper{
 
     public Oficina toEntity(OficinaRequest request) {
         Oficina oficina = new Oficina();
@@ -25,12 +25,12 @@ public class OficinaMapper {
     }
 
     public void updateEntity(Oficina oficina, OficinaRequest request) {
-        oficina.setNome(request.nome());
+        oficina.setNome(request.nome().trim());
         oficina.setEndereco(request.endereco());
         oficina.setTelefone(normalizarTelefone(request.telefone()));
     }
 
-    public String normalizarTelefone(String telefone) {
+    private String normalizarTelefone(String telefone) {
         return telefone.replaceAll("\\D", "");
     }
 }

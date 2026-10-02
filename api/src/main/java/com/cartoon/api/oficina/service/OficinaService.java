@@ -31,9 +31,8 @@ public class OficinaService {
 
     @Transactional
     public OficinaResponse criar(OficinaRequest request) {
-        validarDuplicidade(request, null);
         Oficina oficina = mapper.toEntity(request);
-        return mapper.toResponse(oficinaRepository.save(oficina));
+        return mapper.toResponse(oficinaRepository.saveAndFlush(oficina));
     }
 
     @Transactional(readOnly = true)
@@ -52,8 +51,8 @@ public class OficinaService {
         if (!oficina.getAtivo()) {
             throw new ConflitoException("Oficina inativa. Reative-a antes de editar.");
         }
-        validarDuplicidade(request, id);
         mapper.updateEntity(oficina, request);
+        oficinaRepository.flush();
         return mapper.toResponse(oficina);
     }
 
@@ -75,22 +74,5 @@ public class OficinaService {
     public Oficina buscarEntidade(Integer id) {
         return oficinaRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Oficina", id));
-    }
-
-    private void validarDuplicidade(OficinaRequest request, Integer idAtual) {
-        boolean nomeDuplicado = (idAtual == null)
-                ? oficinaRepository.existsByNome(request.nome())
-                : oficinaRepository.existsByNomeAndIdNot(request.nome(), idAtual);
-        if (nomeDuplicado) {
-            throw new ConflitoException("Já existe uma oficina com esse nome.");
-        }
-
-        String telefone = mapper.normalizarTelefone(request.telefone());
-        boolean telefoneDuplicado = (idAtual == null)
-                ? oficinaRepository.existsByTelefone(telefone)
-                : oficinaRepository.existsByTelefoneAndIdNot(telefone, idAtual);
-        if (telefoneDuplicado) {
-            throw new ConflitoException("Já existe uma oficina com esse telefone.");
-        }
     }
 }
