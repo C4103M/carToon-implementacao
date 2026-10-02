@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/api/ordem-servico")
+@RequestMapping("/ordem-servico")
 @AllArgsConstructor
 @Tag(name = "Ordens de Serviço", description = "Endpoints para gerenciamento de ordens de serviço")
 public class OrdemServicoController {
