@@ -2,9 +2,10 @@ package com.cartoon.api.veiculo;
 
 import com.cartoon.api.cliente.Cliente;
 import com.cartoon.api.cliente.ClienteService;
+import com.cartoon.api.compartilhado.exceptions.ClienteInativoException;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
+import com.cartoon.api.compartilhado.exceptions.PlacaInvalidaException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
@@ -15,7 +16,7 @@ import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
 import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
 import com.cartoon.api.veiculo.dto.response.VeiculoResponse;
 import com.cartoon.api.veiculo.specs.VeiculoSpecs;
-import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -26,7 +27,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
-@RequiredArgsConstructor
 public class VeiculoService {
 
     private static final Pattern PADRAO_PLACA = Pattern.compile(
@@ -37,15 +37,23 @@ public class VeiculoService {
     private final ClienteService clienteService;
     private final OrdemServicoService ordemServicoService;
 
+    public VeiculoService(VeiculoRepository veiculoRepository,
+                          ClienteService clienteService,
+                          @Lazy OrdemServicoService ordemServicoService) {
+        this.veiculoRepository = veiculoRepository;
+        this.clienteService = clienteService;
+        this.ordemServicoService = ordemServicoService;
+    }
+
     @Transactional
     public VeiculoResponse cadastrar(VeiculoRequest request) {
         Cliente cliente = clienteService.buscarEntidade(request.clienteId());
         if (!cliente.isAtivo()) {
-            throw new RegraDeNegocioException("Cliente inativo no sistema.");
+            throw new ClienteInativoException();
         }
 
         if (request.placa() == null || !PADRAO_PLACA.matcher(request.placa().trim()).matches()) {
-            throw new RegraDeNegocioException("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
+            throw new PlacaInvalidaException();
         }
 
         String placaNormalizada = normalizarPlaca(request.placa());
@@ -68,13 +76,13 @@ public class VeiculoService {
         if (request.clienteId() != null && !request.clienteId().equals(veiculo.getCliente().getId())) {
             novoCliente = clienteService.buscarEntidade(request.clienteId());
             if (!novoCliente.isAtivo()) {
-                throw new RegraDeNegocioException("Cliente inativo no sistema.");
+                throw new ClienteInativoException();
             }
         }
 
         if (request.placa() != null && !request.placa().isBlank()) {
             if (!PADRAO_PLACA.matcher(request.placa().trim()).matches()) {
-                throw new RegraDeNegocioException("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
+                throw new PlacaInvalidaException();
             }
             String placaNormalizada = normalizarPlaca(request.placa());
             if (veiculoRepository.existsByPlacaIgnoreCaseAndIdNot(placaNormalizada, id)) {

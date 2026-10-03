@@ -2,9 +2,10 @@ package com.cartoon.api.veiculo;
 
 import com.cartoon.api.cliente.Cliente;
 import com.cartoon.api.cliente.ClienteService;
+import com.cartoon.api.compartilhado.exceptions.ClienteInativoException;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
+import com.cartoon.api.compartilhado.exceptions.PlacaInvalidaException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
@@ -200,7 +201,7 @@ class VeiculoServiceTest {
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
         assertThatThrownBy(() -> veiculoService.cadastrar(request))
-                .isInstanceOf(RegraDeNegocioException.class)
+                .isInstanceOf(PlacaInvalidaException.class)
                 .hasMessage("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
 
         verify(veiculoRepository, never()).save(any(Veiculo.class));
@@ -220,7 +221,7 @@ class VeiculoServiceTest {
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
         assertThatThrownBy(() -> veiculoService.cadastrar(request))
-                .isInstanceOf(RegraDeNegocioException.class)
+                .isInstanceOf(PlacaInvalidaException.class)
                 .hasMessage("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
 
         verify(veiculoRepository, never()).save(any(Veiculo.class));
@@ -241,7 +242,7 @@ class VeiculoServiceTest {
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
         assertThatThrownBy(() -> veiculoService.cadastrar(request))
-                .isInstanceOf(RegraDeNegocioException.class)
+                .isInstanceOf(ClienteInativoException.class)
                 .hasMessage("Cliente inativo no sistema.");
 
         verify(veiculoRepository, never()).save(any(Veiculo.class));

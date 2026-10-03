@@ -20,7 +20,7 @@ import com.cartoon.api.peca.PecaService;
 import com.cartoon.api.usuario.Usuario;
 import com.cartoon.api.usuario.UsuarioService;
 import com.cartoon.api.veiculo.Veiculo;
-import com.cartoon.api.veiculo.VeiculoRepository;
+import com.cartoon.api.veiculo.VeiculoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,15 +34,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OrdemServicoService {
     private final OrdemServicoRepository ordemServicoRepository;
-    private final VeiculoRepository veiculoRepository;
+    private final VeiculoService veiculoService;
     private final UsuarioService usuarioService;
     private final OficinaService oficinaService;
     private final PecaService pecaService;
 
     @Transactional
     public OrdemServicoResponse salvar(OrdemServicoRequest request) {
-        Veiculo veiculo = veiculoRepository.findById(request.veiculoId())
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Veículo", request.veiculoId()));
+        Veiculo veiculo = veiculoService.buscarEntidade(request.veiculoId());
         Oficina oficina = oficinaService.buscarEntidade(request.oficinaId());
         Usuario mecanico = usuarioService.buscarEntidade(request.mecanicoId());
         OrdemServico os = OrdemServicoMapper.paraOrdemServico(request, veiculo, oficina, mecanico);
