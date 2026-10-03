@@ -17,7 +17,7 @@ import com.cartoon.api.servico.Servico;
 import com.cartoon.api.usuario.Role;
 import com.cartoon.api.usuario.Usuario;
 import com.cartoon.api.veiculo.Veiculo;
-import com.cartoon.api.veiculo.VeiculoRepository;
+import com.cartoon.api.veiculo.VeiculoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,7 +50,7 @@ class HistoricoVeiculoServiceTest {
     private OrdemServicoRepository ordemServicoRepository;
 
     @Mock
-    private VeiculoRepository veiculoRepository;
+    private VeiculoService veiculoService;
 
     @InjectMocks
     private OrdemServicoService ordemServicoService;

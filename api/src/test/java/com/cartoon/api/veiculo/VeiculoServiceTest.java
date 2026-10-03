@@ -249,6 +249,43 @@ class VeiculoServiceTest {
     }
 
     @Test
+    @DisplayName("UC05: Bloquear atualização para novo cliente inativo")
+    void deveBloquearAtualizacaoParaNovoClienteInativo() {
+        Cliente novoClienteInativo = new Cliente();
+        novoClienteInativo.setId(2);
+        novoClienteInativo.setAtivo(false);
+
+        VeiculoAtualizacaoRequest request = new VeiculoAtualizacaoRequest(
+                "Ford", "Ka", 2020, null, 2, null
+        );
+
+        when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
+        when(clienteService.buscarEntidade(2)).thenReturn(novoClienteInativo);
+
+        assertThatThrownBy(() -> veiculoService.atualizar(1, request))
+                .isInstanceOf(ClienteInativoException.class)
+                .hasMessage("Cliente inativo no sistema.");
+
+        verify(veiculoRepository, never()).save(any(Veiculo.class));
+    }
+
+    @Test
+    @DisplayName("UC05: Bloquear atualização com placa de formato inválido")
+    void deveBloquearAtualizacaoComPlacaInvalida() {
+        VeiculoAtualizacaoRequest request = new VeiculoAtualizacaoRequest(
+                "Ford", "Ka", 2020, "PLACA-INVALIDA", null, null
+        );
+
+        when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
+
+        assertThatThrownBy(() -> veiculoService.atualizar(1, request))
+                .isInstanceOf(PlacaInvalidaException.class)
+                .hasMessage("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
+
+        verify(veiculoRepository, never()).save(any(Veiculo.class));
+    }
+
+    @Test
     @DisplayName("UC05: Inativar veículo com sucesso")
     void deveInativarVeiculo() {
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));

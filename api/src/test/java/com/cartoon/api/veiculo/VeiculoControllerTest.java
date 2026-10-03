@@ -3,7 +3,6 @@ package com.cartoon.api.veiculo;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.GlobalExceptionHandler;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.seguranca.SecurityConfig;
