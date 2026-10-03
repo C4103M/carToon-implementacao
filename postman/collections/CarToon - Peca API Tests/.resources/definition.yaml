@@ -1,0 +1,5 @@
+$kind: collection
+description: Coleção de testes automatizados para os endpoints de Peça.
+variables:
+  baseUrl: http://localhost:8080/api/pecas
+  pecaId: "1"

@@ -1,0 +1,35 @@
+$kind: http-request
+description: Cria uma nova Peça e armazena o ID retornado na variável {{pecaId}}.
+url: "{{baseUrl}}"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Pastilha de Freio Dianteira",
+      "fabricante": "Fras-le",
+      "valorBase": 150.00
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 201 Created', function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test('Retornou ID e campos válidos da Peça', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('id');
+          pm.expect(jsonData.nome).to.eql('Pastilha de Freio Dianteira');
+          pm.expect(jsonData.fabricante).to.eql('Fras-le');
+          pm.expect(Number(jsonData.valorBase)).to.eql(150.00);
+
+          if (jsonData.id) {
+              pm.collectionVariables.set('pecaId', String(jsonData.id));
+              console.log('pecaId salva na variável: ' + jsonData.id);
+          }
+      });
+    language: text/javascript
+order: 1000

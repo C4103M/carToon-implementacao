@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 
 @Getter
@@ -20,8 +21,8 @@ public class Servico {
 
     @Column(nullable = false)
     String nome;
-    @Column(nullable = false)
-    Double valorBase;
+    @Column(name = "valor_base", nullable = false)
+    BigDecimal valorBase;
     String descricao;
     LocalTime tempoEstimado;
 
