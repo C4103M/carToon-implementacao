@@ -1,0 +1,24 @@
+$kind: http-request
+description: Filtra as peças buscando pelo nome (US09 - CT07).
+url: "{{baseUrl}}?nome=Pastilha&page=0&size=10"
+method: GET
+queryParams:
+  nome: Pastilha
+  page: "0"
+  size: "10"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Itens retornados contêm o nome pesquisado', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData.content).to.be.an('array');
+          jsonData.content.forEach(function (peca) {
+              pm.expect(peca.nome.toLowerCase()).to.include('pastilha');
+          });
+      });
+    language: text/javascript
+order: 7000
