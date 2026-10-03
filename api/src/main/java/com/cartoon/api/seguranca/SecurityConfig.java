@@ -25,10 +25,10 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/auth/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/orgem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.PUT, "/orgem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.DELETE, "/orgem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.GET, "/orgem-servico/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                    .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                    .requestMatchers(HttpMethod.DELETE, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                    .requestMatchers(HttpMethod.GET, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
             );
         return http.build();
     }
