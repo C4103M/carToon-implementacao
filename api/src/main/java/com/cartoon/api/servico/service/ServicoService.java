@@ -1,6 +1,11 @@
-package com.cartoon.api.servico;
+package com.cartoon.api.servico.service;
 
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
+import com.cartoon.api.servico.dto.mapper.ServicoMapper;
+import com.cartoon.api.servico.dto.request.ServicoRequest;
+import com.cartoon.api.servico.dto.response.ServicoResponse;
+import com.cartoon.api.servico.models.Servico;
+import com.cartoon.api.servico.repositories.ServicoRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,15 +26,16 @@ public class ServicoService {
 
     @Transactional(readOnly = true)
     public ServicoResponse buscar(Integer id) {
-        return ServicoResponse.daEntidade(buscarEntidade(id));
+        return ServicoMapper.paraServicoResponse(buscarEntidade(id));
     }
 
     @Transactional(readOnly = true)
     public Page<ServicoResponse> listar(String nome, Pageable pageable) {
         if (nome != null && !nome.isBlank()) {
-            return servicoRepository.findByNomeContainingIgnoreCase(nome.trim(), pageable).map(ServicoResponse::daEntidade);
+            return servicoRepository.findByNomeContainingIgnoreCase(nome.trim(), pageable)
+                    .map(ServicoMapper::paraServicoResponse);
         }
-        return servicoRepository.findAll(pageable).map(ServicoResponse::daEntidade);
+        return servicoRepository.findAll(pageable).map(ServicoMapper::paraServicoResponse);
     }
 
     @Transactional(readOnly = true)
@@ -39,24 +45,15 @@ public class ServicoService {
 
     @Transactional
     public ServicoResponse salvar(ServicoRequest request) {
-        Servico servico = new Servico();
-        servico.setNome(request.nome());
-        servico.setValorBase(request.valorBase());
-        servico.setDescricao(request.descricao());
-        servico.setTempoEstimado(request.tempoEstimado());
-        
-        return ServicoResponse.daEntidade(servicoRepository.save(servico));
+        Servico servico = ServicoMapper.paraServico(request);
+        return ServicoMapper.paraServicoResponse(servicoRepository.save(servico));
     }
 
     @Transactional
     public ServicoResponse atualizar(Integer id, ServicoRequest request) {
         Servico servico = buscarEntidade(id);
-        servico.setNome(request.nome());
-        servico.setValorBase(request.valorBase());
-        servico.setDescricao(request.descricao());
-        servico.setTempoEstimado(request.tempoEstimado());
-        
-        return ServicoResponse.daEntidade(servicoRepository.save(servico));
+        ServicoMapper.atualizarEntidade(servico, request);
+        return ServicoMapper.paraServicoResponse(servicoRepository.save(servico));
     }
 
     @Transactional

@@ -1,5 +1,9 @@
-package com.cartoon.api.peca;
+package com.cartoon.api.peca.controller;
 
+import com.cartoon.api.peca.dto.PecaFiltro;
+import com.cartoon.api.peca.dto.request.PecaRequest;
+import com.cartoon.api.peca.dto.response.PecaResponse;
+import com.cartoon.api.peca.service.PecaService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,12 +31,8 @@ public class PecaController {
     }
 
     @GetMapping
-    public Page<PecaResponse> listar(
-            @RequestParam(required = false) String busca,
-            @RequestParam(required = false) String nome,
-            @RequestParam(required = false) String fabricante,
-            Pageable pageable) {
-        return pecaService.listar(busca, nome, fabricante, pageable);
+    public Page<PecaResponse> listar(PecaFiltro pecaFiltro, Pageable pageable) {
+        return pecaService.listar(pecaFiltro, pageable);
     }
 
     @PutMapping("/{id}")

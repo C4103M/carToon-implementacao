@@ -1,6 +1,12 @@
 package com.cartoon.api.peca;
 
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
+import com.cartoon.api.peca.dto.PecaFiltro;
+import com.cartoon.api.peca.dto.request.PecaRequest;
+import com.cartoon.api.peca.dto.response.PecaResponse;
+import com.cartoon.api.peca.models.Peca;
+import com.cartoon.api.peca.repositories.PecaRepository;
+import com.cartoon.api.peca.service.PecaService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,6 +24,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -73,13 +81,13 @@ class PecaServiceTest {
         Page<Peca> pagina = new PageImpl<>(List.of(peca));
         PageRequest pageRequest = PageRequest.of(0, 10);
 
-        when(pecaRepository.findAll(pageRequest)).thenReturn(pagina);
+        when(pecaRepository.findAll(any(Specification.class), eq(pageRequest))).thenReturn(pagina);
 
         Page<PecaResponse> resultado = pecaService.listar(pageRequest);
 
         assertNotNull(resultado);
         assertEquals(1, resultado.getTotalElements());
-        verify(pecaRepository, times(1)).findAll(pageRequest);
+        verify(pecaRepository, times(1)).findAll(any(Specification.class), eq(pageRequest));
     }
 
     @Test
@@ -89,15 +97,15 @@ class PecaServiceTest {
         Page<Peca> pagina = new PageImpl<>(List.of(peca));
         PageRequest pageRequest = PageRequest.of(0, 10);
 
-        when(pecaRepository.findByNomeContainingIgnoreCaseOrFabricanteContainingIgnoreCase("Bosch", "Bosch", pageRequest))
+        when(pecaRepository.findAll(any(Specification.class), eq(pageRequest)))
                 .thenReturn(pagina);
 
-        Page<PecaResponse> resultado = pecaService.listar("Bosch", null, null, pageRequest);
+        Page<PecaResponse> resultado = pecaService.listar(new PecaFiltro("Bosch", null, null), pageRequest);
 
         assertNotNull(resultado);
         assertEquals(1, resultado.getTotalElements());
         verify(pecaRepository, times(1))
-                .findByNomeContainingIgnoreCaseOrFabricanteContainingIgnoreCase("Bosch", "Bosch", pageRequest);
+                .findAll(any(Specification.class), eq(pageRequest));
     }
 
     @Test

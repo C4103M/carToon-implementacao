@@ -1,5 +1,8 @@
-package com.cartoon.api.servico;
+package com.cartoon.api.servico.controller;
 
+import com.cartoon.api.servico.dto.request.ServicoRequest;
+import com.cartoon.api.servico.dto.response.ServicoResponse;
+import com.cartoon.api.servico.service.ServicoService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
