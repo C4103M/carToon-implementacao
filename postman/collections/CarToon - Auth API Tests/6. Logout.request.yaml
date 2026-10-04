@@ -1,0 +1,20 @@
+$kind: http-request
+description: Realiza logout da sessão e invalida o cookie JWT.
+url: "{{baseUrl}}/logout"
+method: POST
+headers: []
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Header Set-Cookie limpa o cookie JWT (Max-Age=0)', function () {
+          var setCookie = pm.response.headers.get('Set-Cookie');
+          pm.expect(setCookie).to.be.a('string');
+          pm.expect(setCookie).to.include('jwt=');
+          pm.expect(setCookie).to.include('Max-Age=0');
+      });
+    language: text/javascript
+order: 6000

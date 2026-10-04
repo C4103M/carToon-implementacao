@@ -1,13 +1,10 @@
 package com.cartoon.api.auth;
 
 import com.cartoon.api.compartilhado.exceptions.CredenciaisInvalidasException;
-import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.seguranca.JwtService;
 import com.cartoon.api.usuario.Usuario;
 import com.cartoon.api.usuario.UsuarioRepository;
 import lombok.AllArgsConstructor;
-import org.apache.tomcat.util.buf.UEncoder;
-import org.springframework.security.core.token.TokenService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,14 +14,6 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
-
-    public AuthService(UsuarioRepository usuarioRepository,
-                       PasswordEncoder encoder,
-                       JwtService jwtService) {
-        this.usuarioRepository = usuarioRepository;
-        this.passwordEncoder = encoder;
-        this.jwtService = jwtService;
-    }
 
 
     public String login(LoginDTO loginDTO) {

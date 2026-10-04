@@ -82,7 +82,7 @@ class OrdemServicoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, containsString("/ordens-servico/1")))
+                .andExpect(header().string(HttpHeaders.LOCATION, containsString("/ordem-servico/1")))
                 .andExpect(jsonPath("$.id", is(1)))
                 .andExpect(jsonPath("$.descricao", is("Troca de filtro")))
                 .andExpect(jsonPath("$.status", is("PENDENTE")));
