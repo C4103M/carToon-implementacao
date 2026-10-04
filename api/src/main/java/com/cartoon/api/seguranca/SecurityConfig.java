@@ -25,10 +25,19 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/auth/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/orgem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.PUT, "/orgem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.DELETE, "/orgem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.GET, "/orgem-servico/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                    .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                    .requestMatchers(HttpMethod.DELETE, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                    .requestMatchers(HttpMethod.GET, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.GET, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.POST, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.GET, "/sericos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.POST, "/sericos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/sericos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/sericos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+
             );
         return http.build();
     }
