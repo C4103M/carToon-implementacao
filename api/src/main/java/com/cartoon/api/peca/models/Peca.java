@@ -1,4 +1,4 @@
-package com.cartoon.api.peca;
+package com.cartoon.api.peca.models;
 
 import jakarta.persistence.*;
 import lombok.*;

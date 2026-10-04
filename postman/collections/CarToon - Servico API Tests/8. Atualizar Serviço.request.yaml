@@ -1,0 +1,29 @@
+$kind: http-request
+description: Atualiza os dados do Serviço com o ID salvo na variável {{servicoId}}.
+url: "{{baseUrl}}/{{servicoId}}"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Troca de Óleo, Filtro e Higienização",
+      "valorBase": 160.00,
+      "descricao": "Troca completa do óleo, substituição do filtro e higienização do ar",
+      "tempoEstimado": "01:00:00"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Serviço atualizado com sucesso', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData.nome).to.eql('Troca de Óleo, Filtro e Higienização');
+          pm.expect(Number(jsonData.valorBase)).to.eql(160.00);
+      });
+    language: text/javascript
+order: 8000

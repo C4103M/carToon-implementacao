@@ -1,0 +1,22 @@
+$kind: http-request
+description: Busca os detalhes do Serviço salvo na variável {{servicoId}}.
+url: "{{baseUrl}}/{{servicoId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Estrutura de resposta válida com ID correspondente', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('id');
+          pm.expect(String(jsonData.id)).to.eql(pm.collectionVariables.get('servicoId'));
+          pm.expect(jsonData).to.have.property('nome');
+          pm.expect(jsonData).to.have.property('valorBase');
+          pm.expect(jsonData).to.have.property('descricao');
+          pm.expect(jsonData).to.have.property('tempoEstimado');
+      });
+    language: text/javascript
+order: 4000

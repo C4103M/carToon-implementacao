@@ -1,6 +1,6 @@
 package com.cartoon.api.ordemServico.models;
 
-import com.cartoon.api.servico.Servico;
+import com.cartoon.api.servico.models.Servico;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;

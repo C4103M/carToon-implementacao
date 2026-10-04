@@ -1,0 +1,27 @@
+$kind: http-request
+description: Valida rejeição ao enviar serviço com nome em branco (US08 - CT04).
+url: "{{baseUrl}}"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "",
+      "valorBase": 100.00,
+      "descricao": "Serviço sem nome"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 400 Bad Request', function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test('Contém mensagem de erro de validação para nome', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('errosValidacao');
+      });
+    language: text/javascript
+order: 2000
