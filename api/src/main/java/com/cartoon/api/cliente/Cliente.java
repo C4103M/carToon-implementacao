@@ -1,5 +1,6 @@
 package com.cartoon.api.cliente;
 
+import jakarta.validation.constraints.NotBlank;
 import com.cartoon.api.oficina.Oficina;
 import com.cartoon.api.veiculo.Veiculo;
 import jakarta.persistence.*;
@@ -16,18 +17,24 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
 @Table
+
 public class Cliente {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
+    @NotBlank(message = "O nome do cliente é obrigatório")
     @Column(nullable = false)
     String nome;
 
+    @NotBlank(message = "O CPF do cliente é obrigatório")
     @Column(nullable = false, unique = true, length = 11)
     String cpf;
 
+    @NotBlank(message = "O endereço do cliente é obrigatório")
     String endereco;
+
+    @NotBlank(message = "O telefone do cliente é obrigatório")
     String telefone;
 
     @Column(nullable = false)
