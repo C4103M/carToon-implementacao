@@ -1,0 +1,35 @@
+$kind: http-request
+description: Cria um novo Serviço e armazena o ID retornado na variável {{servicoId}}.
+url: "{{baseUrl}}"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Troca de Óleo e Filtro",
+      "valorBase": 120.00,
+      "descricao": "Troca completa de óleo sintético e filtro",
+      "tempoEstimado": "00:45:00"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 201 Created', function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test('Retornou ID e campos válidos do Serviço', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('id');
+          pm.expect(jsonData.nome).to.eql('Troca de Óleo e Filtro');
+          pm.expect(Number(jsonData.valorBase)).to.eql(120.00);
+
+          if (jsonData.id) {
+              pm.collectionVariables.set('servicoId', String(jsonData.id));
+              console.log('servicoId salva na variável: ' + jsonData.id);
+          }
+      });
+    language: text/javascript
+order: 1000

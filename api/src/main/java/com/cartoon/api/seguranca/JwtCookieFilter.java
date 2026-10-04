@@ -32,11 +32,12 @@ public class JwtCookieFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
-        String token = extrairTokenDoCookie(request);
+        String token = extrairToken(request);
         if (token != null) {
             try {
                 Claims claims = jwtService.validar(token);
-                Long id = claims.get("id", Long.class);
+                Number idNumber = claims.get("id", Number.class);
+                Long id = idNumber != null ? idNumber.longValue() : null;
                 String email = claims.getSubject();
                 String role = claims.get("role", String.class);
 
@@ -46,14 +47,19 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                         usuarioAutenticado, null, List.of(authority));
                 SecurityContextHolder.getContext().setAuthentication(auth);
 
-            } catch (JwtException ignored) {
+            } catch (Exception ignored) {
                 log.debug("\n\n\n\nToken JWT inválido ou expirado: {}\n\n\n\n", ignored.getMessage());
             }
         }
         filterChain.doFilter(request, response);
     }
 
-    private String extrairTokenDoCookie(HttpServletRequest request) {
+    private String extrairToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
         if (request.getCookies() == null) return null;
 
         for (Cookie cookie : request.getCookies()) {

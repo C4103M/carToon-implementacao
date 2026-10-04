@@ -1,0 +1,329 @@
+{
+	"info": {
+		"_postman_id": "cartoon-auth-api-v1",
+		"name": "CarToon - Auth API Tests",
+		"description": "Coleção de testes automatizados para autenticação e login por tipo de usuário (ADMIN, MECANICO, SUPERADMIN) e cenários de erro.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api/auth",
+			"type": "string"
+		},
+		{
+			"key": "adminJwt",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "mecanicoJwt",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "superAdminJwt",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Login como ADMIN",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Header Set-Cookie presente com token JWT', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    pm.expect(setCookie).to.be.a('string');",
+							"    pm.expect(setCookie).to.include('jwt=');",
+							"    pm.expect(setCookie).to.include('HttpOnly');",
+							"    pm.expect(setCookie).to.include('SameSite=Lax');",
+							"});",
+							"",
+							"pm.test('Armazena o token JWT de ADMIN na variável', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    if (setCookie) {",
+							"        var match = setCookie.match(/jwt=([^;]+)/);",
+							"        if (match && match[1]) {",
+							"            pm.collectionVariables.set('adminJwt', match[1]);",
+							"            console.log('Token de ADMIN armazenado com sucesso.');",
+							"        }",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"admin@teste.com\",\n  \"password\": \"senha123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"login"
+					]
+				}
+			}
+		},
+		{
+			"name": "2. Login como MECANICO",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Header Set-Cookie presente com token JWT', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    pm.expect(setCookie).to.be.a('string');",
+							"    pm.expect(setCookie).to.include('jwt=');",
+							"    pm.expect(setCookie).to.include('HttpOnly');",
+							"    pm.expect(setCookie).to.include('SameSite=Lax');",
+							"});",
+							"",
+							"pm.test('Armazena o token JWT de MECANICO na variável', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    if (setCookie) {",
+							"        var match = setCookie.match(/jwt=([^;]+)/);",
+							"        if (match && match[1]) {",
+							"            pm.collectionVariables.set('mecanicoJwt', match[1]);",
+							"            console.log('Token de MECANICO armazenado com sucesso.');",
+							"        }",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"mecanico@teste.com\",\n  \"password\": \"senha123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"login"
+					]
+				}
+			}
+		},
+		{
+			"name": "3. Login como SUPERADMIN",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Header Set-Cookie presente com token JWT', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    pm.expect(setCookie).to.be.a('string');",
+							"    pm.expect(setCookie).to.include('jwt=');",
+							"    pm.expect(setCookie).to.include('HttpOnly');",
+							"    pm.expect(setCookie).to.include('SameSite=Lax');",
+							"});",
+							"",
+							"pm.test('Armazena o token JWT de SUPERADMIN na variável', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    if (setCookie) {",
+							"        var match = setCookie.match(/jwt=([^;]+)/);",
+							"        if (match && match[1]) {",
+							"            pm.collectionVariables.set('superAdminJwt', match[1]);",
+							"            console.log('Token de SUPERADMIN armazenado com sucesso.');",
+							"        }",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"superadmin@teste.com\",\n  \"password\": \"senha123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"login"
+					]
+				}
+			}
+		},
+		{
+			"name": "4. Tentar Login com Senha Incorreta",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code indica credenciais inválidas (401 ou 403)', function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+							"});",
+							"",
+							"pm.test('Não emite cookie de autenticação JWT válido', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    if (setCookie) {",
+							"        pm.expect(setCookie).to.not.include('jwt=ey');",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"admin@teste.com\",\n  \"password\": \"senhaIncorreta123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"login"
+					]
+				}
+			}
+		},
+		{
+			"name": "5. Tentar Login com E-mail Inexistente",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code indica usuário não encontrado / inválido (401 ou 403)', function () {",
+							"    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+							"});",
+							"",
+							"pm.test('Não emite cookie de autenticação JWT válido', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    if (setCookie) {",
+							"        pm.expect(setCookie).to.not.include('jwt=ey');",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"naoexiste@teste.com\",\n  \"password\": \"senha123\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/login",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"login"
+					]
+				}
+			}
+		},
+		{
+			"name": "6. Logout",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Header Set-Cookie limpa o cookie JWT (Max-Age=0)', function () {",
+							"    var setCookie = pm.response.headers.get('Set-Cookie');",
+							"    pm.expect(setCookie).to.be.a('string');",
+							"    pm.expect(setCookie).to.include('jwt=');",
+							"    pm.expect(setCookie).to.include('Max-Age=0');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/logout",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"logout"
+					]
+				}
+			}
+		}
+	]
+}

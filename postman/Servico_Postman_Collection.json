@@ -1,0 +1,336 @@
+{
+	"info": {
+		"_postman_id": "cartoon-servico-api-v1",
+		"name": "CarToon - Servico API Tests",
+		"description": "Coleção de testes automatizados para os endpoints de Serviço.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api/servicos",
+			"type": "string"
+		},
+		{
+			"key": "servicoId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Criar Serviço",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 201 Created', function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test('Retornou ID e campos válidos do Serviço', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(jsonData.nome).to.eql('Troca de Óleo e Filtro');",
+							"    pm.expect(Number(jsonData.valorBase)).to.eql(120.00);",
+							"    if (jsonData.id) {",
+							"        pm.collectionVariables.set('servicoId', String(jsonData.id));",
+							"        console.log('servicoId salva na variável: ' + jsonData.id);",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"nome\": \"Troca de Óleo e Filtro\",\n  \"valorBase\": 120.00,\n  \"descricao\": \"Troca completa de óleo sintético e filtro\",\n  \"tempoEstimado\": \"00:45:00\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "2. Tentar Criar Serviço com Campo em Branco",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 400 Bad Request', function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test('Contém mensagem de erro de validação para nome', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('errosValidacao');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"nome\": \"\",\n  \"valorBase\": 100.00,\n  \"descricao\": \"Serviço sem nome\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "3. Tentar Criar Serviço com Valor Inválido",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 400 Bad Request', function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test('Retornou erro de validação para valor não positivo', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('errosValidacao');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"nome\": \"Alinhamento\",\n  \"valorBase\": 0.00,\n  \"descricao\": \"Valor inválido\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "4. Buscar Serviço por ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Estrutura de resposta válida com ID correspondente', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(String(jsonData.id)).to.eql(pm.collectionVariables.get('servicoId'));",
+							"    pm.expect(jsonData).to.have.property('nome');",
+							"    pm.expect(jsonData).to.have.property('valorBase');",
+							"    pm.expect(jsonData).to.have.property('descricao');",
+							"    pm.expect(jsonData).to.have.property('tempoEstimado');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}/{{servicoId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{servicoId}}"]
+				}
+			}
+		},
+		{
+			"name": "5. Tentar Buscar Serviço Inexistente",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 404 Not Found', function () {",
+							"    pm.response.to.have.status(404);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}/99999",
+					"host": ["{{baseUrl}}"],
+					"path": ["99999"]
+				}
+			}
+		},
+		{
+			"name": "6. Listar Serviços com Paginação",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Retornou paginação Spring Data com lista de serviços', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('content');",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"    pm.expect(jsonData).to.have.property('totalElements');",
+							"    pm.expect(jsonData).to.have.property('totalPages');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}?page=0&size=10&sort=nome,asc",
+					"host": ["{{baseUrl}}"],
+					"query": [
+						{ "key": "page", "value": "0" },
+						{ "key": "size", "value": "10" },
+						{ "key": "sort", "value": "nome,asc" }
+					]
+				}
+			}
+		},
+		{
+			"name": "7. Listar Serviços com Filtro por Nome",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Itens retornados contêm o nome pesquisado', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"    jsonData.content.forEach(function (servico) {",
+							"        pm.expect(servico.nome.toLowerCase()).to.include('óleo'.toLowerCase());",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}?nome=Óleo&page=0&size=10",
+					"host": ["{{baseUrl}}"],
+					"query": [
+						{ "key": "nome", "value": "Óleo" },
+						{ "key": "page", "value": "0" },
+						{ "key": "size", "value": "10" }
+					]
+				}
+			}
+		},
+		{
+			"name": "8. Atualizar Serviço",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Serviço atualizado com sucesso', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.nome).to.eql('Troca de Óleo, Filtro e Higienização');",
+							"    pm.expect(Number(jsonData.valorBase)).to.eql(160.00);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"nome\": \"Troca de Óleo, Filtro e Higienização\",\n  \"valorBase\": 160.00,\n  \"descricao\": \"Troca completa do óleo, substituição do filtro e higienização do ar\",\n  \"tempoEstimado\": \"01:00:00\"\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/{{servicoId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{servicoId}}"]
+				}
+			}
+		},
+		{
+			"name": "9. Deletar Serviço",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 204 No Content', function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"url": {
+					"raw": "{{baseUrl}}/{{servicoId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{servicoId}}"]
+				}
+			}
+		}
+	]
+}

@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,41 +26,48 @@ public class DadosIniciais implements ApplicationRunner {
     private final ClienteRepository clienteRepository;
     private final VeiculoRepository veiculoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (oficinaRepository.count() > 0) {
-            return;                       // já populado (útil com ddl-auto=update)
+        Oficina matriz = oficinaRepository.findAll().stream().findFirst().orElseGet(() -> {
+            Oficina o = new Oficina();
+            o.setNome("Oficina Matriz");
+            o.setEndereco("Rua Exemplo, 100");
+            o.setTelefone("11999990000");
+            o.setMatriz(true);
+            return oficinaRepository.save(o);
+        });
+
+        if (clienteRepository.count() == 0) {
+            Cliente cliente = new Cliente();
+            cliente.setNome("Cliente de Teste");
+            cliente.setCpf("12345678901");
+            cliente.setOficina(matriz);
+            clienteRepository.save(cliente);
+
+            Veiculo veiculo = new Veiculo();
+            veiculo.setPlaca("ABC1D23");
+            veiculo.setModelo("Gol 1.0");
+            veiculo.setAno(2020);
+            veiculo.setMontadora("Volkswagen");
+            veiculo.setCliente(cliente);
+            veiculoRepository.save(veiculo);
         }
 
-        Oficina matriz = new Oficina();
-        matriz.setNome("Oficina Matriz");
-        matriz.setEndereco("Rua Exemplo, 100");
-        matriz.setTelefone("11999990000");
-        matriz.setMatriz(true);
-        oficinaRepository.save(matriz);
+        criarOuAtualizarUsuario("Administrador", "admin@teste.com", "senha123", Role.ADMIN, matriz);
+        criarOuAtualizarUsuario("Mecânico de Teste", "mecanico@teste.com", "senha123", Role.MECANICO, matriz);
+        criarOuAtualizarUsuario("Super Administrador", "superadmin@teste.com", "senha123", Role.SUPERADMIN, matriz);
+    }
 
-        Cliente cliente = new Cliente();
-        cliente.setNome("Cliente de Teste");
-        cliente.setCpf("12345678901");
-        cliente.setOficina(matriz);
-        clienteRepository.save(cliente);
-
-        Veiculo veiculo = new Veiculo();
-        veiculo.setPlaca("ABC1D23");
-        veiculo.setModelo("Gol 1.0");
-        veiculo.setAno(2020);
-        veiculo.setMontadora("Volkswagen");
-        veiculo.setCliente(cliente);
-        veiculoRepository.save(veiculo);
-
-        Usuario mecanico = new Usuario();
-        mecanico.setNome("Mecânico de Teste");
-        mecanico.setEmail("mecanico@teste.com");
-        mecanico.setSenha("trocar-quando-houver-seguranca");
-        mecanico.setRole(Role.MECANICO);
-        mecanico.setOficina(matriz);
-        usuarioRepository.save(mecanico);
+    private void criarOuAtualizarUsuario(String nome, String email, String senha, Role role, Oficina oficina) {
+        Usuario usuario = usuarioRepository.findByEmail(email).orElseGet(Usuario::new);
+        usuario.setNome(nome);
+        usuario.setEmail(email);
+        usuario.setSenha(passwordEncoder.encode(senha));
+        usuario.setRole(role);
+        usuario.setOficina(oficina);
+        usuarioRepository.save(usuario);
     }
 }

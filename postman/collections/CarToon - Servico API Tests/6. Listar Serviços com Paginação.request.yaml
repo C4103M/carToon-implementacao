@@ -1,0 +1,24 @@
+$kind: http-request
+description: Lista os serviços cadastrados com paginação do Spring Data.
+url: "{{baseUrl}}?page=0&size=10&sort=nome,asc"
+method: GET
+queryParams:
+  page: "0"
+  size: "10"
+  sort: "nome,asc"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Retornou paginação Spring Data com lista de serviços', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('content');
+          pm.expect(jsonData.content).to.be.an('array');
+          pm.expect(jsonData).to.have.property('totalElements');
+          pm.expect(jsonData).to.have.property('totalPages');
+      });
+    language: text/javascript
+order: 6000

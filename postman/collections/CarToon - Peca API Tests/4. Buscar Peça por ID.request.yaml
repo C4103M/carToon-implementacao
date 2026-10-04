@@ -1,0 +1,21 @@
+$kind: http-request
+description: Busca os detalhes da Peça salva na variável {{pecaId}}.
+url: "{{baseUrl}}/{{pecaId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Estrutura de resposta válida com ID correspondente', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('id');
+          pm.expect(String(jsonData.id)).to.eql(pm.collectionVariables.get('pecaId'));
+          pm.expect(jsonData).to.have.property('nome');
+          pm.expect(jsonData).to.have.property('fabricante');
+          pm.expect(jsonData).to.have.property('valorBase');
+      });
+    language: text/javascript
+order: 4000

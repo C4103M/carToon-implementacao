@@ -1,0 +1,28 @@
+$kind: http-request
+description: Testa tentativa de login com e-mail não cadastrado e valida que o acesso é recusado.
+url: "{{baseUrl}}/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "naoexiste@teste.com",
+      "password": "senha123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code indica usuário não encontrado / inválido (401 ou 403)', function () {
+          pm.expect(pm.response.code).to.be.oneOf([401, 403]);
+      });
+
+      pm.test('Não emite cookie de autenticação JWT válido', function () {
+          var setCookie = pm.response.headers.get('Set-Cookie');
+          if (setCookie) {
+              pm.expect(setCookie).to.not.include('jwt=ey');
+          }
+      });
+    language: text/javascript
+order: 5000

@@ -70,112 +70,112 @@ class SecurityConfigTest {
         assertAccessAllowed("/auth/login", "POST");
     }
 
-    // --- GET /orgem-servico/** ---
+    // --- GET /ordem-servico/** ---
 
     @Test
-    @DisplayName("GET /orgem-servico/** - Não autenticado deve ser negado (403)")
-    void getOrgemServico_NaoAutenticado_DeveNegarAcesso() throws Exception {
-        mockMvc.perform(get("/orgem-servico/1"))
+    @DisplayName("GET /ordem-servico/** - Não autenticado deve ser negado (403)")
+    void getOrdemServico_NaoAutenticado_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(get("/ordem-servico/1"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    @DisplayName("GET /orgem-servico/** - Usuario ADMIN deve ter acesso permitido")
-    void getOrgemServico_Admin_DevePermitirAcesso() throws Exception {
-        assertAccessAllowed("/orgem-servico/1", "GET");
+    @DisplayName("GET /ordem-servico/** - Usuario ADMIN deve ter acesso permitido")
+    void getOrdemServico_Admin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/ordem-servico/1", "GET");
     }
 
     @Test
     @WithMockUser(roles = "MECANICO")
-    @DisplayName("GET /orgem-servico/** - Usuario MECANICO deve ter acesso permitido")
-    void getOrgemServico_Mecanico_DevePermitirAcesso() throws Exception {
-        assertAccessAllowed("/orgem-servico/1", "GET");
+    @DisplayName("GET /ordem-servico/** - Usuario MECANICO deve ter acesso permitido")
+    void getOrdemServico_Mecanico_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/ordem-servico/1", "GET");
     }
 
     @Test
     @WithMockUser(roles = "SUPERADMIN")
-    @DisplayName("GET /orgem-servico/** - Usuario SUPERADMIN deve ter acesso permitido")
-    void getOrgemServico_SuperAdmin_DevePermitirAcesso() throws Exception {
-        assertAccessAllowed("/orgem-servico/1", "GET");
+    @DisplayName("GET /ordem-servico/** - Usuario SUPERADMIN deve ter acesso permitido")
+    void getOrdemServico_SuperAdmin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/ordem-servico/1", "GET");
     }
 
-    // --- POST /orgem-servico/** ---
+    // --- POST /ordem-servico/** ---
 
     @Test
-    @DisplayName("POST /orgem-servico/** - Não autenticado deve ser negado (403)")
-    void postOrgemServico_NaoAutenticado_DeveNegarAcesso() throws Exception {
-        mockMvc.perform(post("/orgem-servico"))
+    @DisplayName("POST /ordem-servico/** - Não autenticado deve ser negado (403)")
+    void postOrdemServico_NaoAutenticado_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(post("/ordem-servico"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    @DisplayName("POST /orgem-servico/** - Usuario ADMIN deve ter acesso permitido")
-    void postOrgemServico_Admin_DevePermitirAcesso() throws Exception {
-        assertAccessAllowed("/orgem-servico", "POST");
+    @DisplayName("POST /ordem-servico/** - Usuario ADMIN deve ter acesso permitido")
+    void postOrdemServico_Admin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/ordem-servico", "POST");
     }
 
     @Test
     @WithMockUser(roles = "MECANICO")
-    @DisplayName("POST /orgem-servico/** - Usuario MECANICO deve ter acesso permitido")
-    void postOrgemServico_Mecanico_DevePermitirAcesso() throws Exception {
-        assertAccessAllowed("/orgem-servico", "POST");
+    @DisplayName("POST /ordem-servico/** - Usuario MECANICO deve ter acesso permitido")
+    void postOrdemServico_Mecanico_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/ordem-servico", "POST");
     }
 
     @Test
     @WithMockUser(roles = "SUPERADMIN")
-    @DisplayName("POST /orgem-servico/** - Usuario SUPERADMIN deve ter acesso negado (403)")
-    void postOrgemServico_SuperAdmin_DeveNegarAcesso() throws Exception {
-        mockMvc.perform(post("/orgem-servico"))
+    @DisplayName("POST /ordem-servico/** - Usuario SUPERADMIN deve ter acesso negado (403)")
+    void postOrdemServico_SuperAdmin_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(post("/ordem-servico"))
                 .andExpect(status().isForbidden());
     }
 
-    // --- PUT /orgem-servico/** ---
+    // --- PUT /ordem-servico/** ---
 
     @Test
-    @DisplayName("PUT /orgem-servico/** - Não autenticado deve ser negado (403)")
-    void putOrgemServico_NaoAutenticado_DeveNegarAcesso() throws Exception {
-        mockMvc.perform(put("/orgem-servico/1"))
+    @DisplayName("PUT /ordem-servico/** - Não autenticado deve ser negado (403)")
+    void putOrdemServico_NaoAutenticado_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(put("/ordem-servico/1"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    @DisplayName("PUT /orgem-servico/** - Usuario ADMIN deve ter acesso permitido")
-    void putOrgemServico_Admin_DevePermitirAcesso() throws Exception {
-        assertAccessAllowed("/orgem-servico/1", "PUT");
+    @DisplayName("PUT /ordem-servico/** - Usuario ADMIN deve ter acesso permitido")
+    void putOrdemServico_Admin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/ordem-servico/1", "PUT");
     }
 
     @Test
     @WithMockUser(roles = "SUPERADMIN")
-    @DisplayName("PUT /orgem-servico/** - Usuario SUPERADMIN deve ter acesso negado (403)")
-    void putOrgemServico_SuperAdmin_DeveNegarAcesso() throws Exception {
-        mockMvc.perform(put("/orgem-servico/1"))
+    @DisplayName("PUT /ordem-servico/** - Usuario SUPERADMIN deve ter acesso negado (403)")
+    void putOrdemServico_SuperAdmin_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(put("/ordem-servico/1"))
                 .andExpect(status().isForbidden());
     }
 
-    // --- DELETE /orgem-servico/** ---
+    // --- DELETE /ordem-servico/** ---
 
     @Test
-    @DisplayName("DELETE /orgem-servico/** - Não autenticado deve ser negado (403)")
-    void deleteOrgemServico_NaoAutenticado_DeveNegarAcesso() throws Exception {
-        mockMvc.perform(delete("/orgem-servico/1"))
+    @DisplayName("DELETE /ordem-servico/** - Não autenticado deve ser negado (403)")
+    void deleteOrdemServico_NaoAutenticado_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(delete("/ordem-servico/1"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
-    @DisplayName("DELETE /orgem-servico/** - Usuario ADMIN deve ter acesso permitido")
-    void deleteOrgemServico_Admin_DevePermitirAcesso() throws Exception {
-        assertAccessAllowed("/orgem-servico/1", "DELETE");
+    @DisplayName("DELETE /ordem-servico/** - Usuario ADMIN deve ter acesso permitido")
+    void deleteOrdemServico_Admin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/ordem-servico/1", "DELETE");
     }
 
     @Test
     @WithMockUser(roles = "SUPERADMIN")
-    @DisplayName("DELETE /orgem-servico/** - Usuario SUPERADMIN deve ter acesso negado (403)")
-    void deleteOrgemServico_SuperAdmin_DeveNegarAcesso() throws Exception {
-        mockMvc.perform(delete("/orgem-servico/1"))
+    @DisplayName("DELETE /ordem-servico/** - Usuario SUPERADMIN deve ter acesso negado (403)")
+    void deleteOrdemServico_SuperAdmin_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(delete("/ordem-servico/1"))
                 .andExpect(status().isForbidden());
     }
 }
