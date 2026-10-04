@@ -1062,7 +1062,38 @@
       "name": "E - Seguranca e papeis",
       "item": [
         {
-          "name": "27 - Logout",
+          "name": "27 - Preparo: descobrir a oficina do ADMIN",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/oficina",
+            "description": "Feito como SUPERADMIN. Guarda a oficina de menor id, que e a do seeder (a mesma do usuario admin@teste.com)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var lista = pm.response.json();",
+                  "pm.test('Ha ao menos uma oficina', function () {",
+                  "    pm.expect(lista.length).to.be.above(0);",
+                  "});",
+                  "var menor = lista.reduce(function (a, b) { return a.id < b.id ? a : b; });",
+                  "pm.collectionVariables.set('oficinaSeedId', menor.id);",
+                  "pm.collectionVariables.set('seedNome', menor.nome);",
+                  "pm.collectionVariables.set('seedTelefone', menor.telefone);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "28 - Logout",
           "request": {
             "method": "POST",
             "header": [],
@@ -1084,7 +1115,7 @@
           ]
         },
         {
-          "name": "28 - Listar sem login (401 ou 403)",
+          "name": "29 - Listar sem login (401 ou 403)",
           "request": {
             "method": "GET",
             "header": [],
@@ -1106,7 +1137,7 @@
           ]
         },
         {
-          "name": "29 - Login como MECANICO",
+          "name": "30 - Login como MECANICO",
           "request": {
             "method": "POST",
             "header": [
@@ -1116,7 +1147,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "Daqui ate o 33 as chamadas sao feitas como MECANICO.",
+            "description": "Daqui ate o 34 as chamadas sao feitas como MECANICO.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{emailMecanico}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
@@ -1148,7 +1179,7 @@
           ]
         },
         {
-          "name": "30 - Mecanico lista oficinas (200)",
+          "name": "31 - Mecanico lista oficinas (200)",
           "request": {
             "method": "GET",
             "header": [],
@@ -1170,7 +1201,7 @@
           ]
         },
         {
-          "name": "31 - Mecanico tenta criar (403)",
+          "name": "32 - Mecanico tenta criar (403)",
           "request": {
             "method": "POST",
             "header": [
@@ -1206,7 +1237,7 @@
           ]
         },
         {
-          "name": "32 - Mecanico tenta editar (403)",
+          "name": "33 - Mecanico tenta editar (403)",
           "request": {
             "method": "PUT",
             "header": [
@@ -1215,11 +1246,11 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
+            "url": "{{baseUrl}}/api/oficina/{{oficinaSeedId}}",
             "description": "",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"{{nomeAtualizado}}\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
+              "raw": "{\n  \"nome\": \"{{seedNome}}\",\n  \"endereco\": \"Rua Exemplo, 100\",\n  \"telefone\": \"{{seedTelefone}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1242,7 +1273,7 @@
           ]
         },
         {
-          "name": "33 - Mecanico tenta desativar (403)",
+          "name": "34 - Mecanico tenta desativar (403)",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -1264,7 +1295,7 @@
           ]
         },
         {
-          "name": "34 - Login como ADMIN",
+          "name": "35 - Login como ADMIN",
           "request": {
             "method": "POST",
             "header": [
@@ -1274,7 +1305,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "Daqui ate o 39 as chamadas sao feitas como ADMIN.",
+            "description": "Daqui ate o 41 as chamadas sao feitas como ADMIN.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{emailAdmin}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
@@ -1306,7 +1337,7 @@
           ]
         },
         {
-          "name": "35 - Admin lista oficinas (200)",
+          "name": "36 - Admin lista oficinas (200)",
           "request": {
             "method": "GET",
             "header": [],
@@ -1328,7 +1359,7 @@
           ]
         },
         {
-          "name": "36 - Admin edita oficina (200)",
+          "name": "37 - Admin edita a PROPRIA oficina (200)",
           "request": {
             "method": "PUT",
             "header": [
@@ -1337,11 +1368,11 @@
                 "value": "application/json"
               }
             ],
-            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
-            "description": "Reenvia os mesmos dados da oficina criada no 02, so para provar que o ADMIN pode editar.",
+            "url": "{{baseUrl}}/api/oficina/{{oficinaSeedId}}",
+            "description": "Reenvia os dados da oficina do seeder (a do admin). Assume que o seeder criou a oficina de menor id.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nome\": \"{{nomeAtualizado}}\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
+              "raw": "{\n  \"nome\": \"{{seedNome}}\",\n  \"endereco\": \"Rua Exemplo, 100\",\n  \"telefone\": \"{{seedTelefone}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1364,7 +1395,43 @@
           ]
         },
         {
-          "name": "37 - Admin tenta criar (403)",
+          "name": "38 - Admin tenta editar OUTRA oficina (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
+            "description": "{{oficinaId}} e a oficina criada no 02, que nao e a do admin. So passa depois da regra 'ADMIN edita apenas a propria oficina'.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"{{nomeAtualizado}}\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "39 - Admin tenta criar (403)",
           "request": {
             "method": "POST",
             "header": [
@@ -1400,7 +1467,7 @@
           ]
         },
         {
-          "name": "38 - Admin tenta desativar (403)",
+          "name": "40 - Admin tenta desativar (403)",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -1422,7 +1489,7 @@
           ]
         },
         {
-          "name": "39 - Admin tenta ativar (403)",
+          "name": "41 - Admin tenta ativar (403)",
           "request": {
             "method": "PATCH",
             "header": [],
@@ -1437,6 +1504,84 @@
                 "exec": [
                   "pm.test('Status code é 403 Forbidden', function () {",
                   "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "42 - Login como SUPERADMIN novamente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Volta ao superadmin para provar que ele edita qualquer oficina.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailSuper}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cookie jwt recebido', function () {",
+                  "    var c = pm.response.headers.get('Set-Cookie');",
+                  "    pm.expect(c).to.be.a('string');",
+                  "    pm.expect(c).to.include('jwt=');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "43 - Superadmin edita oficina de outra unidade (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/oficina/{{oficinaId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"{{nomeAtualizado}}\",\n  \"endereco\": \"Av. Brasil, 1500\",\n  \"telefone\": \"{{telefoneAtualizado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
                   "});"
                 ]
               }

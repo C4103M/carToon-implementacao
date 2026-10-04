@@ -1,4 +1,4 @@
-package com.cartoon.api;
+package com.cartoon.api.oficina;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

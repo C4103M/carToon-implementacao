@@ -1,5 +1,7 @@
 package com.cartoon.api.servico;
 
+import com.cartoon.api.servico.dto.request.ServicoRequest;
+import com.cartoon.api.servico.dto.response.ServicoResponse;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.service.OficinaService;

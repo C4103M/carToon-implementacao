@@ -9,8 +9,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import com.cartoon.api.auth.UsuarioAutenticado;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 @RestController
 @RequestMapping("/oficina")
@@ -36,8 +37,10 @@ public class OficinaController {
     }
 
     @PutMapping("/{id}")
-    public OficinaResponse atualizar(@PathVariable Integer id, @Valid @RequestBody OficinaRequest request){
-        return service.atualizar(id,request);
+    public OficinaResponse atualizar(@PathVariable Integer id,
+                                     @Valid @RequestBody OficinaRequest request,
+                                     @AuthenticationPrincipal UsuarioAutenticado solicitante){
+        return service.atualizar(id, request, solicitante);
     }
 
     @PatchMapping("/{id}/desativar")

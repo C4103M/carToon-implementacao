@@ -9,9 +9,13 @@ import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.model.OficinaRepository;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.repositories.OrdemServicoRepository;
+import com.cartoon.api.usuario.UsuarioService;
+import com.cartoon.api.auth.UsuarioAutenticado;
+import com.cartoon.api.usuario.Usuario;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 
@@ -28,6 +32,7 @@ public class OficinaService {
     private final OficinaRepository oficinaRepository;
     private final OrdemServicoRepository ordemServicoRepository;
     private final OficinaMapper mapper;
+    private final UsuarioService usuarioService;
 
     @Transactional
     public OficinaResponse criar(OficinaRequest request) {
@@ -46,14 +51,26 @@ public class OficinaService {
     }
 
     @Transactional
-    public OficinaResponse atualizar(Integer id, OficinaRequest request) {
+    public OficinaResponse atualizar(Integer id, OficinaRequest request, UsuarioAutenticado solicitante) {
         Oficina oficina = buscarEntidade(id);
+        validarPermissaoDeEdicao(oficina, solicitante);
         if (!oficina.getAtivo()) {
             throw new ConflitoException("Oficina inativa. Reative-a antes de editar.");
         }
         mapper.updateEntity(oficina, request);
         oficinaRepository.flush();
         return mapper.toResponse(oficina);
+    }
+
+    private void validarPermissaoDeEdicao(Oficina oficina, UsuarioAutenticado solicitante) {
+        if ("ROLE_SUPERADMIN".equals(solicitante.role())) {
+            return;
+        }
+        Usuario usuario = usuarioService.buscarEntidade(solicitante.id().intValue());
+        Oficina oficinaUsuario = usuario.getOficina();
+        if (oficinaUsuario == null || !oficinaUsuario.getId().equals(oficina.getId())) {
+            throw new AccessDeniedException("Você só pode editar a oficina à qual pertence.");
+        }
     }
 
     @Transactional
