@@ -1,0 +1,405 @@
+{
+	"info": {
+		"_postman_id": "cartoon-peca-api-v1",
+		"name": "CarToon - Peca API Tests",
+		"description": "Coleção de testes automatizados para os endpoints de Peça.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080/api/pecas",
+			"type": "string"
+		},
+		{
+			"key": "pecaId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Criar Peça",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 201 Created', function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test('Retornou ID e campos válidos da Peça', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(jsonData.nome).to.eql('Pastilha de Freio Dianteira');",
+							"    pm.expect(jsonData.fabricante).to.eql('Fras-le');",
+							"    pm.expect(Number(jsonData.valorBase)).to.eql(150.00);",
+							"    if (jsonData.id) {",
+							"        pm.collectionVariables.set('pecaId', String(jsonData.id));",
+							"        console.log('pecaId salva na variável: ' + jsonData.id);",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"nome\": \"Pastilha de Freio Dianteira\",\n  \"fabricante\": \"Fras-le\",\n  \"valorBase\": 150.00\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "2. Tentar Criar Peça com Campo em Branco",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 400 Bad Request', function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test('Contém mensagem de erro de validação', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('errosValidacao');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"nome\": \"\",\n  \"fabricante\": \"\",\n  \"valorBase\": 100.00\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "3. Tentar Criar Peça com Valor Inválido",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 400 Bad Request', function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test('Retornou erro de validação para valor negativo', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('errosValidacao');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"nome\": \"Filtro de Óleo\",\n  \"fabricante\": \"Bosch\",\n  \"valorBase\": -10.00\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}",
+					"host": ["{{baseUrl}}"]
+				}
+			}
+		},
+		{
+			"name": "4. Buscar Peça por ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Estrutura de resposta válida com ID correspondente', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(String(jsonData.id)).to.eql(pm.collectionVariables.get('pecaId'));",
+							"    pm.expect(jsonData).to.have.property('nome');",
+							"    pm.expect(jsonData).to.have.property('fabricante');",
+							"    pm.expect(jsonData).to.have.property('valorBase');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}/{{pecaId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{pecaId}}"]
+				}
+			}
+		},
+		{
+			"name": "5. Tentar Buscar Peça Inexistente",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 404 Not Found', function () {",
+							"    pm.response.to.have.status(404);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}/99999",
+					"host": ["{{baseUrl}}"],
+					"path": ["99999"]
+				}
+			}
+		},
+		{
+			"name": "6. Listar Peças com Paginação",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Retornou paginação Spring Data com lista de peças', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('content');",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"    pm.expect(jsonData).to.have.property('totalElements');",
+							"    pm.expect(jsonData).to.have.property('totalPages');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}?page=0&size=10&sort=nome,asc",
+					"host": ["{{baseUrl}}"],
+					"query": [
+						{ "key": "page", "value": "0" },
+						{ "key": "size", "value": "10" },
+						{ "key": "sort", "value": "nome,asc" }
+					]
+				}
+			}
+		},
+		{
+			"name": "7. Listar Peças com Filtro por Nome",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Itens retornados contêm o nome pesquisado', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"    jsonData.content.forEach(function (peca) {",
+							"        pm.expect(peca.nome.toLowerCase()).to.include('pastilha');",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}?nome=Pastilha&page=0&size=10",
+					"host": ["{{baseUrl}}"],
+					"query": [
+						{ "key": "nome", "value": "Pastilha" },
+						{ "key": "page", "value": "0" },
+						{ "key": "size", "value": "10" }
+					]
+				}
+			}
+		},
+		{
+			"name": "8. Listar Peças com Filtro por Fabricante",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Itens retornados contêm o fabricante pesquisado', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"    jsonData.content.forEach(function (peca) {",
+							"        pm.expect(peca.fabricante.toLowerCase()).to.include('fras-le');",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}?fabricante=Fras-le&page=0&size=10",
+					"host": ["{{baseUrl}}"],
+					"query": [
+						{ "key": "fabricante", "value": "Fras-le" },
+						{ "key": "page", "value": "0" },
+						{ "key": "size", "value": "10" }
+					]
+				}
+			}
+		},
+		{
+			"name": "9. Listar Peças com Busca Geral por Termo",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Retornou resultados da busca geral', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.content).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"url": {
+					"raw": "{{baseUrl}}?busca=Pastilha&page=0&size=10",
+					"host": ["{{baseUrl}}"],
+					"query": [
+						{ "key": "busca", "value": "Pastilha" },
+						{ "key": "page", "value": "0" },
+						{ "key": "size", "value": "10" }
+					]
+				}
+			}
+		},
+		{
+			"name": "10. Atualizar Peça",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test('Peça atualizada com sucesso', function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.nome).to.eql('Pastilha de Freio Dianteira Cerâmica');",
+							"    pm.expect(Number(jsonData.valorBase)).to.eql(185.90);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"nome\": \"Pastilha de Freio Dianteira Cerâmica\",\n  \"fabricante\": \"Fras-le\",\n  \"valorBase\": 185.90\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/{{pecaId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{pecaId}}"]
+				}
+			}
+		},
+		{
+			"name": "11. Deletar Peça",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 204 No Content', function () {",
+							"    pm.response.to.have.status(204);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"url": {
+					"raw": "{{baseUrl}}/{{pecaId}}",
+					"host": ["{{baseUrl}}"],
+					"path": ["{{pecaId}}"]
+				}
+			}
+		}
+	]
+}

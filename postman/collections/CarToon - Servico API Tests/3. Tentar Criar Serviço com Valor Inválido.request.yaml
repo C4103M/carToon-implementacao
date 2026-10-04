@@ -1,0 +1,27 @@
+$kind: http-request
+description: Valida rejeição ao enviar serviço com valor base menor ou igual a zero (US08 - CT03).
+url: "{{baseUrl}}"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "nome": "Alinhamento",
+      "valorBase": 0.00,
+      "descricao": "Valor inválido"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 400 Bad Request', function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test('Retornou erro de validação para valor não positivo', function () {
+          var jsonData = pm.response.json();
+          pm.expect(jsonData).to.have.property('errosValidacao');
+      });
+    language: text/javascript
+order: 3000
