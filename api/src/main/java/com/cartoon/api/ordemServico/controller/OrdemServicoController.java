@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/api/ordem-servico")
+@RequestMapping("/ordem-servico")
 @AllArgsConstructor
 public class OrdemServicoController {
     private final OrdemServicoService ordemServicoService;
@@ -25,7 +25,7 @@ public class OrdemServicoController {
     @PostMapping
     public ResponseEntity<OrdemServicoResponse> salvar(@Valid @RequestBody OrdemServicoRequest request) {
         OrdemServicoResponse criada = ordemServicoService.salvar(request);
-        return ResponseEntity.created(URI.create("/ordens-servico/" + criada.id())).body(criada);
+        return ResponseEntity.created(URI.create("/ordem-servico/" + criada.id())).body(criada);
     }
 
     @GetMapping("/{id}")

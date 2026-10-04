@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/api/servicos")
+@RequestMapping("/servicos")
 @AllArgsConstructor
 public class ServicoController {
 
@@ -22,7 +22,7 @@ public class ServicoController {
     @PostMapping
     public ResponseEntity<ServicoResponse> salvar(@Valid @RequestBody ServicoRequest request) {
         ServicoResponse salva = servicoService.salvar(request);
-        return ResponseEntity.created(URI.create("/api/servicos/" + salva.id())).body(salva);
+        return ResponseEntity.created(URI.create("/servicos/" + salva.id())).body(salva);
     }
 
     @GetMapping("/{id}")

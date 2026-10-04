@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 
 @RestController
-@RequestMapping("/api/pecas")
+@RequestMapping("/pecas")
 @AllArgsConstructor
 public class PecaController {
     private final PecaService pecaService;
@@ -22,7 +22,7 @@ public class PecaController {
     @PostMapping
     public ResponseEntity<PecaResponse> salvar(@Valid @RequestBody PecaRequest request) {
         PecaResponse salva = pecaService.salvar(request);
-        return ResponseEntity.created(URI.create("/api/pecas/" + salva.id())).body(salva);
+        return ResponseEntity.created(URI.create("/pecas/" + salva.id())).body(salva);
     }
 
     @GetMapping("/{id}")
