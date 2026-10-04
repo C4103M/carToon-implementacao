@@ -1,7 +1,8 @@
-package com.cartoon.api.usuario;
+package com.cartoon.api.usuario.service;
 
-import com.cartoon.api.cliente.Cliente;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
+import com.cartoon.api.usuario.model.Usuario;
+import com.cartoon.api.usuario.model.UsuarioRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 

@@ -1,4 +1,4 @@
-package com.cartoon.api.usuario;
+package com.cartoon.api.usuario.model;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

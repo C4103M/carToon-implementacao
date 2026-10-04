@@ -1,11 +1,7 @@
 package com.cartoon.api.auth;
 
 
-import com.cartoon.api.usuario.Usuario;
-import com.cartoon.api.usuario.UsuarioRepository;
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.extern.java.Log;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
