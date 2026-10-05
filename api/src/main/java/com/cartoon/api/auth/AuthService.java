@@ -18,7 +18,7 @@ public class AuthService {
 
     public String login(LoginDTO loginDTO) {
         Usuario usuario = usuarioRepository.findByEmail(loginDTO.email()).orElse(null);
-        if (usuario == null) {
+        if (usuario == null || !Boolean.TRUE.equals(usuario.getAtivo())) {
             throw new CredenciaisInvalidasException("Email ou senha incorreto");
         }
         if(!passwordEncoder.matches(loginDTO.password(), usuario.getSenha())) {

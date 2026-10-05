@@ -58,7 +58,7 @@ public class DadosIniciais implements ApplicationRunner {
 
         criarOuAtualizarUsuario("Administrador", "admin@teste.com", "senha123", Role.ADMIN, matriz);
         criarOuAtualizarUsuario("Mecânico de Teste", "mecanico@teste.com", "senha123", Role.MECANICO, matriz);
-        criarOuAtualizarUsuario("Super Administrador", "superadmin@teste.com", "senha123", Role.SUPERADMIN, matriz);
+        criarOuAtualizarUsuario("Super Administrador", "superadmin@teste.com", "senha123", Role.SUPERADMIN, null);
     }
 
     private void criarOuAtualizarUsuario(String nome, String email, String senha, Role role, Oficina oficina) {
@@ -68,6 +68,7 @@ public class DadosIniciais implements ApplicationRunner {
         usuario.setSenha(passwordEncoder.encode(senha));
         usuario.setRole(role);
         usuario.setOficina(oficina);
+        usuario.setAtivo(true);
         usuarioRepository.save(usuario);
     }
 }

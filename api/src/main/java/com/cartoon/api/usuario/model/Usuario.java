@@ -30,6 +30,9 @@ public class Usuario {
     @Column(nullable = false)
     Role role;
 
+    @Column(nullable = false,columnDefinition = "boolean default true")
+    Boolean ativo = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "oficina_id")
     private Oficina oficina;

@@ -1,8 +1,8 @@
 {
   "info": {
-    "_postman_id": "e0d11147-db11-43de-bd11-cf9261cfa916",
+    "_postman_id": "7ebae1a9-32b8-401e-a7f4-25fdbf004235",
     "name": "CarToon - Usuários (ADMIN e MECANICO)",
-    "description": "Rodar com o Runner, na ordem. Pré-requisitos: banco no ar e API com perfil dev (o seeder cria superadmin@teste.com, admin@teste.com e mecanico@teste.com, senha senha123). A autenticação é por cookie jwt: o Postman reenvia o cookie sozinho. Regras testadas: SUPERADMIN cria ADMIN; ADMIN cria MECANICO na própria oficina; ninguém cria SUPERADMIN pela API; perfil e oficina nunca vêm do body. Cada rodada gera e-mails únicos.",
+    "description": "Rodar com o Runner, na ordem. Pré-requisitos: banco no ar e API com perfil dev (o seeder cria superadmin@teste.com, admin@teste.com e mecanico@teste.com, senha senha123). A autenticação é por cookie jwt: o Postman reenvia o cookie sozinho. Regras testadas: SUPERADMIN cria ADMIN; ADMIN cria MECANICO na própria oficina; ninguém cria SUPERADMIN pela API; perfil e oficina nunca vêm do body. Cobre também GET, PUT, DELETE lógico, ativar e /me. Cada rodada gera e-mails únicos.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -130,6 +130,7 @@
                   "});",
                   "",
                   "var json = pm.response.json();",
+                  "pm.collectionVariables.set('adminNovoId', json.id);",
                   "pm.test('Role é ADMIN', function () { pm.expect(json.role).to.eql('ADMIN'); });",
                   "pm.test('Vinculado à oficina informada', function () { pm.expect(json.oficinaId).to.eql(parseInt(pm.collectionVariables.get('oficinaSeedId'))); });",
                   "pm.test('Tem id e e-mail', function () {",
@@ -584,6 +585,7 @@
                   "});",
                   "",
                   "var json = pm.response.json();",
+                  "pm.collectionVariables.set('mecNovoId', json.id);",
                   "pm.test('Role é MECANICO', function () { pm.expect(json.role).to.eql('MECANICO'); });",
                   "pm.test('Herdou a oficina do ADMIN', function () { pm.expect(json.oficinaId).to.eql(parseInt(pm.collectionVariables.get('oficinaSeedId'))); });",
                   "pm.test('Resposta não expõe a senha', function () {",
@@ -1045,6 +1047,1229 @@
       ]
     },
     {
+      "name": "F - SUPERADMIN consulta e edita",
+      "item": [
+        {
+          "name": "30 - Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Apaga o cookie jwt do Postman."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "31 - Login como SUPERADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Perfil com visão global.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailSuper}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cookie jwt recebido', function () {",
+                  "    var c = pm.response.headers.get('Set-Cookie');",
+                  "    pm.expect(c).to.be.a('string');",
+                  "    pm.expect(c).to.include('jwt=');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "32 - Meus dados (/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var j = pm.response.json();",
+                  "pm.collectionVariables.set('superId', j.id);",
+                  "pm.test('É o SUPERADMIN', function () { pm.expect(j.role).to.eql('SUPERADMIN'); });",
+                  "pm.test('Resposta não expõe a senha', function () {",
+                  "    pm.expect(pm.response.json()).to.not.have.property('senha');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "33 - Listar todos os usuários ativos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var l = pm.response.json();",
+                  "pm.test('É uma lista', function () { pm.expect(l).to.be.an('array'); });",
+                  "pm.test('Contém o ADMIN criado', function () {",
+                  "    pm.expect(l.some(function (u) { return u.id === pm.collectionVariables.get('adminNovoId'); })).to.eql(true);",
+                  "});",
+                  "pm.test('Ninguém expõe senha', function () { pm.expect(l.every(function (u) { return !('senha' in u); })).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "34 - Listar filtrando por oficina",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario?oficinaId={{oficinaSeedId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var l = pm.response.json();",
+                  "pm.test('Todos são da oficina filtrada', function () {",
+                  "    pm.expect(l.length).to.be.above(0);",
+                  "    pm.expect(l.every(function (u) { return u.oficinaId === parseInt(pm.collectionVariables.get('oficinaSeedId')); })).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "35 - Buscar ADMIN por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Role ADMIN', function () { pm.expect(pm.response.json().role).to.eql('ADMIN'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "36 - Id inexistente (404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/999999",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "37 - Editar nome do ADMIN (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}",
+            "description": "PUT sem senha: a senha atual é mantida.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Admin Editado\",\n  \"email\": \"{{emailNovoAdmin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Nome atualizado', function () { pm.expect(pm.response.json().nome).to.eql('Admin Editado'); });",
+                  "pm.test('Resposta não expõe a senha', function () {",
+                  "    pm.expect(pm.response.json()).to.not.have.property('senha');",
+                  "});",
+                  "pm.test('Role e oficina preservadas', function () {",
+                  "    var j = pm.response.json();",
+                  "    pm.expect(j.role).to.eql('ADMIN');",
+                  "    pm.expect(j.oficinaId).to.eql(parseInt(pm.collectionVariables.get('oficinaSeedId')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "38 - E-mail já usado por outro (409)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Admin Editado\",\n  \"email\": \"{{emailAdmin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "39 - Body inválido (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"\",\n  \"email\": \"nao-e-email\",\n  \"senha\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "40 - Editar id inexistente (404)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/999999",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"X\",\n  \"email\": \"x.{{$timestamp}}@teste.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "41 - Editar meus dados (/me)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/me",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Super Admin\",\n  \"email\": \"{{emailSuper}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Nome atualizado', function () { pm.expect(pm.response.json().nome).to.eql('Super Admin'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "42 - Não pode desativar a si mesmo (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{superId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "43 - Desativar id inexistente (404)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/999999",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "G - ADMIN gerencia mecânicos da oficina",
+      "item": [
+        {
+          "name": "44 - Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Apaga o cookie jwt do Postman."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "45 - Login como o ADMIN criado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Depois da edição do nome o login continua valendo (senha mantida).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailNovoAdmin}}\",\n  \"password\": \"{{senhaNova}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cookie jwt recebido', function () {",
+                  "    var c = pm.response.headers.get('Set-Cookie');",
+                  "    pm.expect(c).to.be.a('string');",
+                  "    pm.expect(c).to.include('jwt=');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "46 - Listar (só da própria oficina)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var l = pm.response.json();",
+                  "pm.test('Só usuários da minha oficina', function () {",
+                  "    pm.expect(l.length).to.be.above(0);",
+                  "    pm.expect(l.every(function (u) { return u.oficinaId === parseInt(pm.collectionVariables.get('oficinaSeedId')); })).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "47 - Buscar mecânico da oficina",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{mecNovoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Role MECANICO', function () { pm.expect(pm.response.json().role).to.eql('MECANICO'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "48 - ADMIN não vê o SUPERADMIN (403/404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{superId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Bloqueado (403 ou 404)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([403, 404]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "49 - Editar mecânico e trocar a senha (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/{{mecNovoId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Mecanico Editado\",\n  \"email\": \"{{emailNovoMecanico}}\",\n  \"senha\": \"{{senhaMecNova}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Nome atualizado', function () { pm.expect(pm.response.json().nome).to.eql('Mecanico Editado'); });",
+                  "pm.test('Resposta não expõe a senha', function () {",
+                  "    pm.expect(pm.response.json()).to.not.have.property('senha');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "50 - Editar meus dados (/me)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/me",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Admin Via Me\",\n  \"email\": \"{{emailNovoAdmin}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Nome atualizado', function () { pm.expect(pm.response.json().nome).to.eql('Admin Via Me'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "51 - ADMIN não desativa a si mesmo (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 409 Conflict', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "52 - Desativar mecânico (204)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{mecNovoId}}",
+            "description": "Exclusão lógica: o registro continua no banco com ativo = false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "53 - Mecânico desativado some da listagem",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var l = pm.response.json();",
+                  "pm.test('Não aparece mais', function () {",
+                  "    pm.expect(l.some(function (u) { return u.id === pm.collectionVariables.get('mecNovoId'); })).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "54 - Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Apaga o cookie jwt do Postman."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "55 - Mecânico desativado não consegue logar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailNovoMecanico}}\",\n  \"password\": \"{{senhaMecNova}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login recusado (400/401/403)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "56 - Login como ADMIN de novo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailNovoAdmin}}\",\n  \"password\": \"{{senhaNova}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cookie jwt recebido', function () {",
+                  "    var c = pm.response.headers.get('Set-Cookie');",
+                  "    pm.expect(c).to.be.a('string');",
+                  "    pm.expect(c).to.include('jwt=');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "57 - Reativar mecânico (204)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{mecNovoId}}/ativar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "58 - Mecânico volta à listagem",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var l = pm.response.json();",
+                  "pm.test('Aparece de novo', function () {",
+                  "    pm.expect(l.some(function (u) { return u.id === pm.collectionVariables.get('mecNovoId'); })).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "59 - Reativar id inexistente (404)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/999999/ativar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "H - MECANICO só mexe nos próprios dados",
+      "item": [
+        {
+          "name": "60 - Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Apaga o cookie jwt do Postman."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "61 - Login do mecânico com a senha nova",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Prova que o PUT do ADMIN trocou a senha e que a reativação funcionou.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailNovoMecanico}}\",\n  \"password\": \"{{senhaMecNova}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cookie jwt recebido', function () {",
+                  "    var c = pm.response.headers.get('Set-Cookie');",
+                  "    pm.expect(c).to.be.a('string');",
+                  "    pm.expect(c).to.include('jwt=');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "62 - Meus dados (/me)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('É MECANICO', function () { pm.expect(pm.response.json().role).to.eql('MECANICO'); });",
+                  "pm.test('Resposta não expõe a senha', function () {",
+                  "    pm.expect(pm.response.json()).to.not.have.property('senha');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "63 - Editar meus dados sem trocar a senha (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/me",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Mecanico Autoedit\",\n  \"email\": \"{{emailNovoMecanico}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Nome atualizado', function () { pm.expect(pm.response.json().nome).to.eql('Mecanico Autoedit'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "64 - Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Apaga o cookie jwt do Postman."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "65 - Login de novo: senha foi mantida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Se o PUT sem senha apagasse o hash, este login falharia.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{emailNovoMecanico}}\",\n  \"password\": \"{{senhaMecNova}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Cookie jwt recebido', function () {",
+                  "    var c = pm.response.headers.get('Set-Cookie');",
+                  "    pm.expect(c).to.be.a('string');",
+                  "    pm.expect(c).to.include('jwt=');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "66 - MECANICO não lista usuários (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "67 - MECANICO não busca por id (403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "68 - MECANICO não edita outro (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}",
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Hack\",\n  \"email\": \"hack.{{$timestamp}}@teste.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "69 - MECANICO não desativa (403)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "70 - MECANICO não reativa (403)",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/{{adminNovoId}}/ativar",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 403 Forbidden', function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "E - Sem login",
       "item": [
         {
@@ -1090,6 +2315,50 @@
                 }
               }
             }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Bloqueado sem login (401 ou 403)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29b - /me sem login (401/403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario/me",
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Bloqueado sem login (401 ou 403)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "29c - Listar sem login (401/403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/usuario",
+            "description": ""
           },
           "event": [
             {
@@ -1168,6 +2437,10 @@
     {
       "key": "emailMecanico",
       "value": "mecanico@teste.com"
+    },
+    {
+      "key": "senhaMecNova",
+      "value": "mecNova12345"
     }
   ]
 }

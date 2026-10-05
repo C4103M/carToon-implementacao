@@ -48,9 +48,16 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.PUT, "/oficina/*").hasAnyRole("ADMIN","SUPERADMIN")
                     .requestMatchers(HttpMethod.PATCH, "/oficina/*/ativar", "/oficina/*/desativar").hasRole("SUPERADMIN")
 
+                    .requestMatchers(HttpMethod.GET, "/usuario/me").authenticated()
+                    .requestMatchers(HttpMethod.PUT, "/usuario/me").authenticated()
+
                     .requestMatchers(HttpMethod.POST, "/usuario/mecanico").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/usuario/admin").hasRole("SUPERADMIN")
 
+                    .requestMatchers(HttpMethod.GET, "/usuario", "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
+                    .requestMatchers(HttpMethod.PATCH, "/usuario/*/ativar").hasAnyRole("ADMIN", "SUPERADMIN")
             );
         if (jwtCookieFilter != null) {
             http.addFilterBefore(jwtCookieFilter, UsernamePasswordAuthenticationFilter.class);
