@@ -1,4 +1,4 @@
-package com.cartoon.api.usuario;
+package com.cartoon.api.usuario.model;
 
 import com.cartoon.api.oficina.model.Oficina;
 import jakarta.persistence.*;
@@ -11,7 +11,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-@Table
+@Table(uniqueConstraints = @UniqueConstraint(name = "uk_usuario_email",columnNames = "email"))
 public class Usuario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,6 +29,9 @@ public class Usuario {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     Role role;
+
+    @Column(nullable = false,columnDefinition = "boolean default true")
+    Boolean ativo = true;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "oficina_id")

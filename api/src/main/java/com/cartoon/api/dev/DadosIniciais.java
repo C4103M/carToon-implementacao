@@ -4,9 +4,9 @@ import com.cartoon.api.cliente.Cliente;
 import com.cartoon.api.cliente.ClienteRepository;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.model.OficinaRepository;
-import com.cartoon.api.usuario.Role;
-import com.cartoon.api.usuario.Usuario;
-import com.cartoon.api.usuario.UsuarioRepository;
+import com.cartoon.api.usuario.model.Role;
+import com.cartoon.api.usuario.model.Usuario;
+import com.cartoon.api.usuario.model.UsuarioRepository;
 import com.cartoon.api.veiculo.Veiculo;
 import com.cartoon.api.veiculo.VeiculoRepository;
 import lombok.RequiredArgsConstructor;
@@ -58,7 +58,7 @@ public class DadosIniciais implements ApplicationRunner {
 
         criarOuAtualizarUsuario("Administrador", "admin@teste.com", "senha123", Role.ADMIN, matriz);
         criarOuAtualizarUsuario("Mecânico de Teste", "mecanico@teste.com", "senha123", Role.MECANICO, matriz);
-        criarOuAtualizarUsuario("Super Administrador", "superadmin@teste.com", "senha123", Role.SUPERADMIN, matriz);
+        criarOuAtualizarUsuario("Super Administrador", "superadmin@teste.com", "senha123", Role.SUPERADMIN, null);
     }
 
     private void criarOuAtualizarUsuario(String nome, String email, String senha, Role role, Oficina oficina) {
@@ -68,6 +68,7 @@ public class DadosIniciais implements ApplicationRunner {
         usuario.setSenha(passwordEncoder.encode(senha));
         usuario.setRole(role);
         usuario.setOficina(oficina);
+        usuario.setAtivo(true);
         usuarioRepository.save(usuario);
     }
 }
