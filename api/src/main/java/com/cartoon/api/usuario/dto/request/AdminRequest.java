@@ -10,5 +10,5 @@ public record AdminRequest(
         @NotBlank(message = "O e-mail é obrigatório") @Email(message = "E-mail inválido") String email,
         @NotBlank(message = "A senha é obrigatória")
         @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres") String senha,
-        @NotNull(message = "A oficina é obrigatória") Integer oficina
+        @NotNull(message = "A oficina é obrigatória") Integer oficinaId
 ) {}
