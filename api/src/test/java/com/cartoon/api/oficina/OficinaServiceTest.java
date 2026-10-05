@@ -19,8 +19,8 @@ import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.model.OficinaRepository;
 import com.cartoon.api.oficina.service.OficinaService;
 import com.cartoon.api.ordemServico.repositories.OrdemServicoRepository;
-import com.cartoon.api.usuario.Usuario;
-import com.cartoon.api.usuario.UsuarioService;
+import com.cartoon.api.usuario.model.Usuario;
+import com.cartoon.api.usuario.service.UsuarioService;
 import java.util.List;
 import java.util.Optional;
 

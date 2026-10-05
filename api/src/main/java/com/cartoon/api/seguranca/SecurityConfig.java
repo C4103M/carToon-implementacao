@@ -48,6 +48,9 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.PUT, "/oficina/*").hasAnyRole("ADMIN","SUPERADMIN")
                     .requestMatchers(HttpMethod.PATCH, "/oficina/*/ativar", "/oficina/*/desativar").hasRole("SUPERADMIN")
 
+                    .requestMatchers(HttpMethod.POST, "/usuario/mecanico").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.POST, "/usuario/admin").hasRole("SUPERADMIN")
+
             );
         if (jwtCookieFilter != null) {
             http.addFilterBefore(jwtCookieFilter, UsernamePasswordAuthenticationFilter.class);

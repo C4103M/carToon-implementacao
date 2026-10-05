@@ -2,8 +2,8 @@ package com.cartoon.api.auth;
 
 import com.cartoon.api.compartilhado.exceptions.CredenciaisInvalidasException;
 import com.cartoon.api.seguranca.JwtService;
-import com.cartoon.api.usuario.Usuario;
-import com.cartoon.api.usuario.UsuarioRepository;
+import com.cartoon.api.usuario.model.Usuario;
+import com.cartoon.api.usuario.model.UsuarioRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

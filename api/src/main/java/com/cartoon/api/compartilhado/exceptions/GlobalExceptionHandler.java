@@ -9,8 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.nio.file.AccessDeniedException;
-import java.time.LocalDateTime;
+import org.springframework.security.access.AccessDeniedException;import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -72,7 +71,10 @@ public class GlobalExceptionHandler {
             mensagem = "Já existe uma oficina com esse nome.";
         } else if (causa.contains("uk_oficina_telefone")) {
             mensagem = "Já existe uma oficina com esse telefone.";
+        }else if (causa.contains("uk_usuario_email")) {
+            mensagem = "Já existe um usuário com esse e-mail.";
         }
+
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
