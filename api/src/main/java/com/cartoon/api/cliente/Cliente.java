@@ -1,11 +1,10 @@
 package com.cartoon.api.cliente;
 
-import com.cartoon.api.oficina.Oficina;
+import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.veiculo.Veiculo;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import lombok.experimental.PackagePrivate;
 
 import java.util.List;
 

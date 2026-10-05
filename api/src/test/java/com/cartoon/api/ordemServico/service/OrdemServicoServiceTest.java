@@ -2,8 +2,8 @@ package com.cartoon.api.ordemServico.service;
 
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.oficina.Oficina;
-import com.cartoon.api.oficina.OficinaService;
+import com.cartoon.api.oficina.model.Oficina;
+import com.cartoon.api.oficina.service.OficinaService;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;

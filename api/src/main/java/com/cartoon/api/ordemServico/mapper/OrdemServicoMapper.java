@@ -1,6 +1,7 @@
-package com.cartoon.api.ordemServico.dto.mapper;
+package com.cartoon.api.ordemServico.mapper;
 
-import com.cartoon.api.oficina.Oficina;
+import com.cartoon.api.oficina.model.Oficina;
+
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;

@@ -1,4 +1,4 @@
-package com.cartoon.api.oficina;
+package com.cartoon.api.oficina.model;
 
 
 import jakarta.persistence.*;
@@ -15,15 +15,22 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-@Table
+@Table(name = "oficina", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_oficina_nome", columnNames = "nome"),
+        @UniqueConstraint(name = "uk_oficina_telefone", columnNames = "telefone")
+})
 public class Oficina {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
+
     String nome;
+
     String endereco;
     String telefone;
-    Boolean matriz;
+
+    @Column(nullable = false)
+    Boolean ativo = true;
 
 
 }

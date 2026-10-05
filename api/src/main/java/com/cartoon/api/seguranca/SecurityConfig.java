@@ -32,14 +32,21 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                     .requestMatchers(HttpMethod.DELETE, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                     .requestMatchers(HttpMethod.GET, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+
                     .requestMatchers(HttpMethod.GET, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
                     .requestMatchers(HttpMethod.POST, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
                     .requestMatchers(HttpMethod.PUT, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+
                     .requestMatchers(HttpMethod.GET, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
                     .requestMatchers(HttpMethod.POST, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
                     .requestMatchers(HttpMethod.PUT, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+
+                    .requestMatchers(HttpMethod.GET, "/oficina/**").hasAnyRole("ADMIN","MECANICO","SUPERADMIN")
+                    .requestMatchers(HttpMethod.POST, "/oficina").hasRole("SUPERADMIN")
+                    .requestMatchers(HttpMethod.PUT, "/oficina/*").hasAnyRole("ADMIN","SUPERADMIN")
+                    .requestMatchers(HttpMethod.PATCH, "/oficina/*/ativar", "/oficina/*/desativar").hasRole("SUPERADMIN")
 
             );
         if (jwtCookieFilter != null) {
