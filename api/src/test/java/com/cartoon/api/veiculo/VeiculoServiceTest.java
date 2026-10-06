@@ -8,7 +8,7 @@ import com.cartoon.api.compartilhado.exceptions.PlacaInvalidaException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.models.StatusServico;
-import com.cartoon.api.ordemServico.service.OrdemServicoService;
+import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
@@ -28,6 +28,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -45,9 +46,6 @@ class VeiculoServiceTest {
 
     @Mock
     private ClienteService clienteService;
-
-    @Mock
-    private OrdemServicoService ordemServicoService;
 
     @InjectMocks
     private VeiculoService veiculoService;
@@ -376,25 +374,21 @@ class VeiculoServiceTest {
     }
 
     @Test
-    @DisplayName("UC06: Consultar histórico de ordens via VeiculoService acessando OrdemServicoService")
+    @DisplayName("UC06: Consultar histórico de ordens do veículo")
     void deveConsultarHistoricoVeicular() {
+        OrdemServico os = new OrdemServico();
+        os.setId(10);
+        os.setDescricao("Revisão 50k");
+        os.setDataOrcamento(LocalDate.of(2026, 10, 1));
+        os.setDataInicio(LocalDate.of(2026, 10, 2));
+        os.setDataFinalizacao(LocalDate.of(2026, 10, 3));
+        os.setStatusServico(StatusServico.FINALIZADO);
+        os.setTotal(BigDecimal.valueOf(350.0));
+        os.setVeiculo(veiculoValido);
+
+        veiculoValido.setOrdensServicos(new ArrayList<>(List.of(os)));
+
         when(veiculoRepository.findComClienteByPlacaIgnoreCase("XYZ-9876")).thenReturn(Optional.of(veiculoValido));
-
-        OrdemServicoResumo osResumo = new OrdemServicoResumo(
-                10,
-                LocalDate.of(2026, 10, 1),
-                LocalDate.of(2026, 10, 2),
-                LocalDate.of(2026, 10, 3),
-                null,
-                StatusServico.FINALIZADO,
-                "Revisão 50k",
-                "XYZ-9876",
-                "Carlos",
-                "Oficina Central",
-                BigDecimal.valueOf(350.0)
-        );
-
-        when(ordemServicoService.buscarHistoricoPorPlaca("XYZ-9876")).thenReturn(List.of(osResumo));
 
         HistoricoVeiculoResponse historico = veiculoService.consultarHistorico("XYZ-9876");
 
@@ -402,6 +396,6 @@ class VeiculoServiceTest {
         assertThat(historico.veiculo().placa()).isEqualTo("XYZ-9876");
         assertThat(historico.totalOrdens()).isEqualTo(1);
         assertThat(historico.ordensServico().get(0).id()).isEqualTo(10);
-        assertThat(historico.ordensServico().get(0).valorTotal()).isEqualTo(BigDecimal.valueOf(350.0));
+        assertThat(historico.ordensServico().get(0).valorTotal()).isEqualByComparingTo(BigDecimal.valueOf(350.0));
     }
 }

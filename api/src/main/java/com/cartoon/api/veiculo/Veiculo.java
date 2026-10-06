@@ -44,6 +44,7 @@ public class Veiculo {
     Cliente cliente;
 
     @OneToMany(mappedBy = "veiculo", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
+    @OrderBy("dataOrcamento DESC, id DESC")
     List<OrdemServico> ordensServicos = new ArrayList<>();
 
     public void setPlaca(String placa) {

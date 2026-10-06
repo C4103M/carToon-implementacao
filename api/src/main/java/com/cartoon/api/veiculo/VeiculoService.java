@@ -6,9 +6,8 @@ import com.cartoon.api.compartilhado.exceptions.ClienteInativoException;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.PlacaInvalidaException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
-import com.cartoon.api.ordemServico.service.OrdemServicoService;
+import com.cartoon.api.ordemServico.dto.mapper.OrdemServicoMapper;
 import com.cartoon.api.veiculo.dto.mapper.VeiculoMapper;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
@@ -16,8 +15,9 @@ import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
 import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
 import com.cartoon.api.veiculo.dto.response.VeiculoResponse;
 import com.cartoon.api.veiculo.specs.VeiculoSpecs;
-import org.springframework.context.annotation.Lazy;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
+@RequiredArgsConstructor
 public class VeiculoService {
 
     private static final Pattern PADRAO_PLACA = Pattern.compile(
@@ -35,15 +36,6 @@ public class VeiculoService {
 
     private final VeiculoRepository veiculoRepository;
     private final ClienteService clienteService;
-    private final OrdemServicoService ordemServicoService;
-
-    public VeiculoService(VeiculoRepository veiculoRepository,
-                          ClienteService clienteService,
-                          @Lazy OrdemServicoService ordemServicoService) {
-        this.veiculoRepository = veiculoRepository;
-        this.clienteService = clienteService;
-        this.ordemServicoService = ordemServicoService;
-    }
 
     @Transactional
     public VeiculoResponse cadastrar(VeiculoRequest request) {
@@ -142,15 +134,35 @@ public class VeiculoService {
     @Transactional(readOnly = true)
     public HistoricoVeiculoResponse consultarHistorico(String placa) {
         Veiculo veiculo = buscarEntidadePorPlaca(placa);
-        List<OrdemServicoResumo> ordens = ordemServicoService.buscarHistoricoPorPlaca(veiculo.getPlaca());
+        List<OrdemServicoResumo> ordens = veiculo.getOrdensServicos() != null
+                ? veiculo.getOrdensServicos().stream()
+                        .sorted((a, b) -> {
+                            if (a.getDataOrcamento() == null && b.getDataOrcamento() == null) return 0;
+                            if (a.getDataOrcamento() == null) return 1;
+                            if (b.getDataOrcamento() == null) return -1;
+                            int c = b.getDataOrcamento().compareTo(a.getDataOrcamento());
+                            if (c != 0) return c;
+                            Integer idA = a.getId();
+                            Integer idB = b.getId();
+                            if (idA == null && idB == null) return 0;
+                            if (idA == null) return 1;
+                            if (idB == null) return -1;
+                            return idB.compareTo(idA);
+                        })
+                        .map(OrdemServicoMapper::paraOrdemServicoResumo)
+                        .toList()
+                : List.of();
         return VeiculoMapper.paraHistoricoVeiculoResponse(veiculo, ordens);
     }
 
     @Transactional(readOnly = true)
     public Page<OrdemServicoResumo> consultarHistoricoPaginado(String placa, Pageable pageable) {
-        Veiculo veiculo = buscarEntidadePorPlaca(placa);
-        OrdemServicoFiltro filtro = new OrdemServicoFiltro(null, null, veiculo.getPlaca(), null, null);
-        return ordemServicoService.listar(filtro, pageable);
+        HistoricoVeiculoResponse historico = consultarHistorico(placa);
+        List<OrdemServicoResumo> ordens = historico.ordensServico();
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), ordens.size());
+        List<OrdemServicoResumo> subList = (start > ordens.size()) ? List.of() : ordens.subList(start, end);
+        return new PageImpl<>(subList, pageable, ordens.size());
     }
 
     @Transactional(readOnly = true)
