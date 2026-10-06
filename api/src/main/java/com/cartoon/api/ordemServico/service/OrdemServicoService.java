@@ -28,6 +28,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 @Service
 @RequiredArgsConstructor
 public class OrdemServicoService {
@@ -64,7 +66,6 @@ public class OrdemServicoService {
     public void excluir(Integer id) throws Exception {
         OrdemServico os = buscarEntidade(id);
         validarNaoFinalizada(os);
-
         ordemServicoRepository.delete(os);
     }
 
@@ -77,18 +78,21 @@ public class OrdemServicoService {
     public OrdemServicoResponse iniciar(Integer id) {
         OrdemServico os = buscarEntidade(id);
         os.setStatusServico(StatusServico.EM_ANDAMENTO);
+        os.setDataInicio(LocalDate.now());
         ordemServicoRepository.save(os);
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
     public OrdemServicoResponse finalizar(Integer id) {
         OrdemServico os = buscarEntidade(id);
         os.setStatusServico(StatusServico.FINALIZADO);
+        os.setDataFinalizacao(LocalDate.now());
         ordemServicoRepository.save(os);
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
     public OrdemServicoResponse rejeitar(Integer id) {
         OrdemServico os = buscarEntidade(id);
         os.setStatusServico(StatusServico.REJEITADO);
+        os.setDataRejeicao(LocalDate.now());
         ordemServicoRepository.save(os);
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }

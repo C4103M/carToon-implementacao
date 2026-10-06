@@ -33,6 +33,10 @@ public final class OrdemServicoMapper {
         return new OrdemServicoResponse(
                 ordem.getId(),
                 ordem.getStatusServico(),
+                ordem.getDataOrcamento(),
+                ordem.getDataInicio(),
+                ordem.getDataRejeicao(),
+                ordem.getDataFinalizacao(),
                 ordem.getDescricao(),
                 ordem.getVeiculo().getId(),
                 ordem.getVeiculo().getPlaca(),
