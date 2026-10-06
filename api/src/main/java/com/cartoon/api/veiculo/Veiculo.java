@@ -1,6 +1,6 @@
 package com.cartoon.api.veiculo;
 
-import com.cartoon.api.cliente.Cliente;
+import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.ordemServico.models.OrdemServico;
 import jakarta.persistence.*;
 import lombok.*;

@@ -1,6 +1,6 @@
 package com.cartoon.api.veiculo;
 
-import com.cartoon.api.cliente.Cliente;
+import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
