@@ -10,9 +10,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.cartoon.api.cliente.Cliente;
-import com.cartoon.api.cliente.ClienteRepository;
-import com.cartoon.api.cliente.ClienteService;
+import com.cartoon.api.cliente.model.Cliente;
+import com.cartoon.api.cliente.repository.ClienteRepository;
+import com.cartoon.api.cliente.service.ClienteService;
 
 @ExtendWith(MockitoExtension.class)
 class ClienteServiceTest {

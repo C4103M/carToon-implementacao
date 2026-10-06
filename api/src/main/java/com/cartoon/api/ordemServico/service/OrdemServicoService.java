@@ -1,8 +1,5 @@
 package com.cartoon.api.ordemServico.service;
 
-import com.cartoon.api.cliente.Cliente;
-import com.cartoon.api.cliente.ClienteRepository;
-import com.cartoon.api.cliente.ClienteService;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.Oficina;

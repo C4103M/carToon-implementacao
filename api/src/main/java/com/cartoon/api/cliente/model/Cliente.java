@@ -1,4 +1,4 @@
-package com.cartoon.api.cliente;
+package com.cartoon.api.cliente.model;
 
 import jakarta.validation.constraints.NotBlank;
 import com.cartoon.api.oficina.Oficina;

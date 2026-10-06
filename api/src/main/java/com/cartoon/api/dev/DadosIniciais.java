@@ -1,7 +1,7 @@
 package com.cartoon.api.dev;
 
-import com.cartoon.api.cliente.Cliente;
-import com.cartoon.api.cliente.ClienteRepository;
+import com.cartoon.api.cliente.model.Cliente;
+import com.cartoon.api.cliente.repository.ClienteRepository;
 import com.cartoon.api.oficina.Oficina;
 import com.cartoon.api.oficina.OficinaRepository;
 import com.cartoon.api.usuario.Role;
