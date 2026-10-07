@@ -1,82 +1,106 @@
 package com.cartoon.api.compartilhado.exceptions;
 
-import com.cartoon.api.compartilhado.dto.ErroResposta;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidacao(MethodArgumentNotValidException ex) {
+        Map<String, String> erros = new LinkedHashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            erros.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", "Erro de validação nos campos");
+        body.put("errosValidacao", erros);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
     @ExceptionHandler(RecursoNaoEncontradoException.class)
-    public ResponseEntity<ErroResposta> handleRecursoNaoEncontrado(RecursoNaoEncontradoException ex) {
-        ErroResposta erro = new ErroResposta(
-                HttpStatus.NOT_FOUND.value(),
-                "Not Found",
-                ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
+    public ResponseEntity<Map<String, Object>> handleRecursoNaoEncontrado(RecursoNaoEncontradoException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.NOT_FOUND.value());
+        body.put("error", "Not Found");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
     @ExceptionHandler(ConflitoException.class)
-    public ResponseEntity<ErroResposta> handleConflito(ConflitoException ex) {
-        ErroResposta erro = new ErroResposta(
-                HttpStatus.CONFLICT.value(),
-                "Conflict",
-                ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(erro);
+    public ResponseEntity<Map<String, Object>> handleConflito(ConflitoException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", "Conflict");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     @ExceptionHandler(RegraDeNegocioException.class)
-    public ResponseEntity<ErroResposta> handleRegraDeNegocio(RegraDeNegocioException ex) {
-        ErroResposta erro = new ErroResposta(
-                HttpStatus.BAD_REQUEST.value(),
-                "Bad Request",
-                ex.getMessage()
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
+    public ResponseEntity<Map<String, Object>> handleRegraDeNegocio(RegraDeNegocioException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErroResposta> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
-        String primaryMessage = ex.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
-                .findFirst()
-                .orElse("Erro de validação nos campos informados");
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleCorpoInvalido(HttpMessageNotReadableException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", "O corpo da requisição está ausente ou mal formatado.");
+        return ResponseEntity.badRequest().body(body);
+    }
 
-        Map<String, String> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
-                .collect(Collectors.toMap(
-                        FieldError::getField,
-                        fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Inválido",
-                        (msg1, msg2) -> msg1,
-                        LinkedHashMap::new
-                ));
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleIntegridade(DataIntegrityViolationException ex) {
+        String causa = String.valueOf(ex.getMostSpecificCause().getMessage()).toLowerCase();
 
-        ErroResposta erro = new ErroResposta(
-                HttpStatus.BAD_REQUEST.value(),
-                "Bad Request",
-                primaryMessage,
-                fieldErrors
-        );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
+        String mensagem = "Violação de integridade dos dados.";
+        if (causa.contains("uk_oficina_nome")) {
+            mensagem = "Já existe uma oficina com esse nome.";
+        } else if (causa.contains("uk_oficina_telefone")) {
+            mensagem = "Já existe uma oficina com esse telefone.";
+        } else if (causa.contains("uk_usuario_email")) {
+            mensagem = "Já existe um usuário com esse e-mail.";
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", "Conflict");
+        body.put("message", mensagem);
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErroResposta> handleAccessDenied(AccessDeniedException ex) {
-        ErroResposta erro = new ErroResposta(
-                HttpStatus.FORBIDDEN.value(),
-                "Forbidden",
-                "Não Autorizado"
-        );
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(erro);
+    public ResponseEntity<Map<String, Object>> handleAcessoNegado(AccessDeniedException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.FORBIDDEN.value());
+        body.put("error", "Forbidden");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(body);
     }
 }

@@ -7,7 +7,7 @@ import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.PlacaInvalidaException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
-import com.cartoon.api.ordemServico.dto.mapper.OrdemServicoMapper;
+import com.cartoon.api.ordemServico.mapper.OrdemServicoMapper;
 import com.cartoon.api.veiculo.dto.mapper.VeiculoMapper;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;

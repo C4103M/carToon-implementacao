@@ -43,14 +43,14 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/login - Deve retornar 200 OK e configurar o cookie JWT quando as credenciais forem válidas")
+    @DisplayName("POST /auth/login - Deve retornar 200 OK e configurar o cookie JWT quando as credenciais forem válidas")
     void login_ComCredenciaisValidas_DeveRetornar200ECookie() throws Exception {
         LoginDTO dto = new LoginDTO("usuario@cartoon.com", "senha123");
         String tokenSimulado = "jwt.token.mock";
 
         when(authService.login(any(LoginDTO.class))).thenReturn(tokenSimulado);
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
@@ -60,7 +60,7 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/auth/login - Deve lançar exceção ao informar credenciais inválidas")
+    @DisplayName("POST /auth/login - Deve lançar exceção ao informar credenciais inválidas")
     void login_ComCredenciaisInvalidas_DeveLancarExcecao() {
         LoginDTO dto = new LoginDTO("usuario@cartoon.com", "senhaIncorreta");
 
@@ -68,16 +68,16 @@ class AuthControllerTest {
                 .thenThrow(new CredenciaisInvalidasException("Email ou senha incorreto"));
 
         assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/api/auth/login")
+                mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
         );
     }
 
     @Test
-    @DisplayName("POST /api/auth/logout - Deve retornar 200 OK e limpar o cookie JWT")
+    @DisplayName("POST /auth/logout - Deve retornar 200 OK e limpar o cookie JWT")
     void logout_DeveRetornar200ELimparCookie() throws Exception {
-        mockMvc.perform(post("/api/auth/logout"))
+        mockMvc.perform(post("/auth/logout"))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("jwt=")))
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));

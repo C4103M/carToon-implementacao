@@ -1,6 +1,7 @@
 package com.cartoon.api.ordemServico.repositories;
 
 import com.cartoon.api.ordemServico.models.OrdemServico;
+import com.cartoon.api.ordemServico.models.StatusServico;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -8,6 +9,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,4 +32,6 @@ public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Inte
 
     @EntityGraph(attributePaths = {"veiculo", "mecanico", "oficina", "itensPeca", "itensServico"})
     Optional<OrdemServico> findDetalhadaById(Integer id);
+
+    boolean existsByOficinaIdAndStatusServicoIn(Integer oficinaId, Collection<StatusServico> status);
 }

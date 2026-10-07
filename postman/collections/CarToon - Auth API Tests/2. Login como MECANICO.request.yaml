@@ -1,0 +1,40 @@
+$kind: http-request
+description: Realiza login como usuário MECANICO e verifica a emissão do cookie JWT.
+url: "{{baseUrl}}/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "mecanico@teste.com",
+      "password": "senha123"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test('Header Set-Cookie presente com token JWT', function () {
+          var setCookie = pm.response.headers.get('Set-Cookie');
+          pm.expect(setCookie).to.be.a('string');
+          pm.expect(setCookie).to.include('jwt=');
+          pm.expect(setCookie).to.include('HttpOnly');
+          pm.expect(setCookie).to.include('SameSite=Lax');
+      });
+
+      pm.test('Armazena o token JWT de MECANICO na variável', function () {
+          var setCookie = pm.response.headers.get('Set-Cookie');
+          if (setCookie) {
+              var match = setCookie.match(/jwt=([^;]+)/);
+              if (match && match[1]) {
+                  pm.collectionVariables.set('mecanicoJwt', match[1]);
+                  console.log('Token de MECANICO armazenado com sucesso.');
+              }
+          }
+      });
+    language: text/javascript
+order: 2000

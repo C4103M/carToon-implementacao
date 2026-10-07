@@ -1,6 +1,6 @@
 package com.cartoon.api.ordemServico.models;
 
-import com.cartoon.api.peca.Peca;
+import com.cartoon.api.peca.models.Peca;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;

@@ -2,7 +2,7 @@ package com.cartoon.api.ordemServico;
 
 import com.cartoon.api.cliente.Cliente;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.oficina.Oficina;
+import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
@@ -12,10 +12,10 @@ import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.repositories.OrdemServicoRepository;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
-import com.cartoon.api.peca.Peca;
-import com.cartoon.api.servico.Servico;
-import com.cartoon.api.usuario.Role;
-import com.cartoon.api.usuario.Usuario;
+import com.cartoon.api.peca.models.Peca;
+import com.cartoon.api.servico.models.Servico;
+import com.cartoon.api.usuario.model.Role;
+import com.cartoon.api.usuario.model.Usuario;
 import com.cartoon.api.veiculo.Veiculo;
 import com.cartoon.api.veiculo.VeiculoService;
 import org.junit.jupiter.api.BeforeEach;
@@ -90,7 +90,7 @@ class HistoricoVeiculoServiceTest {
         Servico servico = new Servico();
         servico.setId(1);
         servico.setNome("Troca de Óleo");
-        servico.setValorBase(100.0);
+        servico.setValorBase(BigDecimal.valueOf(100.0));
 
         Peca peca = new Peca();
         peca.setId(1);

@@ -60,6 +60,10 @@ class OrdemServicoControllerTest {
         sampleResponse = new OrdemServicoResponse(
                 1,
                 StatusServico.PENDENTE,
+                null,
+                null,
+                null,
+                null,
                 "Troca de filtro",
                 10,
                 "ABC-1234",
@@ -82,7 +86,7 @@ class OrdemServicoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(header().string(HttpHeaders.LOCATION, containsString("/ordens-servico/1")))
+                .andExpect(header().string(HttpHeaders.LOCATION, containsString("/ordem-servico/1")))
                 .andExpect(jsonPath("$.id", is(1)))
                 .andExpect(jsonPath("$.descricao", is("Troca de filtro")))
                 .andExpect(jsonPath("$.status", is("PENDENTE")));
@@ -131,7 +135,7 @@ class OrdemServicoControllerTest {
     @DisplayName("POST /ordem-servico/{id}/aceitar - Deve aceitar Ordem de Serviço e retornar 200 OK")
     void aceitar_DeveRetornar200OK() throws Exception {
         OrdemServicoResponse aceitoResponse = new OrdemServicoResponse(
-                1, StatusServico.ACEITO, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
+                1, StatusServico.ACEITO, null,null,null,null,"Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
 
         when(ordemServicoService.aceitar(1)).thenReturn(aceitoResponse);
 
@@ -144,7 +148,7 @@ class OrdemServicoControllerTest {
     @DisplayName("POST /ordem-servico/{id}/iniciar - Deve iniciar Ordem de Serviço e retornar 200 OK")
     void iniciar_DeveRetornar200OK() throws Exception {
         OrdemServicoResponse emAndamentoResponse = new OrdemServicoResponse(
-                1, StatusServico.EM_ANDAMENTO, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
+                1, StatusServico.EM_ANDAMENTO,null,null,null,null, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
 
         when(ordemServicoService.iniciar(1)).thenReturn(emAndamentoResponse);
 
@@ -157,7 +161,7 @@ class OrdemServicoControllerTest {
     @DisplayName("POST /ordem-servico/{id}/finalizar - Deve finalizar Ordem de Serviço e retornar 200 OK")
     void finalizar_DeveRetornar200OK() throws Exception {
         OrdemServicoResponse finalizadoResponse = new OrdemServicoResponse(
-                1, StatusServico.FINALIZADO, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
+                1, StatusServico.FINALIZADO,null,null,null,null, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
 
         when(ordemServicoService.finalizar(1)).thenReturn(finalizadoResponse);
 
@@ -170,7 +174,7 @@ class OrdemServicoControllerTest {
     @DisplayName("POST /ordem-servico/{id}/rejeitar - Deve rejeitar Ordem de Serviço e retornar 200 OK")
     void rejeitar_DeveRetornar200OK() throws Exception {
         OrdemServicoResponse rejeitadoResponse = new OrdemServicoResponse(
-                1, StatusServico.REJEITADO, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
+                1, StatusServico.REJEITADO,null,null,null,null, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
 
         when(ordemServicoService.rejeitar(1)).thenReturn(rejeitadoResponse);
 

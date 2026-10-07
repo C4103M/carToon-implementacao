@@ -1,0 +1,5 @@
+$kind: collection
+description: Coleção de testes automatizados para os endpoints de Serviço.
+variables:
+  baseUrl: http://localhost:8080/api/servicos
+  servicoId: "1"

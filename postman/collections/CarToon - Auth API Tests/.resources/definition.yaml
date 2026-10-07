@@ -1,0 +1,4 @@
+$kind: collection
+description: Coleção de testes automatizados para autenticação e login por tipo de usuário (ADMIN, MECANICO, SUPERADMIN).
+variables:
+  baseUrl: http://localhost:8080/api/auth

@@ -1,6 +1,6 @@
 package com.cartoon.api.seguranca;
 
-import com.cartoon.api.usuario.Role;
+import com.cartoon.api.usuario.model.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.BeforeEach;

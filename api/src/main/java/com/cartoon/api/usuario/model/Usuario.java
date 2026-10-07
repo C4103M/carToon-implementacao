@@ -1,0 +1,39 @@
+package com.cartoon.api.usuario.model;
+
+import com.cartoon.api.oficina.model.Oficina;
+import jakarta.persistence.*;
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@FieldDefaults(level = AccessLevel.PRIVATE)
+@Entity
+@Table(uniqueConstraints = @UniqueConstraint(name = "uk_usuario_email",columnNames = "email"))
+public class Usuario {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    Integer id;
+
+    @Column(nullable = false)
+    String nome;
+
+    @Column(nullable = false)
+    String email;
+
+    @Column(nullable = false)
+    String senha;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    Role role;
+
+    @Column(nullable = false,columnDefinition = "boolean default true")
+    Boolean ativo = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "oficina_id")
+    private Oficina oficina;
+}

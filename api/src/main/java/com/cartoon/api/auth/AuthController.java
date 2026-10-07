@@ -1,11 +1,7 @@
 package com.cartoon.api.auth;
 
 
-import com.cartoon.api.usuario.Usuario;
-import com.cartoon.api.usuario.UsuarioRepository;
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
-import lombok.extern.java.Log;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Duration;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @AllArgsConstructor
 public class AuthController {
     private final AuthService authService;
@@ -28,7 +24,7 @@ public class AuthController {
 
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
                 .httpOnly(true)
-                .secure(true)
+                .secure(false)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(Duration.ofHours(1))
@@ -43,7 +39,7 @@ public class AuthController {
     public ResponseEntity<Void> logout() {
         ResponseCookie apagar = ResponseCookie.from("jwt", "")
                 .httpOnly(true)
-                .secure(true)
+                .secure(false)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(0)

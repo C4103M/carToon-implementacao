@@ -2,8 +2,8 @@ package com.cartoon.api.ordemServico.service;
 
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.oficina.Oficina;
-import com.cartoon.api.oficina.OficinaService;
+import com.cartoon.api.oficina.model.Oficina;
+import com.cartoon.api.oficina.service.OficinaService;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
@@ -13,11 +13,11 @@ import com.cartoon.api.ordemServico.models.ItemPeca;
 import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.repositories.OrdemServicoRepository;
-import com.cartoon.api.peca.Peca;
-import com.cartoon.api.peca.PecaService;
-import com.cartoon.api.usuario.Role;
-import com.cartoon.api.usuario.Usuario;
-import com.cartoon.api.usuario.UsuarioService;
+import com.cartoon.api.peca.models.Peca;
+import com.cartoon.api.peca.service.PecaService;
+import com.cartoon.api.usuario.model.Role;
+import com.cartoon.api.usuario.model.Usuario;
+import com.cartoon.api.usuario.service.UsuarioService;
 import com.cartoon.api.veiculo.Veiculo;
 import com.cartoon.api.veiculo.VeiculoService;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +34,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -95,7 +96,7 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Salvar - Deve criar e retornar nova Ordem de Serviço")
+    @DisplayName("Salvar - Deve criar e retornar nova Ordem de Serviço com data de inicio como agora")
     void salvar_ComDadosValidos_DeveSalvarERetornarResponse() {
         OrdemServicoRequest request = new OrdemServicoRequest(1, 1, 1, "Troca de óleo");
 
@@ -116,6 +117,7 @@ class OrdemServicoServiceTest {
         assertEquals(StatusServico.PENDENTE, response.status());
         assertEquals("ABC-1234", response.placa());
         assertEquals("Carlos Mecanico", response.mecanicoNome());
+        assertEquals(LocalDate.now(), response.dataOrcamento());
 
         verify(ordemServicoRepository).save(any(OrdemServico.class));
     }
@@ -180,6 +182,7 @@ class OrdemServicoServiceTest {
         OrdemServicoResponse response = ordemServicoService.iniciar(10);
 
         assertEquals(StatusServico.EM_ANDAMENTO, response.status());
+        assertEquals(LocalDate.now(), response.dataInicio());
         assertEquals(StatusServico.EM_ANDAMENTO, ordemServico.getStatusServico());
         verify(ordemServicoRepository).save(ordemServico);
     }
@@ -193,6 +196,7 @@ class OrdemServicoServiceTest {
         OrdemServicoResponse response = ordemServicoService.finalizar(10);
 
         assertEquals(StatusServico.FINALIZADO, response.status());
+        assertEquals(LocalDate.now(), response.dataFinalizacao());
         assertEquals(StatusServico.FINALIZADO, ordemServico.getStatusServico());
         verify(ordemServicoRepository).save(ordemServico);
     }
@@ -206,6 +210,7 @@ class OrdemServicoServiceTest {
         OrdemServicoResponse response = ordemServicoService.rejeitar(10);
 
         assertEquals(StatusServico.REJEITADO, response.status());
+        assertEquals(LocalDate.now(), response.dataRejeicao());
         assertEquals(StatusServico.REJEITADO, ordemServico.getStatusServico());
         verify(ordemServicoRepository).save(ordemServico);
     }

@@ -2,11 +2,11 @@ package com.cartoon.api.ordemServico.service;
 
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
-import com.cartoon.api.oficina.Oficina;
-import com.cartoon.api.oficina.OficinaService;
+import com.cartoon.api.oficina.model.Oficina;
+import com.cartoon.api.oficina.service.OficinaService;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
-import com.cartoon.api.ordemServico.dto.mapper.OrdemServicoMapper;
+import com.cartoon.api.ordemServico.mapper.OrdemServicoMapper;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
@@ -15,10 +15,10 @@ import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.repositories.OrdemServicoRepository;
 import com.cartoon.api.ordemServico.specs.OrdemServicoSpecs;
-import com.cartoon.api.peca.Peca;
-import com.cartoon.api.peca.PecaService;
-import com.cartoon.api.usuario.Usuario;
-import com.cartoon.api.usuario.UsuarioService;
+import com.cartoon.api.peca.models.Peca;
+import com.cartoon.api.peca.service.PecaService;
+import com.cartoon.api.usuario.model.Usuario;
+import com.cartoon.api.usuario.service.UsuarioService;
 import com.cartoon.api.veiculo.Veiculo;
 import com.cartoon.api.veiculo.VeiculoService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +28,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -45,6 +46,7 @@ public class OrdemServicoService {
         Oficina oficina = oficinaService.buscarEntidade(request.oficinaId());
         Usuario mecanico = usuarioService.buscarEntidade(request.mecanicoId());
         OrdemServico os = OrdemServicoMapper.paraOrdemServico(request, veiculo, oficina, mecanico);
+        os.setDataOrcamento(LocalDate.now());
         os = ordemServicoRepository.save(os);
 
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
@@ -89,6 +91,7 @@ public class OrdemServicoService {
     public OrdemServicoResponse iniciar(Integer id) {
         OrdemServico os = buscarEntidade(id);
         os.setStatusServico(StatusServico.EM_ANDAMENTO);
+        os.setDataInicio(LocalDate.now());
         ordemServicoRepository.save(os);
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
@@ -97,6 +100,7 @@ public class OrdemServicoService {
     public OrdemServicoResponse finalizar(Integer id) {
         OrdemServico os = buscarEntidade(id);
         os.setStatusServico(StatusServico.FINALIZADO);
+        os.setDataFinalizacao(LocalDate.now());
         ordemServicoRepository.save(os);
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
@@ -105,6 +109,7 @@ public class OrdemServicoService {
     public OrdemServicoResponse rejeitar(Integer id) {
         OrdemServico os = buscarEntidade(id);
         os.setStatusServico(StatusServico.REJEITADO);
+        os.setDataRejeicao(LocalDate.now());
         ordemServicoRepository.save(os);
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }

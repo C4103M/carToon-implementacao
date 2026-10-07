@@ -1,11 +1,12 @@
 package com.cartoon.api.ordemServico.models;
 
-import com.cartoon.api.oficina.Oficina;
-import com.cartoon.api.usuario.Usuario;
+import com.cartoon.api.oficina.model.Oficina;
+import com.cartoon.api.usuario.model.Usuario;
 import com.cartoon.api.veiculo.Veiculo;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,6 +28,7 @@ public class OrdemServico {
     @Column(name = "descricao", nullable = false)
     String descricao;
 
+    @CreationTimestamp
     @Column(name = "data_orcamento")
     LocalDate dataOrcamento;
     @Column(name = "data_rejeicao")
