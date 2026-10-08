@@ -44,6 +44,8 @@ public class DadosIniciais implements ApplicationRunner {
             Cliente cliente = new Cliente();
             cliente.setNome("Cliente de Teste");
             cliente.setCpf("12345678901");
+            cliente.setTelefone("11999999999");
+            cliente.setEndereco("Rua de Teste, 123");
             cliente.setOficina(matriz);
             clienteRepository.save(cliente);
 

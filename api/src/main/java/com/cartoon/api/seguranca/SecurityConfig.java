@@ -28,6 +28,8 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers("/auth/**").permitAll()
+                    .requestMatchers("/error").permitAll()
+                    .requestMatchers("/clientes/**").hasAnyRole("MECANICO")
                     .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                     .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                     .requestMatchers(HttpMethod.DELETE, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
@@ -40,6 +42,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
                     .requestMatchers(HttpMethod.PUT, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                    .anyRequest().authenticated()
 
             );
         if (jwtCookieFilter != null) {

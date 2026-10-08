@@ -1,7 +1,9 @@
-package com.cartoon.api.cliente;
+package com.cartoon.api.cliente.controller;
 
-import com.cartoon.api.cliente.request.ClienteRequest;
-import com.cartoon.api.cliente.response.ClienteResponse;
+import com.cartoon.api.cliente.service.ClienteService;
+import com.cartoon.api.cliente.dto.mapper.ClienteMapper;
+import com.cartoon.api.cliente.dto.request.ClienteRequest;
+import com.cartoon.api.cliente.dto.response.ClienteResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -11,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/clientes")
+@RequestMapping("/clientes")
 @AllArgsConstructor
 public class ClienteController {
 
@@ -19,6 +21,7 @@ public class ClienteController {
 
     @PostMapping
     public ResponseEntity<ClienteResponse> cadastrar(@Valid @RequestBody ClienteRequest request) {
+
         ClienteResponse response = clienteService.salvar(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -38,4 +41,11 @@ public class ClienteController {
         ClienteResponse response = clienteService.atualizar(id, request);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Integer id) {
+        clienteService.excluir(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }
