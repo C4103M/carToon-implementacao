@@ -1,7 +1,7 @@
 package com.cartoon.api.veiculo;
 
-import com.cartoon.api.cliente.Cliente;
-import com.cartoon.api.cliente.ClienteService;
+import com.cartoon.api.cliente.model.Cliente;
+import com.cartoon.api.cliente.service.ClienteService;
 import com.cartoon.api.compartilhado.exceptions.ClienteInativoException;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.PlacaInvalidaException;

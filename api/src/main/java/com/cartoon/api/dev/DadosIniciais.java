@@ -1,7 +1,7 @@
 package com.cartoon.api.dev;
 
-import com.cartoon.api.cliente.Cliente;
-import com.cartoon.api.cliente.ClienteRepository;
+import com.cartoon.api.cliente.model.Cliente;
+import com.cartoon.api.cliente.repository.ClienteRepository;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.model.OficinaRepository;
 import com.cartoon.api.usuario.model.Role;
@@ -44,6 +44,8 @@ public class DadosIniciais implements ApplicationRunner {
             Cliente cliente = new Cliente();
             cliente.setNome("Cliente de Teste");
             cliente.setCpf("12345678901");
+            cliente.setTelefone("11999999999");
+            cliente.setEndereco("Rua de Teste, 123");
             cliente.setOficina(matriz);
             clienteRepository.save(cliente);
 

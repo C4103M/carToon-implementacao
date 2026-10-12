@@ -1,4 +1,4 @@
-package com.cartoon.api.cliente;
+package com.cartoon.api.cliente.model;
 
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.veiculo.Veiculo;
@@ -27,6 +27,7 @@ public class Cliente {
     String cpf;
 
     String endereco;
+
     String telefone;
 
     @Column(nullable = false)

@@ -1,6 +1,6 @@
 package com.cartoon.api.ordemServico;
 
-import com.cartoon.api.cliente.Cliente;
+import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
