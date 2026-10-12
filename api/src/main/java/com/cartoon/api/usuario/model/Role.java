@@ -1,4 +1,4 @@
-package com.cartoon.api.usuario;
+package com.cartoon.api.usuario.model;
 
 public enum Role {
     ADMIN,

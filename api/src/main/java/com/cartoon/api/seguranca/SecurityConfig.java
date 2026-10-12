@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -25,26 +26,47 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    @Autowired(required = false) JwtCookieFilter jwtCookieFilter) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .authorizeHttpRequests(auth -> auth
-                    .requestMatchers("/auth/**").permitAll()
-                    .requestMatchers("/error").permitAll()
-                    .requestMatchers("/clientes/**").hasAnyRole("MECANICO")
-                    .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.DELETE, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
-                    .requestMatchers(HttpMethod.GET, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .requestMatchers(HttpMethod.GET, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .requestMatchers(HttpMethod.POST, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .requestMatchers(HttpMethod.PUT, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .requestMatchers(HttpMethod.DELETE, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .requestMatchers(HttpMethod.GET, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .requestMatchers(HttpMethod.POST, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .requestMatchers(HttpMethod.PUT, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
-                    .anyRequest().authenticated()
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
-            );
+                        .requestMatchers("/clientes/**").hasAnyRole("MECANICO")
+
+                        .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.DELETE, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.GET, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.POST, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/pecas/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.POST, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/servicos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/oficina/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.POST, "/oficina").hasRole("SUPERADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/oficina/*").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/oficina/*/ativar", "/oficina/*/desativar").hasRole("SUPERADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/usuario/me").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/usuario/me").authenticated()
+
+                        .requestMatchers(HttpMethod.POST, "/usuario/mecanico").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/usuario/admin").hasRole("SUPERADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/usuario", "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/usuario/*/ativar").hasAnyRole("ADMIN", "SUPERADMIN")
+
+                        .anyRequest().authenticated()
+                );
         if (jwtCookieFilter != null) {
             http.addFilterBefore(jwtCookieFilter, UsernamePasswordAuthenticationFilter.class);
         }

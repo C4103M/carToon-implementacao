@@ -1,12 +1,12 @@
 package com.cartoon.api.ordemServico.controller;
 
-
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +19,7 @@ import java.net.URI;
 @RestController
 @RequestMapping("/ordem-servico")
 @AllArgsConstructor
+@Tag(name = "Ordens de Serviço", description = "Endpoints para gerenciamento de ordens de serviço")
 public class OrdemServicoController {
     private final OrdemServicoService ordemServicoService;
 
@@ -42,6 +43,7 @@ public class OrdemServicoController {
     public OrdemServicoResponse aceitar(@PathVariable Integer id) {
         return ordemServicoService.aceitar(id);
     }
+
     @PostMapping("/{id}/iniciar")
     public OrdemServicoResponse iniciar(@PathVariable Integer id) {
         return ordemServicoService.iniciar(id);
@@ -51,6 +53,7 @@ public class OrdemServicoController {
     public OrdemServicoResponse finalizar(@PathVariable Integer id) {
         return ordemServicoService.finalizar(id);
     }
+
     @PostMapping("/{id}/rejeitar")
     public OrdemServicoResponse rejeitar(@PathVariable Integer id) {
         return ordemServicoService.rejeitar(id);

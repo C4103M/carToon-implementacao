@@ -3,7 +3,7 @@ package com.cartoon.api.cliente.dto.mapper;
 import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.cliente.dto.request.ClienteRequest;
 import com.cartoon.api.cliente.dto.response.ClienteResponse;
-import com.cartoon.api.oficina.Oficina;
+import com.cartoon.api.oficina.model.Oficina;
 import org.springframework.stereotype.Component;
 
 @Component
