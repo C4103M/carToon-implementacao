@@ -1,6 +1,6 @@
 package com.cartoon.api.veiculo.specs;
 
-import com.cartoon.api.veiculo.Veiculo;
+import com.cartoon.api.veiculo.model.Veiculo;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;

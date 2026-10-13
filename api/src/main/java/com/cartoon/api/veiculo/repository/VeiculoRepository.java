@@ -1,5 +1,6 @@
-package com.cartoon.api.veiculo;
+package com.cartoon.api.veiculo.repository;
 
+import com.cartoon.api.veiculo.model.Veiculo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;

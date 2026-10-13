@@ -1,4 +1,4 @@
-package com.cartoon.api.ordemServico.repositories;
+package com.cartoon.api.ordemServico.repository;
 
 import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.ordemServico.models.StatusServico;

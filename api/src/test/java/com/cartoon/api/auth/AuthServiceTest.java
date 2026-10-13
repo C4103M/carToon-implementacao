@@ -4,7 +4,7 @@ import com.cartoon.api.compartilhado.exceptions.CredenciaisInvalidasException;
 import com.cartoon.api.seguranca.JwtService;
 import com.cartoon.api.usuario.model.Role;
 import com.cartoon.api.usuario.model.Usuario;
-import com.cartoon.api.usuario.model.UsuarioRepository;
+import com.cartoon.api.usuario.repository.UsuarioRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

@@ -1,4 +1,4 @@
-package com.cartoon.api.servico.repositories;
+package com.cartoon.api.servico.repository;
 
 import com.cartoon.api.servico.models.Servico;
 import org.springframework.data.domain.Page;

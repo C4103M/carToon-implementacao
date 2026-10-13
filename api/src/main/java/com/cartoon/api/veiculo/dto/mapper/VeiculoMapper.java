@@ -2,7 +2,7 @@ package com.cartoon.api.veiculo.dto.mapper;
 
 import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
-import com.cartoon.api.veiculo.Veiculo;
+import com.cartoon.api.veiculo.model.Veiculo;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
 import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;

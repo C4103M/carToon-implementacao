@@ -1,6 +1,7 @@
-package com.cartoon.api.veiculo;
+package com.cartoon.api.veiculo.controller;
 
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.veiculo.service.VeiculoService;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
@@ -19,7 +20,7 @@ import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/veiculos")
+@RequestMapping("/veiculos")
 @RequiredArgsConstructor
 @Tag(name = "Veículos", description = "Endpoints para manutenção de veículos (UC05) e consulta de histórico (UC06)")
 public class VeiculoController {

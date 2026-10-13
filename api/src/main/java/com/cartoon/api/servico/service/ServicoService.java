@@ -5,7 +5,7 @@ import com.cartoon.api.servico.dto.mapper.ServicoMapper;
 import com.cartoon.api.servico.dto.request.ServicoRequest;
 import com.cartoon.api.servico.dto.response.ServicoResponse;
 import com.cartoon.api.servico.models.Servico;
-import com.cartoon.api.servico.repositories.ServicoRepository;
+import com.cartoon.api.servico.repository.ServicoRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

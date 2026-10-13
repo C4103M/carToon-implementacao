@@ -12,7 +12,7 @@ import com.cartoon.api.ordemServico.models.ItemServico;
 import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.peca.models.Peca;
 import com.cartoon.api.usuario.model.Usuario;
-import com.cartoon.api.veiculo.Veiculo;
+import com.cartoon.api.veiculo.model.Veiculo;
 
 import java.math.BigDecimal;
 

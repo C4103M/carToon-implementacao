@@ -2,7 +2,7 @@ package com.cartoon.api.ordemServico.models;
 
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.usuario.model.Usuario;
-import com.cartoon.api.veiculo.Veiculo;
+import com.cartoon.api.veiculo.model.Veiculo;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;

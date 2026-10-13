@@ -1,4 +1,4 @@
-package com.cartoon.api.veiculo;
+package com.cartoon.api.veiculo.model;
 
 import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.ordemServico.models.OrdemServico;

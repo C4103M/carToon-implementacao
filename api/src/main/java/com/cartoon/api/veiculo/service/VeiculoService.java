@@ -1,4 +1,4 @@
-package com.cartoon.api.veiculo;
+package com.cartoon.api.veiculo.service;
 
 import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.cliente.service.ClienteService;
@@ -14,6 +14,8 @@ import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
 import com.cartoon.api.veiculo.dto.request.VeiculoRequest;
 import com.cartoon.api.veiculo.dto.response.HistoricoVeiculoResponse;
 import com.cartoon.api.veiculo.dto.response.VeiculoResponse;
+import com.cartoon.api.veiculo.model.Veiculo;
+import com.cartoon.api.veiculo.repository.VeiculoRepository;
 import com.cartoon.api.veiculo.specs.VeiculoSpecs;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
