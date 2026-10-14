@@ -1,7 +1,7 @@
 $kind: http-request
-description: Cancela/rejeita a ordem de serviço.
-url: "{{baseUrl}}/{{ordemId}}/rejeitar"
-method: POST
+description: Remove o item serviço especificado da ordem.
+url: "{{baseUrl}}/{{ordemId}}/itens-servico/{{itemId}}"
+method: DELETE
 scripts:
   - type: afterResponse
     code: |-

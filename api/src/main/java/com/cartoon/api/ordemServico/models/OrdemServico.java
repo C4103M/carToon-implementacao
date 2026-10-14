@@ -66,6 +66,7 @@ public class OrdemServico {
         itensPeca.add(item);
         item.setOrdemServico(this);
     }
+
     public void removerItemPeca(ItemPeca item) {
         itensPeca.remove(item);
         item.setOrdemServico(null);
@@ -75,6 +76,7 @@ public class OrdemServico {
         itensServico.add(item);
         item.setOrdemServico(this);
     }
+
     public void removerItemServico(ItemServico item) {
         itensServico.remove(item);
         item.setOrdemServico(null);
