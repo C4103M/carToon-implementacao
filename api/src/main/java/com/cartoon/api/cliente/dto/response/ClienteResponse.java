@@ -10,4 +10,5 @@ public class ClienteResponse {
     private String telefone;
     private String endereco;
     private Integer oficinaId;
+    private boolean ativo;
 }
