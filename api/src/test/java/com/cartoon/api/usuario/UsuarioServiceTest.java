@@ -3,6 +3,8 @@ package com.cartoon.api.usuario;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +14,7 @@ import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.repository.OficinaRepository;
+import com.cartoon.api.ordemServico.repository.OrdemServicoRepository;
 import com.cartoon.api.usuario.dto.request.AdminRequest;
 import com.cartoon.api.usuario.dto.request.AtualizarUsuarioRequest;
 import com.cartoon.api.usuario.dto.request.MecanicoRequest;
@@ -40,6 +43,9 @@ class UsuarioServiceTest {
 
     @Mock
     private OficinaRepository oficinaRepository;
+
+    @Mock
+    private OrdemServicoRepository ordemServicoRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -307,10 +313,26 @@ class UsuarioServiceTest {
         Usuario mecanico = usuario(5, Role.MECANICO, oficina);
         when(usuarioRepository.findById(5)).thenReturn(Optional.of(mecanico));
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
+        when(ordemServicoRepository.existsByMecanicoIdAndStatusServicoIn(eq(5), anyCollection()))
+                .thenReturn(false);
 
         service.desativar(5, autenticadoAdmin);
 
         assertThat(mecanico.getAtivo()).isFalse();
+    }
+
+    @Test
+    void desativar_mecanicoComOrdensEmAberto_deveLancarConflito() {
+        Usuario mecanico = usuario(5, Role.MECANICO, oficina);
+        when(usuarioRepository.findById(5)).thenReturn(Optional.of(mecanico));
+        when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
+        when(ordemServicoRepository.existsByMecanicoIdAndStatusServicoIn(eq(5), anyCollection()))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.desativar(5, autenticadoAdmin))
+                .isInstanceOf(ConflitoException.class)
+                .hasMessageContaining("ordens de serviço");
+        assertThat(mecanico.getAtivo()).isTrue();
     }
 
     @Test

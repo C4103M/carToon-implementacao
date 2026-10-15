@@ -5,6 +5,8 @@ import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.repository.OficinaRepository;
+import com.cartoon.api.ordemServico.models.StatusServico;
+import com.cartoon.api.ordemServico.repository.OrdemServicoRepository;
 import com.cartoon.api.usuario.dto.request.AdminRequest;
 import com.cartoon.api.usuario.dto.request.AtualizarUsuarioRequest;
 import com.cartoon.api.usuario.dto.request.MecanicoRequest;
@@ -24,8 +26,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UsuarioService {
 
+    private static final List<StatusServico> STATUS_EM_ABERTO = List.of(
+            StatusServico.PENDENTE,
+            StatusServico.ACEITO,
+            StatusServico.EM_ANDAMENTO
+    );
+
     private final UsuarioRepository usuarioRepository;
     private final OficinaRepository oficinaRepository;
+    private final OrdemServicoRepository ordemServicoRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
@@ -96,6 +105,10 @@ public class UsuarioService {
         exigirPermissaoParaGerenciar(usuarioAlvo, usuarioLogado);
         if (usuarioAlvo.getId().equals(usuarioLogado.getId())) {
             throw new ConflitoException("Você não pode desativar o próprio usuário.");
+        }
+        if (ordemServicoRepository.existsByMecanicoIdAndStatusServicoIn(id, STATUS_EM_ABERTO)) {
+            throw new ConflitoException(
+                    "Não é possível desativar: o mecânico possui ordens de serviço pendentes ou em andamento.");
         }
         usuarioAlvo.setAtivo(false);
     }
