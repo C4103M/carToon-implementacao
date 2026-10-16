@@ -1,0 +1,481 @@
+{
+  "info": {
+    "name": "CarToon - Soft Delete de Cliente",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Login como MECANICO",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "description": "/clientes/** só aceita ROLE MECANICO.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{emailMecanico}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Cookie jwt recebido', function () { pm.expect(pm.response.headers.get('Set-Cookie')).to.include('jwt='); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Criar cliente (nasce ativo)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/clientes",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Cliente Soft Delete\",\n  \"cpf\": \"{{cpf}}\",\n  \"telefone\": \"11999990000\",\n  \"endereco\": \"Rua Teste, 100\",\n  \"oficinaId\": {{oficinaId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var cpf = ''; for (var i = 0; i < 11; i++) { cpf += Math.floor(Math.random()*10); }",
+              "pm.collectionVariables.set('cpf', cpf);",
+              "pm.collectionVariables.set('placa', 'ABC' + Math.floor(1000+Math.random()*9000));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+              "var j = pm.response.json();",
+              "pm.collectionVariables.set('clienteId', j.id);",
+              "pm.test('ativo = true', function () { pm.expect(j.ativo).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Listagem contém o cliente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var ids = pm.response.json().map(function(c){return c.id;});",
+              "pm.test('cliente ativo aparece na lista', function () { pm.expect(ids).to.include(pm.collectionVariables.get('clienteId')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Cadastrar veículo para cliente ativo",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/veiculos",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"placa\": \"{{placa}}\",\n  \"montadora\": \"Fiat\",\n  \"modelo\": \"Uno\",\n  \"ano\": 2015\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.response.to.have.status(201); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - DELETE cliente (exclusão lógica)",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes/{{clienteId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Listagem NÃO contém o cliente inativo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var ids = pm.response.json().map(function(c){return c.id;});",
+              "pm.test('inativo some da lista', function () { pm.expect(ids).to.not.include(pm.collectionVariables.get('clienteId')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Buscar por ID: continua no banco, ativo=false",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes/{{clienteId}}",
+        "description": "Prova que o registro NÃO foi apagado."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('ativo = false', function () { pm.expect(j.ativo).to.eql(false); });",
+              "pm.test('dados preservados', function () { pm.expect(j.cpf).to.eql(pm.collectionVariables.get('cpf')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Editar cliente inativo -> 400",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/clientes/{{clienteId}}",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Cliente Soft Delete\",\n  \"cpf\": \"{{cpf}}\",\n  \"telefone\": \"11999990000\",\n  \"endereco\": \"Rua Teste, 100\",\n  \"oficinaId\": {{oficinaId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 400', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Cadastrar veículo para cliente inativo -> 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/veiculos",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"clienteId\": {{clienteId}},\n  \"placa\": \"XYZ9876\",\n  \"montadora\": \"Fiat\",\n  \"modelo\": \"Uno\",\n  \"ano\": 2015\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 400', function () { pm.response.to.have.status(400); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Recadastrar CPF de cliente inativo -> 409",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/clientes",
+        "description": "CPF continua reservado pelo cliente inativo; é preciso reativá-lo.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Cliente Soft Delete\",\n  \"cpf\": \"{{cpf}}\",\n  \"telefone\": \"11999990000\",\n  \"endereco\": \"Rua Teste, 100\",\n  \"oficinaId\": {{oficinaId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', function () { pm.response.to.have.status(409); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Reativar cliente",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes/{{clienteId}}/ativar",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Listagem volta a conter o cliente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var ids = pm.response.json().map(function(c){return c.id;});",
+              "pm.test('reativado aparece na lista', function () { pm.expect(ids).to.include(pm.collectionVariables.get('clienteId')); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Editar cliente reativado -> 200",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/clientes/{{clienteId}}",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Cliente Reativado\",\n  \"cpf\": \"{{cpf}}\",\n  \"telefone\": \"11999990000\",\n  \"endereco\": \"Rua Teste, 100\",\n  \"oficinaId\": {{oficinaId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('nome atualizado', function () { pm.expect(pm.response.json().nome).to.eql('Cliente Reativado'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - DELETE de ID inexistente -> 404",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes/999999",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 404', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 - Ativar ID inexistente -> 404",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes/999999/ativar",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 404', function () { pm.response.to.have.status(404); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 - Limpeza: inativa o cliente de teste",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/clientes/{{clienteId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "senhaTeste",
+      "value": "senha123"
+    },
+    {
+      "key": "emailMecanico",
+      "value": "mecanico@teste.com"
+    },
+    {
+      "key": "oficinaId",
+      "value": "1"
+    },
+    {
+      "key": "clienteId",
+      "value": ""
+    },
+    {
+      "key": "cpf",
+      "value": ""
+    },
+    {
+      "key": "placa",
+      "value": ""
+    }
+  ]
+}
