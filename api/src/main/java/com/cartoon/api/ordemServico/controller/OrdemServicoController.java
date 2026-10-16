@@ -3,6 +3,7 @@ package com.cartoon.api.ordemServico.controller;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
+import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
@@ -68,5 +69,16 @@ public class OrdemServicoController {
     @DeleteMapping("/{id}/itens-peca/{itemId}")
     public OrdemServicoResponse removerPeca(@PathVariable Integer id, @PathVariable Integer itemId) {
         return ordemServicoService.removerPeca(id, itemId);
+    }
+
+    @PostMapping("/{id}/itens-servico")
+    public OrdemServicoResponse adicionarServico(@PathVariable Integer id,
+                                                 @Valid @RequestBody ItemServicoRequest request) {
+        return ordemServicoService.adicionarServico(id, request);
+    }
+
+    @DeleteMapping("/{id}/itens-servico/{itemId}")
+    public OrdemServicoResponse removerServico(@PathVariable Integer id, @PathVariable Integer itemId) {
+        return ordemServicoService.removerServico(id, itemId);
     }
 }

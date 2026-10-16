@@ -1,0 +1,21 @@
+$kind: http-request
+description: Associa um item serviço à ordem de serviço.
+url: "{{baseUrl}}/{{ordemId}}/itens-servico"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "servicoId": 1,
+      "quantidade": 1
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('Status code é 200 OK', function () {
+          pm.response.to.have.status(200);
+      });
+    language: text/javascript
+order: 8000

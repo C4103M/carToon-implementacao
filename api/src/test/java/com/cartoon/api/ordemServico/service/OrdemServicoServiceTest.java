@@ -7,14 +7,18 @@ import com.cartoon.api.oficina.service.OficinaService;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
+import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.models.ItemPeca;
+import com.cartoon.api.ordemServico.models.ItemServico;
 import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.repository.OrdemServicoRepository;
 import com.cartoon.api.peca.models.Peca;
 import com.cartoon.api.peca.service.PecaService;
+import com.cartoon.api.servico.models.Servico;
+import com.cartoon.api.servico.service.ServicoService;
 import com.cartoon.api.usuario.model.Role;
 import com.cartoon.api.usuario.model.Usuario;
 import com.cartoon.api.usuario.service.UsuarioService;
@@ -60,6 +64,9 @@ class OrdemServicoServiceTest {
 
     @Mock
     private PecaService pecaService;
+
+    @Mock
+    private ServicoService servicoService;
 
     @InjectMocks
     private OrdemServicoService ordemServicoService;
@@ -295,5 +302,67 @@ class OrdemServicoServiceTest {
 
         assertThrows(ConflitoException.class, () -> ordemServicoService.excluir(10));
         verify(ordemServicoRepository, never()).delete(any(OrdemServico.class));
+    }
+
+    @Test
+    @DisplayName("Adicionar Serviço - Deve adicionar serviço em ordem não finalizada")
+    void adicionarServico_QuandoOrdemNaoFinalizada_DeveAdicionarServico() {
+        ItemServicoRequest request = new ItemServicoRequest(3, 1);
+        Servico servico = new Servico();
+        servico.setId(3);
+        servico.setNome("Alinhamento e Balanceamento");
+        servico.setValorBase(BigDecimal.valueOf(120.0));
+
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+        when(servicoService.buscarEntidade(3)).thenReturn(servico);
+
+        OrdemServicoResponse response = ordemServicoService.adicionarServico(10, request);
+
+        assertNotNull(response);
+        assertEquals(1, ordemServico.getItensServico().size());
+        assertEquals("Alinhamento e Balanceamento", ordemServico.getItensServico().get(0).getServico().getNome());
+    }
+
+    @Test
+    @DisplayName("Adicionar Serviço - Deve lançar ConflitoException quando ordem estiver finalizada")
+    void adicionarServico_QuandoOrdemFinalizada_DeveLancarExcecao() {
+        ordemServico.setStatusServico(StatusServico.FINALIZADO);
+        ItemServicoRequest request = new ItemServicoRequest(3, 1);
+
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+        when(servicoService.buscarEntidade(3)).thenReturn(new Servico());
+
+        assertThrows(ConflitoException.class, () -> ordemServicoService.adicionarServico(10, request));
+    }
+
+    @Test
+    @DisplayName("Remover Serviço - Deve remover serviço existente de ordem não finalizada")
+    void removerServico_QuandoExiste_DeveRemoverServico() {
+        Servico servico = new Servico();
+        servico.setId(3);
+        servico.setNome("Troca de Pastilha");
+        servico.setValorBase(BigDecimal.valueOf(80.0));
+
+        ItemServico item = new ItemServico();
+        item.setId(200);
+        item.setServico(servico);
+        item.setQuantidade(1);
+        item.setValorUnitario(80.0);
+        ordemServico.adicionarItemServico(item);
+
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+
+        OrdemServicoResponse response = ordemServicoService.removerServico(10, 200);
+
+        assertNotNull(response);
+        assertTrue(ordemServico.getItensServico().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Remover Serviço - Deve lançar RecursoNaoEncontradoException quando item de serviço não existir")
+    void removerServico_QuandoItemNaoExiste_DeveLancarExcecao() {
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+
+        assertThrows(RecursoNaoEncontradoException.class, () -> ordemServicoService.removerServico(10, 999));
     }
 }
