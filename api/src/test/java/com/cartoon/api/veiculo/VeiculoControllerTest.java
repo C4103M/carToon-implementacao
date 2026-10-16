@@ -76,7 +76,7 @@ class VeiculoControllerTest {
 
         when(veiculoService.cadastrar(any(VeiculoRequest.class))).thenReturn(response);
 
-        mockMvc.perform(post("/api/veiculos")
+        mockMvc.perform(post("/veiculos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -104,7 +104,7 @@ class VeiculoControllerTest {
         when(veiculoService.cadastrar(any(VeiculoRequest.class)))
                 .thenThrow(new ConflitoException("Já existe um veículo cadastrado com esta placa no sistema."));
 
-        mockMvc.perform(post("/api/veiculos")
+        mockMvc.perform(post("/veiculos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -139,7 +139,7 @@ class VeiculoControllerTest {
 
         when(veiculoService.atualizar(eq(1), any(VeiculoAtualizacaoRequest.class))).thenReturn(response);
 
-        mockMvc.perform(put("/api/veiculos/1")
+        mockMvc.perform(put("/veiculos/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -158,7 +158,7 @@ class VeiculoControllerTest {
                 2019
         );
 
-        mockMvc.perform(post("/api/veiculos")
+        mockMvc.perform(post("/veiculos")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -172,7 +172,7 @@ class VeiculoControllerTest {
         );
         when(veiculoService.inativar(1)).thenReturn(response);
 
-        mockMvc.perform(patch("/api/veiculos/1/inativar"))
+        mockMvc.perform(patch("/veiculos/1/inativar"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ativo").value(false));
     }
@@ -203,7 +203,7 @@ class VeiculoControllerTest {
 
         when(veiculoService.consultarHistorico("XYZ-9876")).thenReturn(historico);
 
-        mockMvc.perform(get("/api/veiculos/XYZ-9876/historico"))
+        mockMvc.perform(get("/veiculos/XYZ-9876/historico"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.veiculo.placa").value("XYZ-9876"))
                 .andExpect(jsonPath("$.totalOrdens").value(1))
@@ -224,7 +224,7 @@ class VeiculoControllerTest {
 
         when(veiculoService.consultarHistorico("XYZ-9876")).thenReturn(historico);
 
-        mockMvc.perform(get("/api/veiculos/XYZ-9876/historico"))
+        mockMvc.perform(get("/veiculos/XYZ-9876/historico"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.veiculo.placa").value("XYZ-9876"))
                 .andExpect(jsonPath("$.ordensServico").isEmpty());
@@ -236,7 +236,7 @@ class VeiculoControllerTest {
         when(veiculoService.consultarHistorico("NAO-0000"))
                 .thenThrow(new RecursoNaoEncontradoException("Veículo", "NAO-0000"));
 
-        mockMvc.perform(get("/api/veiculos/NAO-0000/historico"))
+        mockMvc.perform(get("/veiculos/NAO-0000/historico"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404));
     }
