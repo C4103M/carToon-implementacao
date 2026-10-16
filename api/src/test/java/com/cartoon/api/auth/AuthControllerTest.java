@@ -82,4 +82,55 @@ class AuthControllerTest {
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("jwt=")))
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("Max-Age=0")));
     }
+
+    @Test
+    @DisplayName("POST /auth/login - Deve retornar 400 Bad Request quando e-mail estiver em branco ou nulo")
+    void login_ComEmailEmBranco_DeveRetornar400() throws Exception {
+        LoginDTO dto = new LoginDTO("", "senha123");
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errosValidacao.email").exists());
+    }
+
+    @Test
+    @DisplayName("POST /auth/login - Deve retornar 400 Bad Request quando formato do e-mail for inválido")
+    void login_ComFormatoEmailInvalido_DeveRetornar400() throws Exception {
+        LoginDTO dto = new LoginDTO("email-sem-arroba", "senha123");
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errosValidacao.email").value("E-mail inválido"));
+    }
+
+    @Test
+    @DisplayName("POST /auth/login - Deve retornar 400 Bad Request quando senha estiver em branco ou nula")
+    void login_ComSenhaEmBranco_DeveRetornar400() throws Exception {
+        LoginDTO dto = new LoginDTO("usuario@cartoon.com", "   ");
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errosValidacao.password").exists());
+    }
+
+    @Test
+    @DisplayName("POST /auth/login - Deve retornar 400 Bad Request quando conta estiver bloqueada por tentativas")
+    void login_ContaBloqueada_DeveRetornar400ComMensagem() throws Exception {
+        LoginDTO dto = new LoginDTO("usuario@cartoon.com", "senha123");
+
+        when(authService.login(any(LoginDTO.class)))
+                .thenThrow(new com.cartoon.api.compartilhado.exceptions.BloqueioTentativasException());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(dto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Número de tentativas excedido. Conta temporariamente bloqueada por 15 minutos."));
+    }
 }

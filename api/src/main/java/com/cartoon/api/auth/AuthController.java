@@ -1,6 +1,7 @@
 package com.cartoon.api.auth;
 
 
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -19,7 +20,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping(path = "/login")
-    public ResponseEntity<Void> login(@RequestBody LoginDTO loginDTO) {
+    public ResponseEntity<Void> login(@Valid @RequestBody LoginDTO loginDTO) {
         String token = authService.login(loginDTO);
 
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
