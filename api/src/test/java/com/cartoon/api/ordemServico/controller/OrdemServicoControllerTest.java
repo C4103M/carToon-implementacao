@@ -3,6 +3,7 @@ package com.cartoon.api.ordemServico.controller;
 import com.cartoon.api.compartilhado.exceptions.GlobalExceptionHandler;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
+import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.models.StatusServico;
@@ -214,6 +215,41 @@ class OrdemServicoControllerTest {
         when(ordemServicoService.removerPeca(1, 100)).thenReturn(sampleResponse);
 
         mockMvc.perform(delete("/ordem-servico/1/itens-peca/100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(1)));
+    }
+
+    @Test
+    @DisplayName("POST /ordem-servico/{id}/itens-servico - Deve adicionar item de serviço com sucesso")
+    void adicionarServico_ComDadosValidos_DeveRetornar200OK() throws Exception {
+        ItemServicoRequest request = new ItemServicoRequest(5, 2);
+
+        when(ordemServicoService.adicionarServico(eq(1), any(ItemServicoRequest.class))).thenReturn(sampleResponse);
+
+        mockMvc.perform(post("/ordem-servico/1/itens-servico")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(1)));
+    }
+
+    @Test
+    @DisplayName("POST /ordem-servico/{id}/itens-servico - Deve retornar 400 Bad Request ao enviar quantidade inválida (<= 0)")
+    void adicionarServico_ComQuantidadeInvalida_DeveRetornar400BadRequest() throws Exception {
+        ItemServicoRequest requestInvalido = new ItemServicoRequest(5, 0);
+
+        mockMvc.perform(post("/ordem-servico/1/itens-servico")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestInvalido)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("DELETE /ordem-servico/{id}/itens-servico/{itemId} - Deve remover item de serviço da Ordem de Serviço")
+    void removerServico_DeveRetornar200OK() throws Exception {
+        when(ordemServicoService.removerServico(1, 200)).thenReturn(sampleResponse);
+
+        mockMvc.perform(delete("/ordem-servico/1/itens-servico/200"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)));
     }

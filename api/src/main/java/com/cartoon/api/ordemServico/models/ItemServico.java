@@ -33,4 +33,10 @@ public class ItemServico {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "ordem_servico_id", nullable = false)
     private OrdemServico ordemServico;
+
+    public void calcSubtotal() {
+        if (valorUnitario != null && quantidade != null) {
+            this.subtotal = valorUnitario * quantidade;
+        }
+    }
 }

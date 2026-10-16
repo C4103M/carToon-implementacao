@@ -3,6 +3,7 @@ package com.cartoon.api.ordemServico.mapper;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
+import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.ItemPecaResponse;
 import com.cartoon.api.ordemServico.dto.response.ItemServicoResponse;
@@ -11,6 +12,7 @@ import com.cartoon.api.ordemServico.models.ItemPeca;
 import com.cartoon.api.ordemServico.models.ItemServico;
 import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.peca.models.Peca;
+import com.cartoon.api.servico.models.Servico;
 import com.cartoon.api.usuario.model.Usuario;
 import com.cartoon.api.veiculo.model.Veiculo;
 
@@ -51,6 +53,7 @@ public final class OrdemServicoMapper {
                 mecanicoId,
                 mecanicoNome,
                 ordem.getItensPeca() != null ? ordem.getItensPeca().stream().map(OrdemServicoMapper::paraItemPecaResponse).toList() : java.util.List.of(),
+                ordem.getItensServico() != null ? ordem.getItensServico().stream().map(OrdemServicoMapper::paraItemServicoResponse).toList() : java.util.List.of(),
                 ordem.getTotal());
     }
 
@@ -111,6 +114,16 @@ public final class OrdemServicoMapper {
         item.setPeca(peca);
         item.setQuantidade(request.quantidade());
         item.setValorUnitario(peca.getValorBase());
+        item.calcSubtotal();
+        return item;
+    }
+
+    public static ItemServico paraItemServico(ItemServicoRequest request, Servico servico) {
+        ItemServico item = new ItemServico();
+        item.setServico(servico);
+        item.setQuantidade(request.quantidade());
+        item.setValorUnitario(servico.getValorBase() != null ? servico.getValorBase().doubleValue() : null);
+        item.setTempo(servico.getTempoEstimado());
         item.calcSubtotal();
         return item;
     }
