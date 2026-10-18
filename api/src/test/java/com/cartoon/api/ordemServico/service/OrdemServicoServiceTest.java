@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -67,6 +68,9 @@ class OrdemServicoServiceTest {
 
     @Mock
     private ServicoService servicoService;
+
+    @Spy
+    private CalculadoraOrcamento calculadora = new CalculadoraOrcamento();
 
     @InjectMocks
     private OrdemServicoService ordemServicoService;
@@ -305,8 +309,9 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Adicionar Serviço - Deve adicionar serviço em ordem não finalizada")
+    @DisplayName("Adicionar Serviço - Deve adicionar serviço em ordem não finalizada com 1% do valor FIPE")
     void adicionarServico_QuandoOrdemNaoFinalizada_DeveAdicionarServico() {
+        veiculo.setValorFipe(50000.0);
         ItemServicoRequest request = new ItemServicoRequest(3, 1);
         Servico servico = new Servico();
         servico.setId(3);
@@ -320,7 +325,10 @@ class OrdemServicoServiceTest {
 
         assertNotNull(response);
         assertEquals(1, ordemServico.getItensServico().size());
-        assertEquals("Alinhamento e Balanceamento", ordemServico.getItensServico().get(0).getServico().getNome());
+        ItemServico item = ordemServico.getItensServico().get(0);
+        assertEquals("Alinhamento e Balanceamento", item.getServico().getNome());
+        assertEquals(620.0, item.getValorUnitario());
+        assertEquals(620.0, item.getSubtotal());
     }
 
     @Test

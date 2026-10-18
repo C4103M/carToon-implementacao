@@ -55,7 +55,9 @@ public class DadosIniciais implements ApplicationRunner {
             veiculo.setAno(2020);
             veiculo.setMontadora("Volkswagen");
             veiculo.setCliente(cliente);
+            veiculo.setValorFipe(50000.0);
             veiculoRepository.save(veiculo);
+
         }
 
         criarOuAtualizarUsuario("Administrador", "admin@teste.com", "senha123", Role.ADMIN, matriz);
