@@ -25,8 +25,8 @@ public final class VeiculoSpecs {
             if (filtro.modelo() != null && !filtro.modelo().isBlank()) {
                 condicoes.add(cb.like(cb.upper(root.get("modelo")), "%" + filtro.modelo().trim().toUpperCase() + "%"));
             }
-            if (filtro.montadora() != null && !filtro.montadora().isBlank()) {
-                condicoes.add(cb.like(cb.upper(root.get("montadora")), "%" + filtro.montadora().trim().toUpperCase() + "%"));
+            if (filtro.marca() != null && !filtro.marca().isBlank()) {
+                condicoes.add(cb.like(cb.upper(root.get("marca")), "%" + filtro.marca().trim().toUpperCase() + "%"));
             }
             if (filtro.ativo() != null) {
                 condicoes.add(cb.equal(root.get("ativo"), filtro.ativo()));

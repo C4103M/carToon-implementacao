@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
+import java.math.BigDecimal;
+
 public record VeiculoRequest(
         @NotNull(message = "O ID do cliente é obrigatório")
         Integer clienteId,
@@ -16,13 +18,22 @@ public record VeiculoRequest(
         )
         String placa,
 
-        @NotBlank(message = "A montadora é obrigatória")
-        String montadora,
+        @NotBlank(message = "A marca é obrigatória")
+        String marca,
 
         @NotBlank(message = "O modelo é obrigatório")
         String modelo,
 
-        @NotNull(message = "O ano é obrigatório")
+        @NotNull(message = "O ano do modelo é obrigatório")
         @Min(value = 1900, message = "Ano inválido")
-        Integer ano
+        Integer anoModelo,
+
+        @NotBlank(message = "O combustível é obrigatório")
+        String combustivel,
+
+        String codigoFipe,
+
+        BigDecimal valorFipe,
+
+        String mesReferencia
 ) {}

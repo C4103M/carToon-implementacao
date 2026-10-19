@@ -41,9 +41,10 @@
 							"pm.test('Vinculação correta e dados do veículo', function () {",
 							"    var json = pm.response.json();",
 							"    pm.expect(json.placa).to.eql('XYZ-9876');",
-							"    pm.expect(json.montadora).to.eql('Ford');",
+							"    pm.expect(json.marca).to.eql('Ford');",
 							"    pm.expect(json.modelo).to.eql('Ka');",
-							"    pm.expect(json.ano).to.eql(2019);",
+							"    pm.expect(json.anoModelo).to.eql(2019);",
+							"    pm.expect(json.combustivel).to.eql('Flex');",
 							"    if (json.id) pm.collectionVariables.set('veiculoId', json.id);",
 							"});"
 						],
@@ -61,7 +62,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019\n}"
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"marca\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"anoModelo\": 2019,\n  \"combustivel\": \"Flex\",\n  \"codigoFipe\": \"003421-1\",\n  \"valorFipe\": 42500.00,\n  \"mesReferencia\": \"outubro de 2026\"\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}",
@@ -98,7 +99,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019\n}"
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"XYZ-9876\",\n  \"marca\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"anoModelo\": 2019,\n  \"combustivel\": \"Flex\"\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}",
@@ -173,7 +174,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"ABC-12\",\n  \"montadora\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"ano\": 2019\n}"
+					"raw": "{\n  \"clienteId\": 1,\n  \"placa\": \"ABC-12\",\n  \"marca\": \"Ford\",\n  \"modelo\": \"Ka\",\n  \"anoModelo\": 2019,\n  \"combustivel\": \"Flex\"\n}"
 				},
 				"url": {
 					"raw": "{{baseUrl}}",
