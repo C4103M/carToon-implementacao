@@ -115,8 +115,8 @@ class HistoricoVeiculoServiceTest {
         itemServico.setId(1);
         itemServico.setServico(servico);
         itemServico.setQuantidade(1);
-        itemServico.setValorUnitario(100.0);
-        itemServico.setSubtotal(100.0);
+        itemServico.setValorUnitario(BigDecimal.valueOf(100.0));
+        itemServico.setSubtotal(BigDecimal.valueOf(100.0));
         itemServico.setTempo(LocalTime.of(1, 0));
         ordemRecente.adicionarItemServico(itemServico);
 
