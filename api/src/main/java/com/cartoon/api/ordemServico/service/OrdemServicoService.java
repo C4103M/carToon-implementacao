@@ -31,7 +31,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -44,6 +46,7 @@ public class OrdemServicoService {
     private final OficinaService oficinaService;
     private final PecaService pecaService;
     private final ServicoService servicoService;
+    private final CalculadoraOrcamento calculadora;
 
     @Transactional
     public OrdemServicoResponse salvar(OrdemServicoRequest request) {
@@ -128,6 +131,7 @@ public class OrdemServicoService {
 
         ItemPeca itemPeca = OrdemServicoMapper.paraItemPeca(request, peca);
         os.adicionarItemPeca(itemPeca);
+        os.recalcularTotal();
 
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
@@ -143,6 +147,7 @@ public class OrdemServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Item de peça", itemId));
 
         ordem.removerItemPeca(item);
+        ordem.recalcularTotal();
         return OrdemServicoMapper.paraOrdemServicoResponse(ordem);
     }
 
@@ -153,7 +158,16 @@ public class OrdemServicoService {
 
         validarNaoFinalizada(os);
 
+        Double fipe = os.getVeiculo().getValorFipe();
+        if (fipe == null) {
+            throw new RegraDeNegocioException(
+                    "Veículo sem valor FIPE cadastrado: não é possível calcular o serviço.");
+        }
+        BigDecimal valorUnitario = calculadora.valorServico(servico.getValorBase(), BigDecimal.valueOf(fipe));
+
         ItemServico itemServico = OrdemServicoMapper.paraItemServico(request, servico);
+        itemServico.setValorUnitario(valorUnitario);
+        itemServico.calcSubtotal();
         os.adicionarItemServico(itemServico);
 
         return OrdemServicoMapper.paraOrdemServicoResponse(os);

@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 
 @NoArgsConstructor
@@ -21,9 +22,9 @@ public class ItemServico {
     @Column(nullable = false)
     Integer quantidade;
     @Column(name = "valor_unitario", nullable = false)
-    Double valorUnitario;
+    BigDecimal valorUnitario;
 
-    Double subtotal;
+    BigDecimal subtotal;
 
     @ManyToOne(fetch = FetchType.LAZY)
     Servico servico;
@@ -36,7 +37,7 @@ public class ItemServico {
 
     public void calcSubtotal() {
         if (valorUnitario != null && quantidade != null) {
-            this.subtotal = valorUnitario * quantidade;
+            this.subtotal = valorUnitario.multiply(BigDecimal.valueOf(quantidade));
         }
     }
 }
