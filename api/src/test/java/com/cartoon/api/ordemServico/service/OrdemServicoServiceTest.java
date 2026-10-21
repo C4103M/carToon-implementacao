@@ -340,8 +340,8 @@ class OrdemServicoServiceTest {
         ItemServico itemServico = new ItemServico();
         itemServico.setId(1);
         itemServico.setQuantidade(1);
-        itemServico.setValorUnitario(150.0);
-        itemServico.setSubtotal(150.0);
+        itemServico.setValorUnitario(BigDecimal.valueOf(150.0));
+        itemServico.setSubtotal(BigDecimal.valueOf(150.0));
         ordemServico.adicionarItemServico(itemServico);
 
         ordemServico.recalcularTotal();
@@ -400,8 +400,8 @@ class OrdemServicoServiceTest {
         ItemServico itemServico = new ItemServico();
         itemServico.setId(1);
         itemServico.setQuantidade(1);
-        itemServico.setValorUnitario(120.0);
-        itemServico.setSubtotal(120.0);
+        itemServico.setValorUnitario(BigDecimal.valueOf(120.0));
+        itemServico.setSubtotal(BigDecimal.valueOf(120.0));
         ordemServico.adicionarItemServico(itemServico);
         ordemServico.recalcularTotal();
 
@@ -441,8 +441,8 @@ class OrdemServicoServiceTest {
         ItemServico itemServico = new ItemServico();
         itemServico.setId(200);
         itemServico.setQuantidade(1);
-        itemServico.setValorUnitario(150.0);
-        itemServico.setSubtotal(150.0);
+        itemServico.setValorUnitario(BigDecimal.valueOf(150.0));
+        itemServico.setSubtotal(BigDecimal.valueOf(150.0));
         ordemServico.adicionarItemServico(itemServico);
 
         ordemServico.recalcularTotal();
@@ -473,8 +473,8 @@ class OrdemServicoServiceTest {
         ItemServico itemServico = new ItemServico();
         itemServico.setId(1);
         itemServico.setQuantidade(1);
-        itemServico.setValorUnitario(45.30);
-        itemServico.setSubtotal(45.30);
+        itemServico.setValorUnitario(new BigDecimal("45.30"));
+        itemServico.setSubtotal(new BigDecimal("45.30"));
         ordemServico.adicionarItemServico(itemServico);
 
         ordemServico.recalcularTotal();
@@ -496,7 +496,7 @@ class OrdemServicoServiceTest {
         ItemServico itemServico = new ItemServico();
         itemServico.setId(1);
         itemServico.setQuantidade(2);
-        itemServico.setValorUnitario(50.0);
+        itemServico.setValorUnitario(BigDecimal.valueOf(50.0));
         itemServico.setSubtotal(null); // propositalmente nulo
         ordemServico.adicionarItemServico(itemServico);
 
@@ -604,8 +604,8 @@ class OrdemServicoServiceTest {
         assertEquals(1, ordemServico.getItensServico().size());
         ItemServico item = ordemServico.getItensServico().get(0);
         assertEquals("Alinhamento e Balanceamento", item.getServico().getNome());
-        assertEquals(620.0, item.getValorUnitario());
-        assertEquals(620.0, item.getSubtotal());
+        assertEquals(0, BigDecimal.valueOf(620.0).compareTo(item.getValorUnitario()));
+        assertEquals(0, BigDecimal.valueOf(620.0).compareTo(item.getSubtotal()));
     }
 
     @Test
@@ -632,7 +632,7 @@ class OrdemServicoServiceTest {
         item.setId(200);
         item.setServico(servico);
         item.setQuantidade(1);
-        item.setValorUnitario(80.0);
+        item.setValorUnitario(BigDecimal.valueOf(80.0));
         ordemServico.adicionarItemServico(item);
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));

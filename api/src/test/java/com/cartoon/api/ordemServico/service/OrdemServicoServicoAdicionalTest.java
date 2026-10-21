@@ -75,8 +75,8 @@ class OrdemServicoServicoAdicionalTest {
         OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1));
 
         ItemServicoResponse item = resposta.itensServico().get(0);
-        assertEquals(650.0, item.valorUnitario());
-        assertEquals(650.0, item.subtotal());
+        assertEquals(0, BigDecimal.valueOf(650.0).compareTo(item.valorUnitario()));
+        assertEquals(0, BigDecimal.valueOf(650.0).compareTo(item.subtotal()));
     }
 
     @Test
@@ -87,8 +87,8 @@ class OrdemServicoServicoAdicionalTest {
         OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 2));
 
         ItemServicoResponse item = resposta.itensServico().get(0);
-        assertEquals(650.0, item.valorUnitario());
-        assertEquals(1300.0, item.subtotal());
+        assertEquals(0, BigDecimal.valueOf(650.0).compareTo(item.valorUnitario()));
+        assertEquals(0, BigDecimal.valueOf(1300.0).compareTo(item.subtotal()));
     }
 
     @Test
@@ -99,7 +99,7 @@ class OrdemServicoServicoAdicionalTest {
 
         OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1));
 
-        assertEquals(3150.0, resposta.itensServico().get(0).valorUnitario());
+        assertEquals(0, BigDecimal.valueOf(3150.0).compareTo(resposta.itensServico().get(0).valorUnitario()));
     }
 
     @Test
