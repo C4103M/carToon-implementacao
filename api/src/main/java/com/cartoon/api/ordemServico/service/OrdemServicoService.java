@@ -166,7 +166,7 @@ public class OrdemServicoService {
         BigDecimal valorUnitario = calculadora.valorServico(servico.getValorBase(), BigDecimal.valueOf(fipe));
 
         ItemServico itemServico = OrdemServicoMapper.paraItemServico(request, servico);
-        itemServico.setValorUnitario(valorUnitario.doubleValue());
+        itemServico.setValorUnitario(valorUnitario);
         itemServico.calcSubtotal();
         os.adicionarItemServico(itemServico);
 
