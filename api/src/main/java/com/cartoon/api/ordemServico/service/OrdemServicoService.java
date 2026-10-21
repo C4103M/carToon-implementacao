@@ -131,6 +131,7 @@ public class OrdemServicoService {
 
         ItemPeca itemPeca = OrdemServicoMapper.paraItemPeca(request, peca);
         os.adicionarItemPeca(itemPeca);
+        os.recalcularTotal();
 
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
@@ -146,6 +147,7 @@ public class OrdemServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Item de peça", itemId));
 
         ordem.removerItemPeca(item);
+        ordem.recalcularTotal();
         return OrdemServicoMapper.paraOrdemServicoResponse(ordem);
     }
 

@@ -74,9 +74,9 @@ public final class OrdemServicoMapper {
     public static ItemServicoResponse paraItemServicoResponse(ItemServico item) {
         Integer servicoId = item.getServico() != null ? item.getServico().getId() : null;
         String servicoNome = item.getServico() != null ? item.getServico().getNome() : null;
-        Double subtotal = item.getSubtotal();
+        BigDecimal subtotal = item.getSubtotal();
         if (subtotal == null && item.getValorUnitario() != null && item.getQuantidade() != null) {
-            subtotal = item.getValorUnitario() * item.getQuantidade();
+            subtotal = item.getValorUnitario().multiply(BigDecimal.valueOf(item.getQuantidade()));
         }
         return new ItemServicoResponse(
                 item.getId(),
@@ -122,8 +122,8 @@ public final class OrdemServicoMapper {
         ItemServico item = new ItemServico();
         item.setServico(servico);
         item.setQuantidade(request.quantidade());
-        item.setValorUnitario(servico.getValorBase() != null ? servico.getValorBase().doubleValue() : null);
-        item.setTempo(servico.getTempoEstimado());
+        item.setValorUnitario(servico != null ? servico.getValorBase() : null);
+        item.setTempo(servico != null ? servico.getTempoEstimado() : null);
         item.calcSubtotal();
         return item;
     }
