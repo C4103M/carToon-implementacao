@@ -50,6 +50,18 @@ services:
     networks:
       - db_network
 
+  frontend:
+    build: ./frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    networks:
+      - db_network
+
 volumes:
   db_data:
   pgadmin_data:

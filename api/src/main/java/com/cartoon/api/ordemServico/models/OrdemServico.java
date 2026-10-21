@@ -102,10 +102,10 @@ public class OrdemServico {
                 : itensServico.stream()
                     .map(item -> {
                         if (item.getSubtotal() != null) {
-                            return BigDecimal.valueOf(item.getSubtotal());
+                            return item.getSubtotal();
                         }
                         if (item.getValorUnitario() != null && item.getQuantidade() != null) {
-                            return BigDecimal.valueOf(item.getValorUnitario() * item.getQuantidade());
+                            return item.getValorUnitario().multiply(BigDecimal.valueOf(item.getQuantidade()));
                         }
                         return BigDecimal.ZERO;
                     })
