@@ -1,5 +1,7 @@
 package com.cartoon.api.seguranca;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,8 +17,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -64,7 +64,8 @@ public class SecurityConfig {
 
                         .requestMatchers("/fipe/**").authenticated()
 
-                        .requestMatchers("/clientes/**").hasAnyRole("MECANICO")
+                        .requestMatchers("/clientes/**").hasAnyRole("MECANICO", "ADMIN")
+                        .requestMatchers("/veiculos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
 
                         .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                         .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
