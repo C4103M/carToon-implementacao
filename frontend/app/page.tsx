@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Wrench, AlertCircle, ShieldCheck, Store } from 'lucide-react';
+import { Wrench, AlertCircle } from 'lucide-react';
 import { useStore } from '@/lib/store';
+import { loginAndRedirect } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,48 +15,52 @@ import {
 } from '@/components/ui/field';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
-import { ADMIN_EMAIL, seedOficinas } from '@/lib/mock-data';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function LoginPage() {
     const router = useRouter();
-    const { login, oficinas } = useStore();
+    const { setUser } = useStore();
     const [email, setEmail] = useState('');
     const [senha, setSenha] = useState('');
     const [emailInvalido, setEmailInvalido] = useState(false);
-    const [erro, setErro] = useState<null | 'invalid' | 'suspensa'>(null);
+    const [erro, setErro] = useState<null | 'invalid' | 'suspensa' | 'bloqueado'>(null);
+    const [mensagemErro, setMensagemErro] = useState<string>('');
     const [loading, setLoading] = useState(false);
 
-    const oficinaAtiva =
-        oficinas.find((o) => o.status === 'ativa') ?? seedOficinas[0];
-
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
         setEmailInvalido(!emailOk);
         if (!emailOk || !senha) return;
 
         setErro(null);
+        setMensagemErro('');
         setLoading(true);
 
-        const res = login(email);
-        if (res.ok) {
-            if (email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-                router.push('/admin');
-            } else {
-                router.push('/app');
-            }
+        const res = await loginAndRedirect(
+            { email: email.trim(), password: senha },
+            router
+        );
+
+        if (res.success && res.user) {
+            setUser({
+                id: res.user.id,
+                nome: res.user.nome,
+                email: res.user.email,
+                role: res.user.role,
+                ativo: res.user.ativo,
+                oficinaId: res.user.oficinaId ?? undefined,
+            });
         } else {
-            setErro(res.reason);
+            const reason = res.reason === 'bloqueado'
+                ? 'bloqueado'
+                : res.reason === 'suspensa'
+                ? 'suspensa'
+                : 'invalid';
+            setErro(reason);
+            setMensagemErro(res.error || 'Falha ao autenticar.');
             setLoading(false);
         }
-    };
-
-    const preencher = (value: string) => {
-        setEmail(value);
-        setSenha('123456');
-        setErro(null);
-        setEmailInvalido(false);
     };
 
     return (
@@ -68,7 +73,7 @@ export default function LoginPage() {
                             <Wrench className="size-5" />
                         </div>
                         <span className="text-lg font-semibold">
-                            OficinaPro
+                            CarTOON
                         </span>
                     </div>
                     <ThemeToggle />
@@ -79,16 +84,14 @@ export default function LoginPage() {
                         Orçamentos precisos, do seu jeito.
                     </h1>
                     <p className="text-pretty text-sidebar-foreground/70">
-                        Gerencie clientes, veículos e monte orçamentos com
-                        valores de mão de obra ajustados automaticamente pelo
-                        valor de mercado de cada veículo.
+                        Gerencie clientes, veículos e monte orçamentos automatizados para seu negócio
                     </p>
                 </div>
 
                 <p className="text-xs text-sidebar-foreground/50">
                     {'© '}
                     {new Date().getFullYear()}
-                    {' OficinaPro. Todos os direitos reservados.'}
+                    {' CarTOON. Todos os direitos reservados.'}
                 </p>
             </div>
 
@@ -100,8 +103,7 @@ export default function LoginPage() {
                             Entrar
                         </h2>
                         <p className="text-sm text-muted-foreground">
-                            Acesse com seu e-mail e senha. O sistema identifica
-                            automaticamente o tipo de conta.
+                            Acesse com seu e-mail e senha.
                         </p>
                     </div>
 
@@ -110,8 +112,17 @@ export default function LoginPage() {
                             <AlertCircle />
                             <AlertTitle>Não foi possível entrar</AlertTitle>
                             <AlertDescription>
-                                E-mail ou senha inválidos. Verifique os dados e
-                                tente novamente.
+                                {mensagemErro || 'E-mail ou senha inválidos. Verifique os dados e tente novamente.'}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
+                    {erro === 'bloqueado' && (
+                        <Alert variant="destructive" className="mb-4">
+                            <AlertCircle />
+                            <AlertTitle>Tentativas excedidas</AlertTitle>
+                            <AlertDescription>
+                                {mensagemErro || 'Acesso temporariamente bloqueado por excesso de tentativas. Tente novamente mais tarde.'}
                             </AlertDescription>
                         </Alert>
                     )}
@@ -121,8 +132,7 @@ export default function LoginPage() {
                             <AlertCircle />
                             <AlertTitle>Conta indisponível</AlertTitle>
                             <AlertDescription>
-                                Sua conta está temporariamente indisponível.
-                                Entre em contato com o suporte.
+                                {mensagemErro || 'Sua conta está inativa ou suspensa. Entre em contato com o suporte.'}
                             </AlertDescription>
                         </Alert>
                     )}
@@ -179,49 +189,6 @@ export default function LoginPage() {
                             </Button>
                         </FieldGroup>
                     </form>
-
-                    <div className="mt-8 rounded-lg border border-dashed border-border bg-muted/40 p-4">
-                        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Contas de demonstração
-                        </p>
-                        <div className="flex flex-col gap-2">
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    preencher(oficinaAtiva?.email ?? '')
-                                }
-                                className="flex items-center gap-3 rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-primary/50"
-                            >
-                                <Store className="size-4 text-primary" />
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium">
-                                        Oficina
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {oficinaAtiva?.email}
-                                    </span>
-                                </div>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => preencher(ADMIN_EMAIL)}
-                                className="flex items-center gap-3 rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-primary/50"
-                            >
-                                <ShieldCheck className="size-4 text-primary" />
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium">
-                                        Administrador
-                                    </span>
-                                    <span className="text-xs text-muted-foreground">
-                                        {ADMIN_EMAIL}
-                                    </span>
-                                </div>
-                            </button>
-                        </div>
-                        <p className="mt-3 text-xs text-muted-foreground">
-                            Qualquer senha funciona neste protótipo.
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>
