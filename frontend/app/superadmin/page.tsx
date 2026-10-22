@@ -122,7 +122,7 @@ export default function AdminOficinasPage() {
                     <TableRow
                       key={o.id}
                       className="cursor-pointer"
-                      onClick={() => router.push(`/admin/oficinas/${o.id}`)}
+                      onClick={() => router.push(`/superadmin/oficinas/${o.id}`)}
                     >
                       <TableCell className="font-medium">{o.nome}</TableCell>
                       <TableCell className="hidden text-muted-foreground md:table-cell">

@@ -12,7 +12,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { getCurrentUser, logout as authLogout } from "@/lib/auth";
+import { authService } from "@/lib/services";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
 
     // Se não temos usuário (ex: após refresh F5), consulta o backend via cookie HttpOnly
-    getCurrentUser()
+    authService.getCurrentUser()
       .then((authUser) => {
         if (!isMounted) return;
 
@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           setCheckingAuth(false);
         } else if (authUser && authUser.role?.toUpperCase().replace(/^ROLE_/, "") === "SUPERADMIN") {
           // Se for Superadmin tentando acessar a área da oficina, envia para o painel de admin
-          router.replace("/admin");
+          router.replace("/superadmin");
         } else {
           // Não autenticado ou papel inválido
           router.replace("/");
@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const handleLogout = async () => {
-    await authLogout();
+    await authService.logout();
     storeLogout();
     router.replace("/");
   };

@@ -22,7 +22,7 @@ import type {
   Veiculo,
 } from './types'
 import {
-  ADMIN_EMAIL,
+
   seedClientes,
   seedOficinas,
   seedOrcamentos,
@@ -31,7 +31,7 @@ import {
   seedVeiculos,
 } from './mock-data'
 import type { FipeResult } from './fipe'
-import { getCurrentUser } from './auth'
+import { authService } from './services/auth.service'
 
 function uid(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`
@@ -41,7 +41,7 @@ interface StoreValue {
   // sessão
   user: SessionUser | null
   setUser: (user: SessionUser | null) => void
-  login: (email: string) => { ok: true } | { ok: false; reason: 'invalid' | 'suspensa' }
+
   logout: () => void
 
   // oficinas (admin)
@@ -100,7 +100,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Sincroniza sessão ativa a partir do cookie HttpOnly com o backend
   useEffect(() => {
     let isMounted = true;
-    getCurrentUser()
+    authService.getCurrentUser()
       .then((authUser) => {
         if (!isMounted || !authUser) return;
         setUser({
@@ -121,33 +121,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const login = useCb<StoreValue['login']>(
-    (email) => {
-      const normalized = email.trim().toLowerCase()
-      if (normalized === ADMIN_EMAIL) {
-        setUser({
-          role: 'admin',
-          nome: 'Administrador',
-          email: ADMIN_EMAIL,
-        })
-        return { ok: true }
-      }
-      const oficina = oficinas.find((o) => o.email.toLowerCase() === normalized)
-      if (!oficina) return { ok: false, reason: 'invalid' }
-      if (oficina.status === 'suspensa') return { ok: false, reason: 'suspensa' }
-      if (oficina.status === 'pendente') return { ok: false, reason: 'suspensa' }
-      setUser({
-        role: 'oficina',
-        oficinaId: oficina.id,
-        nome: oficina.nome,
-        email: oficina.email,
-      })
-      return { ok: true }
-    },
-    [oficinas],
-  )
-
-  const logout = useCb(() => setUser(null), [])
+  const logout = useCb(async () => {
+    setUser(null)
+    try {
+      await authService.logout()
+    } catch {
+      // Silencia se API já estiver inacessível
+    }
+  }, [])
 
   const setOficinaStatus = useCb<StoreValue['setOficinaStatus']>((id, status) => {
     setOficinas((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
@@ -269,7 +250,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       setUser,
-      login,
       logout,
       oficinas,
       setOficinaStatus,
@@ -294,7 +274,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [
       user,
       setUser,
-      login,
       logout,
       oficinas,
       setOficinaStatus,

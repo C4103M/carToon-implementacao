@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Wrench, AlertCircle } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { loginAndRedirect } from '@/lib/auth';
+import { authService } from '@/lib/services';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -37,7 +37,7 @@ export default function LoginPage() {
         setMensagemErro('');
         setLoading(true);
 
-        const res = await loginAndRedirect(
+        const res = await authService.loginAndRedirect(
             { email: email.trim(), password: senha },
             router
         );
@@ -61,6 +61,14 @@ export default function LoginPage() {
             setMensagemErro(res.error || 'Falha ao autenticar.');
             setLoading(false);
         }
+    };
+
+    const handlePreencherDemo = (demoEmail: string, demoSenha: string) => {
+        setEmail(demoEmail);
+        setSenha(demoSenha);
+        setEmailInvalido(false);
+        setErro(null);
+        setMensagemErro('');
     };
 
     return (
@@ -189,6 +197,41 @@ export default function LoginPage() {
                             </Button>
                         </FieldGroup>
                     </form>
+
+                    <div className="mt-6 border-t pt-4">
+                        <p className="mb-2 text-xs font-medium text-muted-foreground">
+                            Contas de demonstração:
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => handlePreencherDemo('admin@teste.com', 'senha123')}
+                            >
+                                Admin
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => handlePreencherDemo('mecanico@teste.com', 'senha123')}
+                            >
+                                Mecânico
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => handlePreencherDemo('superadmin@teste.com', 'senha123')}
+                            >
+                                Superadmin
+                            </Button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { getCurrentUser, logout as authLogout } from "@/lib/auth";
+import { authService } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import { ThemeToggle } from "./theme-toggle";
 function isAdminRole(role?: string): boolean {
   if (!role) return false;
   const normalized = role.toUpperCase().replace(/^ROLE_/, "");
-  return normalized === "SUPERADMIN" || normalized === "ADMIN";
+  return normalized === "SUPERADMIN";
 }
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -29,7 +29,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    getCurrentUser()
+    authService.getCurrentUser()
       .then((authUser) => {
         if (!isMounted) return;
 
@@ -70,7 +70,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   const handleLogout = async () => {
-    await authLogout();
+    await authService.logout();
     storeLogout();
     router.replace("/");
   };
@@ -84,13 +84,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <ShieldCheck className="size-5" />
             </div>
             <div className="flex flex-col leading-tight">
-              <span className="font-semibold">OficinaPro</span>
+              <span className="font-semibold">CarTOON</span>
               <span className="text-xs text-sidebar-foreground/60">
                 Painel administrativo
               </span>
             </div>
             <Badge variant="secondary" className="ml-2 hidden sm:inline-flex">
-              Admin
+              Superadmin
             </Badge>
           </div>
           <div className="flex items-center gap-3">

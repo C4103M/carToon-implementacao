@@ -1,8 +1,8 @@
-import { AppError, handleError } from './error-handler';
+import { AppError, handleError } from '../error-handler';
 
 /**
- * Módulo de Autenticação (Client / Frontend)
- * 
+ * Serviço de Autenticação (Client / Frontend)
+ *
  * Gerencia todo o fluxo de autenticação com o backend:
  * 1. Envio de credenciais para autenticação (POST /api/auth/login)
  * 2. Recepção e manutenção de cookie HttpOnly ("jwt") via credentials: 'include'
@@ -28,7 +28,12 @@ export interface LoginCredentials {
   password: string;
 }
 
-export type LoginErrorReason = 'invalid' | 'suspensa' | 'bloqueado' | 'network' | 'desconhecido';
+export type LoginErrorReason =
+  | 'invalid'
+  | 'suspensa'
+  | 'bloqueado'
+  | 'network'
+  | 'desconhecido';
 
 export interface LoginResult {
   success: boolean;
@@ -48,9 +53,19 @@ export function getApiUrl(endpoint: string): string {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
 
   // No navegador, por padrão usa caminho relativo para usufruir do proxy do Next.js (mesma origem)
-  if (isBrowser && (!envUrl || envUrl === '' || envUrl === '/api' || envUrl.includes('localhost:3000'))) {
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    return cleanEndpoint.startsWith('/api') ? cleanEndpoint : `/api${cleanEndpoint}`;
+  if (
+    isBrowser &&
+    (!envUrl ||
+      envUrl === '' ||
+      envUrl === '/api' ||
+      envUrl.includes('localhost:3000'))
+  ) {
+    const cleanEndpoint = endpoint.startsWith('/')
+      ? endpoint
+      : `/${endpoint}`;
+    return cleanEndpoint.startsWith('/api')
+      ? cleanEndpoint
+      : `/api${cleanEndpoint}`;
   }
 
   const cleanBase = (envUrl || 'http://localhost:8080').replace(/\/+$/, '');
@@ -67,31 +82,25 @@ export function getApiUrl(endpoint: string): string {
 
 /**
  * Determina a URL de redirecionamento apropriada com base no nível de acesso (Role).
- * 
- * - SUPERADMIN: Administrador da plataforma -> /admin
- * - ADMIN: Administrador de oficina ou gestor -> /app (ou /admin se não possuir oficina vinculada)
+ *
+ * - SUPERADMIN: Administrador da plataforma -> /superadmin
+ * - ADMIN: Administrador da oficina -> /app
  * - MECANICO: Operador da oficina -> /app
  */
 export function getRedirectPathForUser(user: AuthUser): string {
-  const roleUpper = String(user.role || '').toUpperCase().replace(/^ROLE_/, '');
+  const roleUpper = String(user.role || '')
+    .toUpperCase()
+    .replace(/^ROLE_/, '');
 
   if (roleUpper === 'SUPERADMIN') {
-    return '/admin';
+    return '/superadmin';
   }
 
-  if (roleUpper === 'ADMIN') {
-    // Se for admin geral sem oficina vinculada, vai para o painel administrativo
-    return user.oficinaId ? '/app' : '/admin';
-  }
-
-  // Padrão para MECANICO ou outros perfis operacionais da oficina
   return '/app';
 }
 
 /**
  * Busca os dados do usuário autenticado atualmente usando o cookie HttpOnly salvo.
- * 
- * @returns AuthUser se logado, ou null caso o cookie esteja ausente/expirado/inválido.
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {
   try {
@@ -99,9 +108,8 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
-      // credentials: 'include' garante o envio do cookie HttpOnly "jwt"
       credentials: 'include',
     });
 
@@ -126,9 +134,6 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 /**
  * Realiza a chamada de login no backend.
- * 
- * O backend responde com Set-Cookie HttpOnly ("jwt") no navegador.
- * Em seguida, busca os dados do usuário autenticado via getCurrentUser() para checar seu nível de acesso.
  */
 export async function login(credentials: LoginCredentials): Promise<AuthUser> {
   const url = getApiUrl('/auth/login');
@@ -139,9 +144,8 @@ export async function login(credentials: LoginCredentials): Promise<AuthUser> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
-      // credentials: 'include' é indispensável para receber e persistir o cookie HttpOnly
       credentials: 'include',
       body: JSON.stringify({
         email: credentials.email.trim(),
@@ -150,7 +154,10 @@ export async function login(credentials: LoginCredentials): Promise<AuthUser> {
     });
   } catch (err: unknown) {
     if (err instanceof AppError) throw err;
-    const errorMsg = err instanceof Error ? err.message : 'Falha na conexão com o servidor';
+    const errorMsg =
+      err instanceof Error
+        ? err.message
+        : 'Falha na conexão com o servidor';
     throw new AppError(errorMsg, { code: 'network', cause: err });
   }
 
@@ -167,14 +174,22 @@ export async function login(credentials: LoginCredentials): Promise<AuthUser> {
       if (response.status === 401) {
         errorDetail = 'Email ou senha incorreto';
       } else if (response.status === 429) {
-        errorDetail = 'Número excessivo de tentativas. Tente novamente mais tarde.';
+        errorDetail =
+          'Número excessivo de tentativas. Tente novamente mais tarde.';
         reason = 'bloqueado';
       }
     }
 
-    if (response.status === 429 || errorDetail.toLowerCase().includes('bloqueio') || errorDetail.toLowerCase().includes('tentativas')) {
+    if (
+      response.status === 429 ||
+      errorDetail.toLowerCase().includes('bloqueio') ||
+      errorDetail.toLowerCase().includes('tentativas')
+    ) {
       reason = 'bloqueado';
-    } else if (errorDetail.toLowerCase().includes('inativo') || errorDetail.toLowerCase().includes('suspensa')) {
+    } else if (
+      errorDetail.toLowerCase().includes('inativo') ||
+      errorDetail.toLowerCase().includes('suspensa')
+    ) {
       reason = 'suspensa';
     }
 
@@ -185,13 +200,15 @@ export async function login(credentials: LoginCredentials): Promise<AuthUser> {
     });
   }
 
-  // Cookie HttpOnly foi armazenado pelo navegador; agora recuperamos as permissões do usuário
   const user = await getCurrentUser();
 
   if (!user) {
-    throw new AppError('Não foi possível carregar as informações do usuário logado.', {
-      code: 'desconhecido',
-    });
+    throw new AppError(
+      'Não foi possível carregar as informações do usuário logado.',
+      {
+        code: 'desconhecido',
+      },
+    );
   }
 
   if (!user.ativo) {
@@ -212,7 +229,7 @@ export async function logout(): Promise<boolean> {
     await fetch(url, {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
       credentials: 'include',
     });
@@ -224,20 +241,12 @@ export async function logout(): Promise<boolean> {
 }
 
 /**
- * Executa o fluxo completo:
- * 1. Faz o login no backend
- * 2. Grava o cookie HttpOnly
- * 3. Valida os dados e nível de acesso do usuário
- * 4. Determina a rota correspondente
- * 5. Realiza o redirecionamento (via router do Next.js ou window.location)
- * 
- * @param credentials Email e senha
- * @param router Instância de useRouter() do next/navigation (opcional)
+ * Executa o fluxo completo: login, validação e redirecionamento.
  */
 export async function loginAndRedirect(
   credentials: LoginCredentials,
   router?: { push: (url: string) => void; replace?: (url: string) => void },
-  options?: { notifyError?: boolean }
+  options?: { notifyError?: boolean },
 ): Promise<LoginResult> {
   try {
     const user = await login(credentials);
@@ -261,7 +270,10 @@ export async function loginAndRedirect(
     const appErr = err instanceof AppError ? err : null;
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Erro inesperado ao realizar login',
+      error:
+        err instanceof Error
+          ? err.message
+          : 'Erro inesperado ao realizar login',
       reason: (appErr?.code as LoginErrorReason) || 'invalid',
     };
   }
@@ -275,3 +287,14 @@ export async function isAuthenticated(): Promise<boolean> {
   return user !== null && user.ativo;
 }
 
+export const authService = {
+  login,
+  logout,
+  getCurrentUser,
+  loginAndRedirect,
+  getRedirectPathForUser,
+  isAuthenticated,
+  getApiUrl,
+};
+
+export default authService;

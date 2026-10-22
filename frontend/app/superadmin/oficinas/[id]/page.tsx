@@ -52,7 +52,7 @@ export default function OficinaDetalhePage({
       <PageHeader
         title={oficina.nome}
         description="Dados da conta e controle de acesso."
-        backHref="/admin"
+        backHref="/superadmin"
         backLabel="Todas as oficinas"
         actions={<OficinaStatusBadge status={oficina.status} />}
       />
