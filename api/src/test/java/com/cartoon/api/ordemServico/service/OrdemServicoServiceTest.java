@@ -588,7 +588,7 @@ class OrdemServicoServiceTest {
     @Test
     @DisplayName("Adicionar Serviço - Deve adicionar serviço em ordem não finalizada com 1% do valor FIPE")
     void adicionarServico_QuandoOrdemNaoFinalizada_DeveAdicionarServico() {
-        veiculo.setValorFipe(50000.0);
+        veiculo.setValorFipe(new BigDecimal("50000"));
         ItemServicoRequest request = new ItemServicoRequest(3, 1);
         Servico servico = new Servico();
         servico.setId(3);

@@ -31,7 +31,7 @@ public class Veiculo {
     @Column(nullable = false)
     String modelo;
 
-    @Column(name = "ano_modelo", nullable = false)
+    @Column(name = "ano_modelo")
     Integer anoModelo;
 
     @Column(name = "combustivel")
@@ -63,21 +63,5 @@ public class Veiculo {
         } else {
             this.placa = null;
         }
-    }
-
-    public String getMontadora() {
-        return this.marca;
-    }
-
-    public void setMontadora(String montadora) {
-        this.marca = montadora;
-    }
-
-    public Integer getAno() {
-        return this.anoModelo;
-    }
-
-    public void setAno(Integer ano) {
-        this.anoModelo = ano;
     }
 }

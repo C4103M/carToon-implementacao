@@ -28,7 +28,6 @@ public record VeiculoRequest(
         @Min(value = 1900, message = "Ano inválido")
         Integer anoModelo,
 
-        @NotBlank(message = "O combustível é obrigatório")
         String combustivel,
 
         String codigoFipe,

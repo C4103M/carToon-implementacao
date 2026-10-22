@@ -72,8 +72,9 @@ class HistoricoVeiculoServiceTest {
         veiculo.setId(1);
         veiculo.setPlaca("XYZ-9876");
         veiculo.setModelo("Ka");
-        veiculo.setMontadora("Ford");
-        veiculo.setAno(2019);
+        veiculo.setMarca("Ford");
+        veiculo.setAnoModelo(2019);
+        veiculo.setCombustivel("Flex");
         veiculo.setValorFipe(null);
         veiculo.setAtivo(true);
         veiculo.setCliente(cliente);

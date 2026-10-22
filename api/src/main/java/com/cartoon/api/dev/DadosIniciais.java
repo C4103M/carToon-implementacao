@@ -17,6 +17,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+
 @Component
 @Profile("dev")
 @RequiredArgsConstructor
@@ -52,10 +54,11 @@ public class DadosIniciais implements ApplicationRunner {
             Veiculo veiculo = new Veiculo();
             veiculo.setPlaca("ABC1D23");
             veiculo.setModelo("Gol 1.0");
-            veiculo.setAno(2020);
-            veiculo.setMontadora("Volkswagen");
+            veiculo.setAnoModelo(2020);
+            veiculo.setMarca("Volkswagen");
+            veiculo.setCombustivel("Flex");
             veiculo.setCliente(cliente);
-            veiculo.setValorFipe(50000.0);
+            veiculo.setValorFipe(new BigDecimal("50000"));
             veiculoRepository.save(veiculo);
 
         }
