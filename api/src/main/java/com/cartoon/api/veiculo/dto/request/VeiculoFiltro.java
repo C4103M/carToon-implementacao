@@ -4,6 +4,6 @@ public record VeiculoFiltro(
         Integer clienteId,
         String placa,
         String modelo,
-        String montadora,
+        String marca,
         Boolean ativo
 ) {}

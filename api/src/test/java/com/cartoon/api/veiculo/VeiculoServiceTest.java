@@ -66,23 +66,30 @@ class VeiculoServiceTest {
         veiculoValido = new Veiculo();
         veiculoValido.setId(1);
         veiculoValido.setPlaca("XYZ-9876");
-        veiculoValido.setMontadora("Ford");
+        veiculoValido.setMarca("Ford");
         veiculoValido.setModelo("Ka");
-        veiculoValido.setAno(2019);
+        veiculoValido.setAnoModelo(2019);
+        veiculoValido.setCombustivel("Flex");
+        veiculoValido.setCodigoFipe(null);
         veiculoValido.setValorFipe(null);
+        veiculoValido.setMesReferencia(null);
         veiculoValido.setAtivo(true);
         veiculoValido.setCliente(clienteValido);
     }
 
     @Test
-    @DisplayName("UC05 - Teste 01: Cadastrar veículo válido com sucesso e valor FIPE null")
+    @DisplayName("UC05 - Teste 01: Cadastrar veículo válido com sucesso (modo manual, campos FIPE null)")
     void deveCadastrarVeiculoValido() {
         VeiculoRequest request = new VeiculoRequest(
                 1,
                 "XYZ-9876",
                 "Ford",
                 "Ka",
-                2019
+                2019,
+                "Flex",
+                null,
+                null,
+                null
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -98,13 +105,15 @@ class VeiculoServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(1);
         assertThat(response.placa()).isEqualTo("XYZ-9876");
-        assertThat(response.montadora()).isEqualTo("Ford");
+        assertThat(response.marca()).isEqualTo("Ford");
         assertThat(response.modelo()).isEqualTo("Ka");
-        assertThat(response.ano()).isEqualTo(2019);
+        assertThat(response.anoModelo()).isEqualTo(2019);
+        assertThat(response.combustivel()).isEqualTo("Flex");
+        assertThat(response.codigoFipe()).isNull();
         assertThat(response.valorFipe()).isNull();
+        assertThat(response.mesReferencia()).isNull();
         assertThat(response.clienteId()).isEqualTo(1);
         assertThat(response.clienteNome()).isEqualTo("João da Silva");
-
 
         verify(clienteService).buscarEntidade(1);
         verify(veiculoRepository).existsByPlacaIgnoreCase("XYZ-9876");
@@ -112,14 +121,18 @@ class VeiculoServiceTest {
     }
 
     @Test
-    @DisplayName("UC05 - Teste 01 (Mercosul): Cadastrar veículo com placa no padrão Mercosul")
-    void deveCadastrarVeiculoPlacaMercosul() {
+    @DisplayName("UC05 - Teste 01 (FIPE + Mercosul): Cadastrar veículo com placa Mercosul e dados FIPE preenchidos")
+    void deveCadastrarVeiculoPlacaMercosulComDadosFipe() {
         VeiculoRequest request = new VeiculoRequest(
                 1,
                 "ABC1D23",
                 "Volkswagen",
                 "Gol 1.0",
-                2020
+                2020,
+                "Gasolina",
+                "005340-6",
+                new BigDecimal("48500.00"),
+                "outubro de 2026"
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -134,8 +147,9 @@ class VeiculoServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.placa()).isEqualTo("ABC1D23");
-        assertThat(response.valorFipe()).isNull();
-
+        assertThat(response.codigoFipe()).isEqualTo("005340-6");
+        assertThat(response.valorFipe()).isEqualByComparingTo("48500.00");
+        assertThat(response.mesReferencia()).isEqualTo("outubro de 2026");
     }
 
     @Test
@@ -146,7 +160,11 @@ class VeiculoServiceTest {
                 "XYZ-9876",
                 "Ford",
                 "Ka",
-                2019
+                2019,
+                "Flex",
+                null,
+                null,
+                null
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -166,6 +184,10 @@ class VeiculoServiceTest {
                 "Ford Atualizada",
                 "Ka Sedan",
                 2020,
+                "Gasolina",
+                "003421-1",
+                new BigDecimal("52000.00"),
+                "outubro de 2026",
                 null,
                 null,
                 null
@@ -177,12 +199,14 @@ class VeiculoServiceTest {
         VeiculoResponse response = veiculoService.atualizar(1, request);
 
         assertThat(response).isNotNull();
-        assertThat(response.montadora()).isEqualTo("Ford Atualizada");
+        assertThat(response.marca()).isEqualTo("Ford Atualizada");
         assertThat(response.modelo()).isEqualTo("Ka Sedan");
-        assertThat(response.ano()).isEqualTo(2020);
-        assertThat(response.valorFipe()).isNull();
+        assertThat(response.anoModelo()).isEqualTo(2020);
+        assertThat(response.combustivel()).isEqualTo("Gasolina");
+        assertThat(response.codigoFipe()).isEqualTo("003421-1");
+        assertThat(response.valorFipe()).isEqualByComparingTo("52000.00");
+        assertThat(response.mesReferencia()).isEqualTo("outubro de 2026");
         assertThat(response.clienteNome()).isEqualTo("João da Silva");
-
 
         verify(veiculoRepository).save(veiculoValido);
     }
@@ -195,7 +219,11 @@ class VeiculoServiceTest {
                 "ABC-12",
                 "Ford",
                 "Ka",
-                2019
+                2019,
+                "Flex",
+                null,
+                null,
+                null
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -215,7 +243,11 @@ class VeiculoServiceTest {
                 "123-ABCD",
                 "Ford",
                 "Ka",
-                2019
+                2019,
+                "Flex",
+                null,
+                null,
+                null
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -236,7 +268,11 @@ class VeiculoServiceTest {
                 "XYZ-9876",
                 "Ford",
                 "Ka",
-                2019
+                2019,
+                "Flex",
+                null,
+                null,
+                null
         );
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
@@ -256,7 +292,7 @@ class VeiculoServiceTest {
         novoClienteInativo.setAtivo(false);
 
         VeiculoAtualizacaoRequest request = new VeiculoAtualizacaoRequest(
-                "Ford", "Ka", 2020, null, 2, null
+                "Ford", "Ka", 2020, "Flex", null, null, null, null, 2, null
         );
 
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
@@ -273,7 +309,7 @@ class VeiculoServiceTest {
     @DisplayName("UC05: Bloquear atualização com placa de formato inválido")
     void deveBloquearAtualizacaoComPlacaInvalida() {
         VeiculoAtualizacaoRequest request = new VeiculoAtualizacaoRequest(
-                "Ford", "Ka", 2020, "PLACA-INVALIDA", null, null
+                "Ford", "Ka", 2020, "Flex", null, null, null, "PLACA-INVALIDA", null, null
         );
 
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));

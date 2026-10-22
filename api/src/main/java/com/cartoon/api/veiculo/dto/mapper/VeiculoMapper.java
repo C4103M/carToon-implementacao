@@ -18,10 +18,13 @@ public final class VeiculoMapper {
     public static Veiculo paraVeiculo(VeiculoRequest request, Cliente cliente) {
         Veiculo veiculo = new Veiculo();
         veiculo.setPlaca(request.placa());
+        veiculo.setMarca(request.marca().trim());
         veiculo.setModelo(request.modelo().trim());
-        veiculo.setMontadora(request.montadora().trim());
-        veiculo.setAno(request.ano());
-        veiculo.setValorFipe(null); // Valor FIPE permanece null por enquanto até integração com API externa
+        veiculo.setAnoModelo(request.anoModelo());
+        veiculo.setCombustivel(request.combustivel() != null ? request.combustivel().trim() : null);
+        veiculo.setCodigoFipe(request.codigoFipe() != null && !request.codigoFipe().isBlank() ? request.codigoFipe().trim() : null);
+        veiculo.setValorFipe(request.valorFipe());
+        veiculo.setMesReferencia(request.mesReferencia() != null && !request.mesReferencia().isBlank() ? request.mesReferencia().trim() : null);
         veiculo.setAtivo(true);
         veiculo.setCliente(cliente);
         return veiculo;
@@ -35,10 +38,13 @@ public final class VeiculoMapper {
         return new VeiculoResponse(
                 veiculo.getId(),
                 veiculo.getPlaca(),
+                veiculo.getMarca(),
                 veiculo.getModelo(),
-                veiculo.getAno(),
-                veiculo.getMontadora(),
+                veiculo.getAnoModelo(),
+                veiculo.getCombustivel(),
+                veiculo.getCodigoFipe(),
                 veiculo.getValorFipe(),
+                veiculo.getMesReferencia(),
                 veiculo.getAtivo(),
                 clienteId,
                 clienteNome,
@@ -52,10 +58,13 @@ public final class VeiculoMapper {
         return new VeiculoResumo(
                 veiculo.getId(),
                 veiculo.getPlaca(),
+                veiculo.getMarca(),
                 veiculo.getModelo(),
-                veiculo.getMontadora(),
-                veiculo.getAno(),
+                veiculo.getAnoModelo(),
+                veiculo.getCombustivel(),
+                veiculo.getCodigoFipe(),
                 veiculo.getValorFipe(),
+                veiculo.getMesReferencia(),
                 veiculo.getAtivo(),
                 clienteNome
         );
@@ -72,14 +81,26 @@ public final class VeiculoMapper {
     }
 
     public static void atualizarDados(Veiculo veiculo, VeiculoAtualizacaoRequest request, Cliente novoCliente) {
-        if (request.montadora() != null && !request.montadora().isBlank()) {
-            veiculo.setMontadora(request.montadora().trim());
+        if (request.marca() != null && !request.marca().isBlank()) {
+            veiculo.setMarca(request.marca().trim());
         }
         if (request.modelo() != null && !request.modelo().isBlank()) {
             veiculo.setModelo(request.modelo().trim());
         }
-        if (request.ano() != null) {
-            veiculo.setAno(request.ano());
+        if (request.anoModelo() != null) {
+            veiculo.setAnoModelo(request.anoModelo());
+        }
+        if (request.combustivel() != null && !request.combustivel().isBlank()) {
+            veiculo.setCombustivel(request.combustivel().trim());
+        }
+        if (request.codigoFipe() != null) {
+            veiculo.setCodigoFipe(request.codigoFipe().isBlank() ? null : request.codigoFipe().trim());
+        }
+        if (request.valorFipe() != null) {
+            veiculo.setValorFipe(request.valorFipe());
+        }
+        if (request.mesReferencia() != null) {
+            veiculo.setMesReferencia(request.mesReferencia().isBlank() ? null : request.mesReferencia().trim());
         }
         if (request.placa() != null && !request.placa().isBlank()) {
             veiculo.setPlaca(request.placa());

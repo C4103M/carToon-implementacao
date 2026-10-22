@@ -1,0 +1,219 @@
+{
+	"info": {
+		"_postman_id": "cartoon-fipe-v1",
+		"name": "CarToon - FIPE API Tests",
+		"description": "Coleção de testes para consulta de marcas, modelos, anos e valores na tabela FIPE.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrlFipe",
+			"value": "http://localhost:8080/api/fipe",
+			"type": "string"
+		},
+		{
+			"key": "tipo",
+			"value": "carros",
+			"type": "string"
+		},
+		{
+			"key": "marcaId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "modeloId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "anoId",
+			"value": "1992-1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "1. Listar Marcas por Tipo (GET /fipe/{tipo}/marcas)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Retorna lista de marcas com codigo e nome', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json).to.be.an('array').that.is.not.empty;",
+							"    pm.expect(json[0]).to.have.property('codigo');",
+							"    pm.expect(json[0]).to.have.property('nome');",
+							"    pm.collectionVariables.set('marcaId', json[0].codigo);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrlFipe}}/{{tipo}}/marcas",
+					"host": ["{{baseUrlFipe}}"],
+					"path": ["{{tipo}}", "marcas"]
+				}
+			}
+		},
+		{
+			"name": "2. Listar Modelos da Marca (GET /fipe/{tipo}/marcas/{marcaId}/modelos)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Retorna lista de modelos com codigo e nome', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json).to.be.an('array').that.is.not.empty;",
+							"    pm.expect(json[0]).to.have.property('codigo');",
+							"    pm.expect(json[0]).to.have.property('nome');",
+							"    pm.collectionVariables.set('modeloId', json[0].codigo);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrlFipe}}/{{tipo}}/marcas/{{marcaId}}/modelos",
+					"host": ["{{baseUrlFipe}}"],
+					"path": ["{{tipo}}", "marcas", "{{marcaId}}", "modelos"]
+				}
+			}
+		},
+		{
+			"name": "3. Listar Anos do Modelo (GET /fipe/{tipo}/marcas/{marcaId}/modelos/{modeloId}/anos)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Retorna lista de anos com codigo e nome', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json).to.be.an('array').that.is.not.empty;",
+							"    pm.expect(json[0]).to.have.property('codigo');",
+							"    pm.expect(json[0]).to.have.property('nome');",
+							"    pm.collectionVariables.set('anoId', json[0].codigo);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrlFipe}}/{{tipo}}/marcas/{{marcaId}}/modelos/{{modeloId}}/anos",
+					"host": ["{{baseUrlFipe}}"],
+					"path": ["{{tipo}}", "marcas", "{{marcaId}}", "modelos", "{{modeloId}}", "anos"]
+				}
+			}
+		},
+		{
+			"name": "4. Consultar Valor FIPE (GET /fipe/{tipo}/marcas/{marcaId}/modelos/{modeloId}/anos/{anoId})",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 200 OK', function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"pm.test('Retorna FipeValorDTO com valorFipe numérico', function () {",
+							"    var json = pm.response.json();",
+							"    pm.expect(json).to.have.property('marca');",
+							"    pm.expect(json).to.have.property('modelo');",
+							"    pm.expect(json).to.have.property('anoModelo');",
+							"    pm.expect(json).to.have.property('combustivel');",
+							"    pm.expect(json).to.have.property('codigoFipe');",
+							"    pm.expect(json).to.have.property('valorFipe');",
+							"    pm.expect(json.valorFipe).to.be.a('number');",
+							"    pm.expect(json).to.have.property('mesReferencia');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrlFipe}}/{{tipo}}/marcas/{{marcaId}}/modelos/{{modeloId}}/anos/{{anoId}}",
+					"host": ["{{baseUrlFipe}}"],
+					"path": ["{{tipo}}", "marcas", "{{marcaId}}", "modelos", "{{modeloId}}", "anos", "{{anoId}}"]
+				}
+			}
+		},
+		{
+			"name": "5. Tipo de Veículo Inválido (400 Bad Request)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 400 Bad Request', function () {",
+							"    pm.response.to.have.status(400);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrlFipe}}/aviao/marcas",
+					"host": ["{{baseUrlFipe}}"],
+					"path": ["aviao", "marcas"]
+				}
+			}
+		},
+		{
+			"name": "6. Marca/Modelo/Ano Inexistente (404 Not Found)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test('Status code é 404 Not Found', function () {",
+							"    pm.response.to.have.status(404);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrlFipe}}/carros/marcas/999999/modelos",
+					"host": ["{{baseUrlFipe}}"],
+					"path": ["carros", "marcas", "999999", "modelos"]
+				}
+			}
+		}
+	]
+}

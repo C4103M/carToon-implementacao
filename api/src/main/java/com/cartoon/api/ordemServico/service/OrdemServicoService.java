@@ -158,12 +158,12 @@ public class OrdemServicoService {
 
         validarNaoFinalizada(os);
 
-        Double fipe = os.getVeiculo().getValorFipe();
+        BigDecimal fipe = os.getVeiculo().getValorFipe();
         if (fipe == null) {
             throw new RegraDeNegocioException(
                     "Veículo sem valor FIPE cadastrado: não é possível calcular o serviço.");
         }
-        BigDecimal valorUnitario = calculadora.valorServico(servico.getValorBase(), BigDecimal.valueOf(fipe));
+        BigDecimal valorUnitario = calculadora.valorServico(servico.getValorBase(), fipe);
 
         ItemServico itemServico = OrdemServicoMapper.paraItemServico(request, servico);
         itemServico.setValorUnitario(valorUnitario);

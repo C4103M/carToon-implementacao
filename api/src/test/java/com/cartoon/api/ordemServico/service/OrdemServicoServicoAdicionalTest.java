@@ -53,7 +53,7 @@ class OrdemServicoServicoAdicionalTest {
     @BeforeEach
     void setUp() {
         veiculo = new Veiculo();
-        veiculo.setValorFipe(50000.0);
+        veiculo.setValorFipe(new BigDecimal("50000"));
 
         ordem = new OrdemServico();
         ordem.setVeiculo(veiculo);
@@ -94,7 +94,7 @@ class OrdemServicoServicoAdicionalTest {
     @Test
     @DisplayName("adicionarServico - Veículo mais caro deve gerar serviço mais caro")
     void adicionarServico_VeiculoMaisCaroDeveCustarMais() {
-        veiculo.setValorFipe(300000.0);
+        veiculo.setValorFipe(new BigDecimal("300000"));
         prepararBusca();
 
         OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1));
