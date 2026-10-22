@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -12,6 +12,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { getCurrentUser, logout as authLogout } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,18 +26,62 @@ const nav = [
   { href: "/app/orcamentos", label: "Orçamentos", icon: FileText },
 ];
 
+function isOficinaRole(role?: string): boolean {
+  if (!role) return false;
+  const normalized = role.toUpperCase().replace(/^ROLE_/, "");
+  return normalized === "OFICINA" || normalized === "MECANICO" || normalized === "ADMIN";
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useStore();
+  const { user, setUser, logout: storeLogout } = useStore();
   const router = useRouter();
   const pathname = usePathname();
+  const [checkingAuth, setCheckingAuth] = useState(!user);
 
   useEffect(() => {
-    if (!user || user.role !== "oficina") {
-      router.replace("/");
-    }
-  }, [user, router]);
+    let isMounted = true;
 
-  if (!user || user.role !== "oficina") {
+    // Se já temos usuário válido na store com role de oficina, encerra checagem
+    if (user && isOficinaRole(user.role)) {
+      setCheckingAuth(false);
+      return;
+    }
+
+    // Se não temos usuário (ex: após refresh F5), consulta o backend via cookie HttpOnly
+    getCurrentUser()
+      .then((authUser) => {
+        if (!isMounted) return;
+
+        if (authUser && isOficinaRole(authUser.role)) {
+          setUser({
+            id: authUser.id,
+            nome: authUser.nome,
+            email: authUser.email,
+            role: authUser.role,
+            ativo: authUser.ativo,
+            oficinaId: authUser.oficinaId ?? undefined,
+          });
+          setCheckingAuth(false);
+        } else if (authUser && authUser.role?.toUpperCase().replace(/^ROLE_/, "") === "SUPERADMIN") {
+          // Se for Superadmin tentando acessar a área da oficina, envia para o painel de admin
+          router.replace("/admin");
+        } else {
+          // Não autenticado ou papel inválido
+          router.replace("/");
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          router.replace("/");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, setUser, router]);
+
+  if (checkingAuth || !user || !isOficinaRole(user.role)) {
     return (
       <div className="flex min-h-svh items-center justify-center">
         <Spinner />
@@ -44,8 +89,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await authLogout();
+    storeLogout();
     router.replace("/");
   };
 
@@ -93,7 +139,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-3 min-w-0 flex-1">
               <Avatar className="size-9 shrink-0">
                 <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-semibold">
-                  {user.nome.slice(0, 2).toUpperCase()}
+                  {user.nome ? user.nome.slice(0, 2).toUpperCase() : "OF"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex min-w-0 flex-1 flex-col leading-tight">

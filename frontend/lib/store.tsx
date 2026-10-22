@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback as useCb,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -30,6 +31,7 @@ import {
   seedVeiculos,
 } from './mock-data'
 import type { FipeResult } from './fipe'
+import { getCurrentUser } from './auth'
 
 function uid(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`
@@ -38,6 +40,7 @@ function uid(prefix: string): string {
 interface StoreValue {
   // sessão
   user: SessionUser | null
+  setUser: (user: SessionUser | null) => void
   login: (email: string) => { ok: true } | { ok: false; reason: 'invalid' | 'suspensa' }
   logout: () => void
 
@@ -94,6 +97,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [pecas, setPecas] = useState<Peca[]>(seedPecas)
   const [orcamentos, setOrcamentos] = useState<Orcamento[]>(seedOrcamentos)
 
+  // Sincroniza sessão ativa a partir do cookie HttpOnly com o backend
+  useEffect(() => {
+    let isMounted = true;
+    getCurrentUser()
+      .then((authUser) => {
+        if (!isMounted || !authUser) return;
+        setUser({
+          id: authUser.id,
+          nome: authUser.nome,
+          email: authUser.email,
+          role: authUser.role,
+          ativo: authUser.ativo,
+          oficinaId: authUser.oficinaId ?? undefined,
+        });
+      })
+      .catch(() => {
+        // Sem sessão ativa no cookie, mantém user como null
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const login = useCb<StoreValue['login']>(
     (email) => {
       const normalized = email.trim().toLowerCase()
@@ -149,8 +176,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return veiculo
   }, [])
 
-  const trocarVeiculo = useCb<StoreValue['trocarVeiculo']>((antigoId, data, fipe) => {
-    const novo: Veiculo = {
+  const trocarVeiculo = useCb<StoreValue['trocarVeiculo']>((veiculoAntigoId, data, fipe) => {
+    const novoVeiculo: Veiculo = {
       id: uid('vei'),
       ...data,
       fipeValor: fipe.valor,
@@ -158,17 +185,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       fipeConsultadoEm: fipe.consultadoEm,
       ativo: true,
     }
-    setVeiculos((prev) => [
-      novo,
-      ...prev.map((v) =>
-        v.id === antigoId ? { ...v, ativo: false, substituidoPorId: novo.id } : v,
-      ),
-    ])
-    return novo
+    setVeiculos((prev) =>
+      prev.map((v) => (v.id === veiculoAntigoId ? { ...v, ativo: false, substituidoPorId: novoVeiculo.id } : v)).concat(novoVeiculo),
+    )
+    return novoVeiculo
   }, [])
 
   const addServico = useCb<StoreValue['addServico']>((data) => {
-    const servico: Servico = { id: uid('srv'), ...data, ativo: true }
+    const servico: Servico = { id: uid('srv'), ativo: true, ...data }
     setServicos((prev) => [servico, ...prev])
     return servico
   }, [])
@@ -178,7 +202,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addPeca = useCb<StoreValue['addPeca']>((data) => {
-    const peca: Peca = { id: uid('pec'), ...data, ativo: true }
+    const peca: Peca = { id: uid('pec'), ativo: true, ...data }
     setPecas((prev) => [peca, ...prev])
     return peca
   }, [])
@@ -192,7 +216,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       id: uid('orc'),
       clienteId,
       veiculoId,
-      data: new Date().toISOString(),
+      data: new Date().toISOString().slice(0, 10),
       status: 'pendente',
       itens: [],
     }
@@ -244,6 +268,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StoreValue>(
     () => ({
       user,
+      setUser,
       login,
       logout,
       oficinas,
@@ -268,6 +293,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }),
     [
       user,
+      setUser,
       login,
       logout,
       oficinas,

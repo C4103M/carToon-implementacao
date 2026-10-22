@@ -1,25 +1,67 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { getCurrentUser, logout as authLogout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "./theme-toggle";
 
+function isAdminRole(role?: string): boolean {
+  if (!role) return false;
+  const normalized = role.toUpperCase().replace(/^ROLE_/, "");
+  return normalized === "SUPERADMIN" || normalized === "ADMIN";
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useStore();
+  const { user, setUser, logout: storeLogout } = useStore();
   const router = useRouter();
+  const [checkingAuth, setCheckingAuth] = useState(!user);
 
   useEffect(() => {
-    if (!user || user.role !== "admin") {
-      router.replace("/");
-    }
-  }, [user, router]);
+    let isMounted = true;
 
-  if (!user || user.role !== "admin") {
+    if (user && isAdminRole(user.role)) {
+      setCheckingAuth(false);
+      return;
+    }
+
+    getCurrentUser()
+      .then((authUser) => {
+        if (!isMounted) return;
+
+        if (authUser && isAdminRole(authUser.role)) {
+          setUser({
+            id: authUser.id,
+            nome: authUser.nome,
+            email: authUser.email,
+            role: authUser.role,
+            ativo: authUser.ativo,
+            oficinaId: authUser.oficinaId ?? undefined,
+          });
+          setCheckingAuth(false);
+        } else if (authUser) {
+          // Usuário autenticado mas sem permissão de admin (ex: mecânico)
+          router.replace("/app");
+        } else {
+          router.replace("/");
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          router.replace("/");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, setUser, router]);
+
+  if (checkingAuth || !user || !isAdminRole(user.role)) {
     return (
       <div className="flex min-h-svh items-center justify-center">
         <Spinner />
@@ -27,8 +69,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await authLogout();
+    storeLogout();
     router.replace("/");
   };
 
@@ -67,7 +110,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-8 md:px-8">{children}</main>
+
+      <main className="mx-auto max-w-6xl p-4 md:p-8">{children}</main>
     </div>
   );
 }

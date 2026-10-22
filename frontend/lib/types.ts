@@ -73,12 +73,14 @@ export interface Orcamento {
   itens: OrcamentoItem[]
 }
 
-export type UserRole = 'admin' | 'oficina'
+export type UserRole = 'admin' | 'oficina' | 'SUPERADMIN' | 'ADMIN' | 'MECANICO' | string
 
 export interface SessionUser {
+  id?: number
   role: UserRole
-  /** Preenchido apenas quando role = 'oficina' */
-  oficinaId?: string
+  /** Preenchido quando associado a uma oficina */
+  oficinaId?: string | number | null
   nome: string
   email: string
+  ativo?: boolean
 }
