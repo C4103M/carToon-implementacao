@@ -42,11 +42,24 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      FIPE_TOKEN: ${FIPE_TOKEN}
     depends_on:
       db:
         condition: service_healthy
     ports:
       - "8080:8080"
+    networks:
+      - db_network
+
+  frontend:
+    build: ./frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
     networks:
       - db_network
 

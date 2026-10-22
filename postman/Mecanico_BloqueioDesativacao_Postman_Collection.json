@@ -1,0 +1,624 @@
+{
+  "info": {
+    "name": "CarToon - Bloqueio de Desativação de Mecânico",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Login como ADMIN",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{emailAdmin}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Cookie jwt recebido', function () { pm.expect(pm.response.headers.get('Set-Cookie')).to.include('jwt='); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "00b - Descobrir o id do ADMIN logado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/me",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.collectionVariables.set('adminId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A1 - Criar mecânico A",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuario/mecanico",
+        "description": "CENÁRIO A: PENDENTE -> ACEITO -> EM_ANDAMENTO bloqueiam; FINALIZADO libera.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"{{nomeMec}}\",\n  \"email\": \"{{emailMec}}\",\n  \"senha\": \"senha12345\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var s = Math.floor(Math.random()*1e9);",
+              "pm.collectionVariables.set('nomeMec', 'Mecanico Teste ' + s);",
+              "pm.collectionVariables.set('emailMec', 'mec' + s + '@teste.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+              "var j = pm.response.json();",
+              "pm.collectionVariables.set('mecanicoId', j.id);",
+              "pm.test('nasce ativo', function () { pm.expect(pm.response.json().ativo).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A2 - Criar OS para o mecânico A (nasce PENDENTE)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/ordem-servico",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"veiculoId\": {{veiculoId}},\n  \"oficinaId\": {{oficinaId}},\n  \"mecanicoId\": {{mecanicoId}},\n  \"descricao\": \"OS de teste - bloqueio de desativação\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('osId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A3 - Desativar com OS PENDENTE -> 409",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
+              "pm.test('mensagem cita as ordens de serviço', function () { pm.expect(pm.response.json().message).to.include('ordens de serviço'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A4 - Aceitar a OS",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/ordem-servico/{{osId}}/aceitar",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A5 - Desativar com OS ACEITA -> 409",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
+              "pm.test('mensagem cita as ordens de serviço', function () { pm.expect(pm.response.json().message).to.include('ordens de serviço'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A6 - Iniciar a OS",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/ordem-servico/{{osId}}/iniciar",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A7 - Desativar com OS EM_ANDAMENTO -> 409",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
+              "pm.test('mensagem cita as ordens de serviço', function () { pm.expect(pm.response.json().message).to.include('ordens de serviço'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A8 - Mecânico continua ativo após as tentativas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('ativo = true', function () { pm.expect(pm.response.json().ativo).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A9 - Finalizar a OS",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/ordem-servico/{{osId}}/finalizar",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A10 - Desativar com OS FINALIZADA -> 204",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "A11 - Mecânico A agora está inativo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('ativo = false', function () { pm.expect(pm.response.json().ativo).to.eql(false); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "B1 - Criar mecânico B",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuario/mecanico",
+        "description": "CENÁRIO B: OS REJEITADA não bloqueia.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"{{nomeMec}}\",\n  \"email\": \"{{emailMec}}\",\n  \"senha\": \"senha12345\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var s = Math.floor(Math.random()*1e9);",
+              "pm.collectionVariables.set('nomeMec', 'Mecanico Teste ' + s);",
+              "pm.collectionVariables.set('emailMec', 'mec' + s + '@teste.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+              "var j = pm.response.json();",
+              "pm.collectionVariables.set('mecanicoId', j.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "B2 - Criar OS para o mecânico B",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/ordem-servico",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"veiculoId\": {{veiculoId}},\n  \"oficinaId\": {{oficinaId}},\n  \"mecanicoId\": {{mecanicoId}},\n  \"descricao\": \"OS de teste - bloqueio de desativação\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+              "pm.collectionVariables.set('osId', pm.response.json().id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "B3 - Desativar com OS PENDENTE -> 409",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', function () { pm.response.to.have.status(409); });",
+              "pm.test('mensagem cita as ordens de serviço', function () { pm.expect(pm.response.json().message).to.include('ordens de serviço'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "B4 - Rejeitar a OS",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/ordem-servico/{{osId}}/rejeitar",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "B5 - Desativar com OS REJEITADA -> 204",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "C1 - Criar mecânico C (sem nenhuma OS)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/usuario/mecanico",
+        "description": "CENÁRIO C: sem OS, desativa normalmente.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"{{nomeMec}}\",\n  \"email\": \"{{emailMec}}\",\n  \"senha\": \"senha12345\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var s = Math.floor(Math.random()*1e9);",
+              "pm.collectionVariables.set('nomeMec', 'Mecanico Teste ' + s);",
+              "pm.collectionVariables.set('emailMec', 'mec' + s + '@teste.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201', function () { pm.response.to.have.status(201); });",
+              "var j = pm.response.json();",
+              "pm.collectionVariables.set('mecanicoId', j.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "C2 - Desativar mecânico sem OS -> 204",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "C3 - Reativar mecânico (PATCH /ativar) -> 204",
+      "request": {
+        "method": "PATCH",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{mecanicoId}}/ativar",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 204', function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "C4 - Desativar o próprio ADMIN continua dando 409",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/usuario/{{adminId}}",
+        "description": "Regra antiga preservada (usa o adminId obtido no passo 00b)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 409', function () { pm.response.to.have.status(409); });"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "senhaTeste",
+      "value": "senha123"
+    },
+    {
+      "key": "emailAdmin",
+      "value": "admin@teste.com"
+    },
+    {
+      "key": "oficinaId",
+      "value": "1"
+    },
+    {
+      "key": "veiculoId",
+      "value": "1"
+    },
+    {
+      "key": "adminId",
+      "value": ""
+    },
+    {
+      "key": "mecanicoId",
+      "value": ""
+    },
+    {
+      "key": "osId",
+      "value": ""
+    },
+    {
+      "key": "nomeMec",
+      "value": ""
+    },
+    {
+      "key": "emailMec",
+      "value": ""
+    }
+  ]
+}

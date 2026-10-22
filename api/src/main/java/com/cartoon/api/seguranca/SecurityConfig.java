@@ -37,6 +37,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/error").permitAll()
 
+                        .requestMatchers("/fipe/**").authenticated()
+
                         .requestMatchers("/clientes/**").hasAnyRole("MECANICO")
 
                         .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")

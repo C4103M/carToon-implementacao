@@ -27,6 +27,7 @@ public class ClienteMapper {
         response.setCpf(cliente.getCpf());
         response.setTelefone(cliente.getTelefone());
         response.setEndereco(cliente.getEndereco());
+        response.setAtivo(cliente.isAtivo());
         if (cliente.getOficina() != null) {
             response.setOficinaId(cliente.getOficina().getId());
         }

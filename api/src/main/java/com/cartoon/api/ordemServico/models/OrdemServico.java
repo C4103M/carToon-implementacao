@@ -38,7 +38,7 @@ public class OrdemServico {
     @Column(name = "data_finalizacao")
     LocalDate dataFinalizacao;
 
-    BigDecimal total;
+    BigDecimal total = BigDecimal.ZERO;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -66,6 +66,7 @@ public class OrdemServico {
         itensPeca.add(item);
         item.setOrdemServico(this);
     }
+
     public void removerItemPeca(ItemPeca item) {
         itensPeca.remove(item);
         item.setOrdemServico(null);
@@ -75,9 +76,45 @@ public class OrdemServico {
         itensServico.add(item);
         item.setOrdemServico(this);
     }
+
     public void removerItemServico(ItemServico item) {
         itensServico.remove(item);
         item.setOrdemServico(null);
     }
 
+    public void recalcularTotal() {
+        BigDecimal totalPecas = (itensPeca == null || itensPeca.isEmpty())
+                ? BigDecimal.ZERO
+                : itensPeca.stream()
+                    .map(item -> {
+                        if (item.getSubtotal() != null) {
+                            return item.getSubtotal();
+                        }
+                        if (item.getValorUnitario() != null && item.getQuantidade() != null) {
+                            return item.getValorUnitario().multiply(BigDecimal.valueOf(item.getQuantidade()));
+                        }
+                        return BigDecimal.ZERO;
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalServicos = (itensServico == null || itensServico.isEmpty())
+                ? BigDecimal.ZERO
+                : itensServico.stream()
+                    .map(item -> {
+                        if (item.getSubtotal() != null) {
+                            return item.getSubtotal();
+                        }
+                        if (item.getValorUnitario() != null && item.getQuantidade() != null) {
+                            return item.getValorUnitario().multiply(BigDecimal.valueOf(item.getQuantidade()));
+                        }
+                        return BigDecimal.ZERO;
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        this.total = totalPecas.add(totalServicos);
+    }
+
+    public BigDecimal getTotal() {
+        return total != null ? total : BigDecimal.ZERO;
+    }
 }

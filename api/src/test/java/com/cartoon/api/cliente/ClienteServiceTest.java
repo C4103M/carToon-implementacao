@@ -6,13 +6,18 @@ import com.cartoon.api.cliente.dto.response.ClienteResponse;
 import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.cliente.repository.ClienteRepository;
 import com.cartoon.api.cliente.service.ClienteService;
+import com.cartoon.api.compartilhado.exceptions.ClienteInativoException;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
+import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -63,30 +68,91 @@ class ClienteServiceTest {
     }
 
     @Test
-    @DisplayName("Deve excluir cliente com sucesso quando ID existir")
-    void excluir_ComSucesso() {
+    @DisplayName("Deve listar apenas clientes ativos")
+    void listarTodos_RetornaSomenteAtivos() {
+        Cliente cliente = new Cliente();
+        ClienteResponse resposta = new ClienteResponse();
+
+        when(clienteRepository.findAllByAtivoTrue()).thenReturn(List.of(cliente));
+        when(clienteMapper.toResponse(cliente)).thenReturn(resposta);
+
+        List<ClienteResponse> resultado = clienteService.listarTodos();
+
+        assertEquals(1, resultado.size());
+        verify(clienteRepository).findAllByAtivoTrue();
+        verify(clienteRepository, never()).findAll();
+    }
+
+    @Test
+    @DisplayName("Deve inativar o cliente sem apagá-lo do banco")
+    void inativar_ComSucesso() {
         Integer id = 1;
         Cliente cliente = new Cliente();
         cliente.setId(id);
 
-        when(clienteRepository.findById(id)).thenReturn(java.util.Optional.of(cliente));
+        when(clienteRepository.findById(id)).thenReturn(Optional.of(cliente));
 
-        assertDoesNotThrow(() -> clienteService.excluir(id));
+        clienteService.inativar(id);
 
-        verify(clienteRepository).findById(id);
-        verify(clienteRepository).delete(cliente);
+        assertFalse(cliente.isAtivo());
+        verify(clienteRepository).save(cliente);
+        verify(clienteRepository, never()).delete(any());
+        verify(clienteRepository, never()).deleteById(any());
     }
 
     @Test
-    @DisplayName("Deve lançar exceção ao tentar excluir cliente com ID inexistente")
-    void excluir_ComIdInexistente_LancaExcecao() {
+    @DisplayName("Deve lançar exceção ao inativar cliente com ID inexistente")
+    void inativar_ComIdInexistente_LancaExcecao() {
         Integer id = 99;
 
-        when(clienteRepository.findById(id)).thenReturn(java.util.Optional.empty());
+        when(clienteRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(RuntimeException.class, () -> clienteService.excluir(id));
+        assertThrows(RecursoNaoEncontradoException.class, () -> clienteService.inativar(id));
 
-        verify(clienteRepository).findById(id);
+        verify(clienteRepository, never()).save(any());
         verify(clienteRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Deve reativar um cliente inativo")
+    void ativar_ComSucesso() {
+        Integer id = 1;
+        Cliente cliente = new Cliente();
+        cliente.setId(id);
+        cliente.setAtivo(false);
+
+        when(clienteRepository.findById(id)).thenReturn(Optional.of(cliente));
+
+        clienteService.ativar(id);
+
+        assertTrue(cliente.isAtivo());
+        verify(clienteRepository).save(cliente);
+    }
+
+    @Test
+    @DisplayName("Deve lançar exceção ao reativar cliente com ID inexistente")
+    void ativar_ComIdInexistente_LancaExcecao() {
+        when(clienteRepository.findById(99)).thenReturn(Optional.empty());
+
+        assertThrows(RecursoNaoEncontradoException.class, () -> clienteService.ativar(99));
+
+        verify(clienteRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Não deve permitir editar cliente inativo")
+    void atualizar_ComClienteInativo_LancaExcecao() {
+        Integer id = 1;
+        Cliente cliente = new Cliente();
+        cliente.setId(id);
+        cliente.setAtivo(false);
+
+        when(clienteRepository.findById(id)).thenReturn(Optional.of(cliente));
+
+        assertThrows(ClienteInativoException.class,
+                () -> clienteService.atualizar(id, new ClienteRequest()));
+
+        verify(clienteRepository, never()).save(any());
+        verifyNoInteractions(clienteMapper);
     }
 }

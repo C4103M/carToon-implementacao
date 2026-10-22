@@ -8,15 +8,19 @@ import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.mapper.OrdemServicoMapper;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
+import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
 import com.cartoon.api.ordemServico.models.ItemPeca;
+import com.cartoon.api.ordemServico.models.ItemServico;
 import com.cartoon.api.ordemServico.models.OrdemServico;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.repository.OrdemServicoRepository;
 import com.cartoon.api.ordemServico.specs.OrdemServicoSpecs;
 import com.cartoon.api.peca.models.Peca;
 import com.cartoon.api.peca.service.PecaService;
+import com.cartoon.api.servico.models.Servico;
+import com.cartoon.api.servico.service.ServicoService;
 import com.cartoon.api.usuario.model.Usuario;
 import com.cartoon.api.usuario.service.UsuarioService;
 import com.cartoon.api.veiculo.model.Veiculo;
@@ -27,7 +31,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -39,6 +45,8 @@ public class OrdemServicoService {
     private final UsuarioService usuarioService;
     private final OficinaService oficinaService;
     private final PecaService pecaService;
+    private final ServicoService servicoService;
+    private final CalculadoraOrcamento calculadora;
 
     @Transactional
     public OrdemServicoResponse salvar(OrdemServicoRequest request) {
@@ -123,6 +131,7 @@ public class OrdemServicoService {
 
         ItemPeca itemPeca = OrdemServicoMapper.paraItemPeca(request, peca);
         os.adicionarItemPeca(itemPeca);
+        os.recalcularTotal();
 
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
@@ -138,6 +147,43 @@ public class OrdemServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Item de peça", itemId));
 
         ordem.removerItemPeca(item);
+        ordem.recalcularTotal();
+        return OrdemServicoMapper.paraOrdemServicoResponse(ordem);
+    }
+
+    @Transactional
+    public OrdemServicoResponse adicionarServico(Integer id, ItemServicoRequest request) {
+        OrdemServico os = buscarEntidade(id);
+        Servico servico = servicoService.buscarEntidade(request.servicoId());
+
+        validarNaoFinalizada(os);
+
+        BigDecimal fipe = os.getVeiculo().getValorFipe();
+        if (fipe == null) {
+            throw new RegraDeNegocioException(
+                    "Veículo sem valor FIPE cadastrado: não é possível calcular o serviço.");
+        }
+        BigDecimal valorUnitario = calculadora.valorServico(servico.getValorBase(), fipe);
+
+        ItemServico itemServico = OrdemServicoMapper.paraItemServico(request, servico);
+        itemServico.setValorUnitario(valorUnitario);
+        itemServico.calcSubtotal();
+        os.adicionarItemServico(itemServico);
+
+        return OrdemServicoMapper.paraOrdemServicoResponse(os);
+    }
+
+    @Transactional
+    public OrdemServicoResponse removerServico(Integer ordemId, Integer itemId) {
+        OrdemServico ordem = buscarEntidade(ordemId);
+        validarNaoFinalizada(ordem);
+
+        ItemServico item = ordem.getItensServico().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Item de serviço", itemId));
+
+        ordem.removerItemServico(item);
         return OrdemServicoMapper.paraOrdemServicoResponse(ordem);
     }
 

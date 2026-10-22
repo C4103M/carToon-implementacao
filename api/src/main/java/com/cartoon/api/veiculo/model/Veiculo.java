@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,16 +26,25 @@ public class Veiculo {
     String placa;
 
     @Column(nullable = false)
+    String marca;
+
+    @Column(nullable = false)
     String modelo;
 
-    @Column(nullable = false)
-    Integer ano;
+    @Column(name = "ano_modelo")
+    Integer anoModelo;
 
-    @Column(nullable = false)
-    String montadora;
+    @Column(name = "combustivel")
+    String combustivel;
 
-    @Column(name = "valor_fipe")
-    Double valorFipe;
+    @Column(name = "codigo_fipe", length = 20)
+    String codigoFipe;
+
+    @Column(name = "valor_fipe", precision = 12, scale = 2)
+    BigDecimal valorFipe;
+
+    @Column(name = "mes_referencia", length = 50)
+    String mesReferencia;
 
     @Column(nullable = false)
     Boolean ativo = true;

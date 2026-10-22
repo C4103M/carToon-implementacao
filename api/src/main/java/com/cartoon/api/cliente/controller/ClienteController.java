@@ -43,8 +43,14 @@ public class ClienteController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluir(@PathVariable Integer id) {
-        clienteService.excluir(id);
+    public ResponseEntity<Void> inativar(@PathVariable Integer id) {
+        clienteService.inativar(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/ativar")
+    public ResponseEntity<Void> ativar(@PathVariable Integer id) {
+        clienteService.ativar(id);
         return ResponseEntity.noContent().build();
     }
 

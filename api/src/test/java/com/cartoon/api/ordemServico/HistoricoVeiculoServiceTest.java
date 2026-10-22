@@ -72,8 +72,9 @@ class HistoricoVeiculoServiceTest {
         veiculo.setId(1);
         veiculo.setPlaca("XYZ-9876");
         veiculo.setModelo("Ka");
-        veiculo.setMontadora("Ford");
-        veiculo.setAno(2019);
+        veiculo.setMarca("Ford");
+        veiculo.setAnoModelo(2019);
+        veiculo.setCombustivel("Flex");
         veiculo.setValorFipe(null);
         veiculo.setAtivo(true);
         veiculo.setCliente(cliente);
@@ -115,8 +116,8 @@ class HistoricoVeiculoServiceTest {
         itemServico.setId(1);
         itemServico.setServico(servico);
         itemServico.setQuantidade(1);
-        itemServico.setValorUnitario(100.0);
-        itemServico.setSubtotal(100.0);
+        itemServico.setValorUnitario(BigDecimal.valueOf(100.0));
+        itemServico.setSubtotal(BigDecimal.valueOf(100.0));
         itemServico.setTempo(LocalTime.of(1, 0));
         ordemRecente.adicionarItemServico(itemServico);
 

@@ -34,4 +34,6 @@ public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Inte
     Optional<OrdemServico> findDetalhadaById(Integer id);
 
     boolean existsByOficinaIdAndStatusServicoIn(Integer oficinaId, Collection<StatusServico> status);
+
+    boolean existsByMecanicoIdAndStatusServicoIn(Integer mecanicoId, Collection<StatusServico> status);
 }

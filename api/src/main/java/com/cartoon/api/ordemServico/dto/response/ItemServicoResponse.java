@@ -1,5 +1,6 @@
 package com.cartoon.api.ordemServico.dto.response;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 
 public record ItemServicoResponse(
@@ -7,7 +8,7 @@ public record ItemServicoResponse(
         Integer servicoId,
         String servicoNome,
         Integer quantidade,
-        Double valorUnitario,
-        Double subtotal,
+        BigDecimal valorUnitario,
+        BigDecimal subtotal,
         LocalTime tempo
 ) {}
