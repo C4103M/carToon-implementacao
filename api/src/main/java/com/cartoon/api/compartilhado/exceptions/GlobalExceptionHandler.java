@@ -24,6 +24,9 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             erros.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
+        for (org.springframework.validation.ObjectError globalError : ex.getBindingResult().getGlobalErrors()) {
+            erros.putIfAbsent("confirmarSenha", globalError.getDefaultMessage());
+        }
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
@@ -95,6 +98,7 @@ public class GlobalExceptionHandler {
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Bad Request");
         body.put("message", "O corpo da requisição está ausente ou mal formatado.");
+        body.put("detalhe", ex.getMessage());
         return ResponseEntity.badRequest().body(body);
     }
 
@@ -107,6 +111,8 @@ public class GlobalExceptionHandler {
             mensagem = "Já existe uma oficina com esse nome.";
         } else if (causa.contains("uk_oficina_telefone")) {
             mensagem = "Já existe uma oficina com esse telefone.";
+        } else if (causa.contains("uk_oficina_email")) {
+            mensagem = "Já existe uma oficina com esse e-mail.";
         } else if (causa.contains("uk_usuario_email")) {
             mensagem = "Já existe um usuário com esse e-mail.";
         }
