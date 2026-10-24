@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 
 @Component
-@Profile("dev")
+@Profile({"dev", "default"})
 @RequiredArgsConstructor
 public class DadosIniciais implements ApplicationRunner {
 
@@ -38,6 +38,9 @@ public class DadosIniciais implements ApplicationRunner {
             o.setNome("Oficina Matriz");
             o.setEndereco("Rua Exemplo, 100");
             o.setTelefone("11999990000");
+            o.setEmail("contato@oficinamatriz.com.br");
+            o.setValorHora(new BigDecimal("100.00"));
+            o.setTaxaRisco(new BigDecimal("0.10"));
             o.setAtivo(true);
             return oficinaRepository.save(o);
         });
@@ -69,9 +72,10 @@ public class DadosIniciais implements ApplicationRunner {
     }
 
     private void criarOuAtualizarUsuario(String nome, String email, String senha, Role role, Oficina oficina) {
-        Usuario usuario = usuarioRepository.findByEmail(email).orElseGet(Usuario::new);
+        String emailNorm = email.trim().toLowerCase();
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(emailNorm).orElseGet(Usuario::new);
         usuario.setNome(nome);
-        usuario.setEmail(email);
+        usuario.setEmail(emailNorm);
         usuario.setSenha(passwordEncoder.encode(senha));
         usuario.setRole(role);
         usuario.setOficina(oficina);
