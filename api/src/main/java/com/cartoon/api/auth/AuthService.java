@@ -18,28 +18,29 @@ public class AuthService {
     private final LoginAttemptService loginAttemptService;
 
     public String login(LoginDTO loginDTO) {
-        if (loginAttemptService.estaBloqueado(loginDTO.email())) {
+        String email = loginDTO.email() == null ? "" : loginDTO.email().trim().toLowerCase();
+        if (loginAttemptService.estaBloqueado(email)) {
             throw new BloqueioTentativasException();
         }
 
-        Usuario usuario = usuarioRepository.findByEmail(loginDTO.email()).orElse(null);
+        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(email).orElse(null);
         if (usuario == null || !Boolean.TRUE.equals(usuario.getAtivo())) {
-            loginAttemptService.registrarFalha(loginDTO.email());
-            if (loginAttemptService.estaBloqueado(loginDTO.email())) {
+            loginAttemptService.registrarFalha(email);
+            if (loginAttemptService.estaBloqueado(email)) {
                 throw new BloqueioTentativasException();
             }
             throw new CredenciaisInvalidasException("Email ou senha incorreto");
         }
 
         if (!passwordEncoder.matches(loginDTO.password(), usuario.getSenha())) {
-            loginAttemptService.registrarFalha(loginDTO.email());
-            if (loginAttemptService.estaBloqueado(loginDTO.email())) {
+            loginAttemptService.registrarFalha(email);
+            if (loginAttemptService.estaBloqueado(email)) {
                 throw new BloqueioTentativasException();
             }
             throw new CredenciaisInvalidasException("Email ou senha incorreto");
         }
 
-        loginAttemptService.registrarSucesso(loginDTO.email());
+        loginAttemptService.registrarSucesso(email);
         return jwtService.gerar(usuario.getEmail(), usuario.getId(), usuario.getRole());
     }
 }

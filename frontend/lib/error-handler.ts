@@ -138,39 +138,61 @@ export function normalizeError(error: unknown, fallbackMessage?: string): Normal
   if (status) {
     switch (status) {
       case 400:
-        title = 'Dados inválidos';
+      case 422: {
+        const lower = (message || '').toLowerCase();
+        if (lower.includes('estoque insuficiente') || lower.includes('estoque')) {
+          title = 'Estoque Insuficiente';
+        } else if (lower.includes('transi??o') || lower.includes('transicao') || lower.includes('status') || lower.includes('em andamento') || lower.includes('finalizada') || lower.includes('rejeitada')) {
+          title = 'Transi??o N?o Permitida';
+        } else if (lower.includes('desconto')) {
+          title = 'Desconto Inv?lido';
+        } else if (lower.includes('fipe')) {
+          title = 'Tabela FIPE Indispon?vel';
+        } else if (validationErrors && Object.keys(validationErrors).length > 0) {
+          title = 'Dados Inv?lidos';
+        } else {
+          title = 'Regra de Neg?cio';
+        }
         if (!message || message.includes('Failed')) {
-          message = 'Verifique as informações preenchidas e tente novamente.';
+          message = 'Verifique as informa??es preenchidas e tente novamente.';
         }
         break;
+      }
       case 401:
-        title = 'Falha na autenticação';
+        title = 'Falha na Autentica??o';
         isAuthError = true;
         if (!message || message.toLowerCase().includes('unauthorized')) {
           message = 'E-mail ou senha incorretos.';
         }
         break;
       case 403:
-        title = 'Acesso negado';
+        title = 'Acesso Negado';
         isAuthError = true;
-        message = 'Você não possui permissão para executar esta ação.';
+        message = 'Voc? n?o possui permiss?o para executar esta a??o.';
         break;
       case 404:
-        title = 'Não encontrado';
+        title = 'N?o Encontrado';
         if (!message || message.toLowerCase().includes('not found')) {
-          message = 'O recurso solicitado não foi encontrado no sistema.';
+          message = 'O recurso solicitado n?o foi encontrado no sistema.';
         }
         break;
-      case 409:
-        title = 'Conflito de dados';
+      case 409: {
+        const lower = (message || '').toLowerCase();
+        if (lower.includes('j? existe') || lower.includes('ja existe') || lower.includes('duplicad')) {
+          title = 'Registro J? Existente';
+        } else if (lower.includes('ordens de servi?o') || lower.includes('ordens de servico') || lower.includes('vinculad') || lower.includes('em aberto')) {
+          title = 'Opera??o Bloqueada por V?nculo';
+        } else if (lower.includes('inativ') || lower.includes('reative')) {
+          title = 'Registro Inativo';
+        } else {
+          title = 'Conflito de Dados';
+        }
         break;
-      case 422:
-        title = 'Regra de negócio';
-        break;
+      }
       case 429:
-        title = 'Muitas tentativas';
+        title = 'Muitas Tentativas';
         isAuthError = true;
-        message = 'Acesso temporariamente bloqueado por segurança. Aguarde alguns minutos e tente novamente.';
+        message = 'Acesso temporariamente bloqueado por seguran?a. Aguarde alguns minutos e tente novamente.';
         break;
       case 500:
       case 502:

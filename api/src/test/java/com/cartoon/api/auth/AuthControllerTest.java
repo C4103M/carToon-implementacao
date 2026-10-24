@@ -16,7 +16,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.hamcrest.Matchers.containsString;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -60,18 +59,17 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("POST /auth/login - Deve lançar exceção ao informar credenciais inválidas")
-    void login_ComCredenciaisInvalidas_DeveLancarExcecao() {
+    @DisplayName("POST /auth/login - Deve retornar 401 Unauthorized ao informar credenciais inválidas")
+    void login_ComCredenciaisInvalidas_DeveLancarExcecao() throws Exception {
         LoginDTO dto = new LoginDTO("usuario@cartoon.com", "senhaIncorreta");
 
         when(authService.login(any(LoginDTO.class)))
                 .thenThrow(new CredenciaisInvalidasException("Email ou senha incorreto"));
 
-        assertThrows(Exception.class, () ->
-                mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
-        );
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
