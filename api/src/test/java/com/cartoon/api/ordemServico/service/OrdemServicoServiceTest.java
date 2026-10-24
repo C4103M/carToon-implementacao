@@ -3,9 +3,11 @@ package com.cartoon.api.ordemServico.service;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.model.Oficina;
-import com.cartoon.api.oficina.service.OficinaService;
+import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.dto.request.DescontoRequest;
+import com.cartoon.api.ordemServico.models.Desconto;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
@@ -61,7 +63,7 @@ class OrdemServicoServiceTest {
     private VeiculoService veiculoService;
 
     @Mock
-    private OficinaService oficinaService;
+    private Oficina oficinaService;
 
     @Mock
     private PecaService pecaService;
@@ -89,11 +91,14 @@ class OrdemServicoServiceTest {
         oficina = new Oficina();
         oficina.setId(1);
         oficina.setNome("Oficina Central");
+        oficina.setValorHora(new BigDecimal("100.00"));
+        oficina.setTaxaRisco(new BigDecimal("0.10"));
 
         mecanico = new Usuario();
         mecanico.setId(1);
         mecanico.setNome("Carlos Mecanico");
         mecanico.setRole(Role.MECANICO);
+        mecanico.setOficina(oficina);
 
         ordemServico = new OrdemServico();
         ordemServico.setId(10);
@@ -109,10 +114,10 @@ class OrdemServicoServiceTest {
     @Test
     @DisplayName("Salvar - Deve criar e retornar nova Ordem de Serviço com data de inicio como agora")
     void salvar_ComDadosValidos_DeveSalvarERetornarResponse() {
-        OrdemServicoRequest request = new OrdemServicoRequest(1, 1, 1, "Troca de óleo");
+        OrdemServicoRequest request = new OrdemServicoRequest(1, 1, "Troca de óleo");
 
         when(veiculoService.buscarEntidade(1)).thenReturn(veiculo);
-        when(oficinaService.buscarEntidade(1)).thenReturn(oficina);
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(1L, "carlos@cartoon.com", "MECANICO");
         when(usuarioService.buscarEntidade(1)).thenReturn(mecanico);
         when(ordemServicoRepository.save(any(OrdemServico.class))).thenAnswer(inv -> {
             OrdemServico os = inv.getArgument(0);
@@ -120,7 +125,7 @@ class OrdemServicoServiceTest {
             return os;
         });
 
-        OrdemServicoResponse response = ordemServicoService.salvar(request);
+        OrdemServicoResponse response = ordemServicoService.salvar(request, solicitante);
 
         assertNotNull(response);
         assertEquals(10, response.id());
@@ -593,7 +598,7 @@ class OrdemServicoServiceTest {
         Servico servico = new Servico();
         servico.setId(3);
         servico.setNome("Alinhamento e Balanceamento");
-        servico.setValorBase(BigDecimal.valueOf(120.0));
+        servico.setQuantidadeHoras(1.5);
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(servicoService.buscarEntidade(3)).thenReturn(servico);
@@ -604,8 +609,8 @@ class OrdemServicoServiceTest {
         assertEquals(1, ordemServico.getItensServico().size());
         ItemServico item = ordemServico.getItensServico().get(0);
         assertEquals("Alinhamento e Balanceamento", item.getServico().getNome());
-        assertEquals(0, BigDecimal.valueOf(620.0).compareTo(item.getValorUnitario()));
-        assertEquals(0, BigDecimal.valueOf(620.0).compareTo(item.getSubtotal()));
+        assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.getValorUnitario()));
+        assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.getSubtotal()));
     }
 
     @Test
@@ -626,7 +631,7 @@ class OrdemServicoServiceTest {
         Servico servico = new Servico();
         servico.setId(3);
         servico.setNome("Troca de Pastilha");
-        servico.setValorBase(BigDecimal.valueOf(80.0));
+        servico.setQuantidadeHoras(1.0);
 
         ItemServico item = new ItemServico();
         item.setId(200);
@@ -649,5 +654,46 @@ class OrdemServicoServiceTest {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
         assertThrows(RecursoNaoEncontradoException.class, () -> ordemServicoService.removerServico(10, 999));
+    }
+
+    @Test
+    @DisplayName("Aplicar Desconto - Deve abater percentual da soma total da ordem de serviço")
+    void aplicarDesconto_DeveAbaterPercentualDoTotal() {
+        Peca pecaNova = new Peca();
+        pecaNova.setId(1);
+        pecaNova.setNome("Pastilha");
+
+        ItemPeca itemPeca = new ItemPeca();
+        itemPeca.setId(1);
+        itemPeca.setPeca(pecaNova);
+        itemPeca.setQuantidade(1);
+        itemPeca.setValorUnitario(new BigDecimal("200.00"));
+        itemPeca.calcSubtotal();
+        ordemServico.adicionarItemPeca(itemPeca);
+
+        ordemServico.recalcularTotal();
+        assertEquals(0, new BigDecimal("200.00").compareTo(ordemServico.getTotal()));
+
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+        when(ordemServicoRepository.save(any(OrdemServico.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        DescontoRequest request = new DescontoRequest(Desconto.DEZ_PORCENTO);
+        OrdemServicoResponse response = ordemServicoService.aplicarDesconto(10, request);
+
+        assertNotNull(response);
+        assertEquals(Desconto.DEZ_PORCENTO, response.desconto());
+        assertEquals(0, new BigDecimal("200.00").compareTo(response.valorBruto()));
+        assertEquals(0, new BigDecimal("20.00").compareTo(response.valorDesconto()));
+        assertEquals(0, new BigDecimal("180.00").compareTo(response.total()));
+    }
+
+    @Test
+    @DisplayName("Aplicar Desconto - Deve lançar ConflitoException quando ordem estiver finalizada")
+    void aplicarDesconto_QuandoOrdemFinalizada_DeveLancarExcecao() {
+        ordemServico.setStatusServico(StatusServico.FINALIZADO);
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+
+        DescontoRequest request = new DescontoRequest(Desconto.QUINZE_PORCENTO);
+        assertThrows(ConflitoException.class, () -> ordemServicoService.aplicarDesconto(10, request));
     }
 }

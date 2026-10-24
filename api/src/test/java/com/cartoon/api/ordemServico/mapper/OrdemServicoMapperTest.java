@@ -7,7 +7,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -20,6 +19,7 @@ class OrdemServicoMapperTest {
         Servico servico = new Servico();
         servico.setId(1);
         servico.setNome("Troca de Óleo");
+        servico.setQuantidadeHoras(0.75);
 
         ItemServico item = new ItemServico();
         item.setId(5);
@@ -27,7 +27,7 @@ class OrdemServicoMapperTest {
         item.setQuantidade(2);
         item.setValorUnitario(new BigDecimal("100.00"));
         item.setSubtotal(new BigDecimal("200.00"));
-        item.setTempo(LocalTime.of(0, 45));
+        item.setQuantidadeHoras(0.75);
 
         ItemServicoResponse response = OrdemServicoMapper.paraItemServicoResponse(item);
 
@@ -38,7 +38,7 @@ class OrdemServicoMapperTest {
         assertEquals(2, response.quantidade());
         assertThat(response.valorUnitario()).isEqualByComparingTo(new BigDecimal("100.00"));
         assertThat(response.subtotal()).isEqualByComparingTo(new BigDecimal("200.00"));
-        assertEquals(LocalTime.of(0, 45), response.tempo());
+        assertEquals(0.75, response.quantidadeHoras());
     }
 
     @Test
@@ -47,6 +47,7 @@ class OrdemServicoMapperTest {
         Servico servico = new Servico();
         servico.setId(2);
         servico.setNome("Balanceamento");
+        servico.setQuantidadeHoras(1.0);
 
         ItemServico item = new ItemServico();
         item.setId(10);
@@ -54,7 +55,7 @@ class OrdemServicoMapperTest {
         item.setQuantidade(4);
         item.setValorUnitario(new BigDecimal("35.50"));
         item.setSubtotal(null);
-        item.setTempo(LocalTime.of(1, 0));
+        item.setQuantidadeHoras(1.0);
 
         ItemServicoResponse response = OrdemServicoMapper.paraItemServicoResponse(item);
 
@@ -63,6 +64,7 @@ class OrdemServicoMapperTest {
         assertThat(response.valorUnitario()).isEqualByComparingTo(new BigDecimal("35.50"));
         assertNotNull(response.subtotal());
         assertThat(response.subtotal()).isEqualByComparingTo(new BigDecimal("142.00"));
+        assertEquals(1.0, response.quantidadeHoras());
     }
 
     @Test
@@ -100,13 +102,12 @@ class OrdemServicoMapperTest {
     }
 
     @Test
-    @DisplayName("paraItemServico - Deve criar ItemServico com valorUnitario como BigDecimal e calcular subtotal")
-    void paraItemServico_ComServicoValido_DeveMapearComBigDecimalECalcularSubtotal() {
+    @DisplayName("paraItemServico - Deve criar ItemServico com quantidadeHoras herdadas de Servico")
+    void paraItemServico_ComServicoValido_DeveMapearQuantidadeHoras() {
         Servico servico = new Servico();
         servico.setId(1);
         servico.setNome("Troca de Óleo");
-        servico.setValorBase(new BigDecimal("150.00"));
-        servico.setTempoEstimado(LocalTime.of(1, 0));
+        servico.setQuantidadeHoras(1.0);
 
         com.cartoon.api.ordemServico.dto.request.ItemServicoRequest request =
                 new com.cartoon.api.ordemServico.dto.request.ItemServicoRequest(1, 2);
@@ -116,9 +117,6 @@ class OrdemServicoMapperTest {
         assertNotNull(item);
         assertEquals(servico, item.getServico());
         assertEquals(2, item.getQuantidade());
-        assertThat(item.getValorUnitario()).isEqualByComparingTo(new BigDecimal("150.00"));
-        assertNotNull(item.getSubtotal());
-        assertThat(item.getSubtotal()).isEqualByComparingTo(new BigDecimal("300.00"));
-        assertEquals(LocalTime.of(1, 0), item.getTempo());
+        assertEquals(1.0, item.getQuantidadeHoras());
     }
 }

@@ -2,10 +2,12 @@ package com.cartoon.api.ordemServico.controller;
 
 import com.cartoon.api.compartilhado.exceptions.GlobalExceptionHandler;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.dto.request.DescontoRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
+import com.cartoon.api.ordemServico.models.Desconto;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,9 +81,9 @@ class OrdemServicoControllerTest {
     @Test
     @DisplayName("POST /ordem-servico - Deve criar Ordem de Serviço e retornar 201 Created com Header Location")
     void salvar_ComDadosValidos_DeveRetornar201Created() throws Exception {
-        OrdemServicoRequest request = new OrdemServicoRequest(10, 100, 5, "Troca de filtro");
+        OrdemServicoRequest request = new OrdemServicoRequest(10, 5, "Troca de filtro");
 
-        when(ordemServicoService.salvar(any(OrdemServicoRequest.class))).thenReturn(sampleResponse);
+        when(ordemServicoService.salvar(any(OrdemServicoRequest.class), any())).thenReturn(sampleResponse);
 
         mockMvc.perform(post("/ordem-servico")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -96,8 +98,7 @@ class OrdemServicoControllerTest {
     @Test
     @DisplayName("POST /ordem-servico - Deve retornar 400 Bad Request ao passar dados inválidos")
     void salvar_ComDadosInvalidos_DeveRetornar400BadRequest() throws Exception {
-        // request sem veiculoId obrigatório
-        OrdemServicoRequest requestInvalido = new OrdemServicoRequest(null, 100, 5, "Troca de filtro");
+        OrdemServicoRequest requestInvalido = new OrdemServicoRequest(null, 5, "Troca de filtro");
 
         mockMvc.perform(post("/ordem-servico")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -122,7 +123,7 @@ class OrdemServicoControllerTest {
         OrdemServicoResumo resumo = new OrdemServicoResumo(1, StatusServico.PENDENTE, "ABC-1234", "Mecanico Joao");
         PageImpl<OrdemServicoResumo> page = new PageImpl<>(List.of(resumo), PageRequest.of(0, 10), 1);
 
-        when(ordemServicoService.listar(any(), any())).thenReturn(page);
+        when(ordemServicoService.listar(any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/ordem-servico")
                         .param("page", "0")
@@ -250,6 +251,21 @@ class OrdemServicoControllerTest {
         when(ordemServicoService.removerServico(1, 200)).thenReturn(sampleResponse);
 
         mockMvc.perform(delete("/ordem-servico/1/itens-servico/200"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(1)));
+    }
+
+    @Test
+    @DisplayName("PATCH /ordem-servico/{id}/desconto - Deve aplicar desconto na Ordem de Serviço")
+    void aplicarDesconto_DeveRetornar200OK() throws Exception {
+        DescontoRequest request = new DescontoRequest(Desconto.DEZ_PORCENTO);
+
+        when(ordemServicoService.aplicarDesconto(eq(1), any(DescontoRequest.class)))
+                .thenReturn(sampleResponse);
+
+        mockMvc.perform(patch("/ordem-servico/1/desconto")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)));
     }

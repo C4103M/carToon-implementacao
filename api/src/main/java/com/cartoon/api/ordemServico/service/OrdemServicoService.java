@@ -1,16 +1,19 @@
 package com.cartoon.api.ordemServico.service;
 
+import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
+import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 import com.cartoon.api.oficina.model.Oficina;
-import com.cartoon.api.oficina.service.OficinaService;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
-import com.cartoon.api.ordemServico.mapper.OrdemServicoMapper;
+import com.cartoon.api.ordemServico.dto.request.DescontoRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
+import com.cartoon.api.ordemServico.mapper.OrdemServicoMapper;
+import com.cartoon.api.ordemServico.models.Desconto;
 import com.cartoon.api.ordemServico.models.ItemPeca;
 import com.cartoon.api.ordemServico.models.ItemServico;
 import com.cartoon.api.ordemServico.models.OrdemServico;
@@ -21,6 +24,7 @@ import com.cartoon.api.peca.models.Peca;
 import com.cartoon.api.peca.service.PecaService;
 import com.cartoon.api.servico.models.Servico;
 import com.cartoon.api.servico.service.ServicoService;
+import com.cartoon.api.usuario.model.Role;
 import com.cartoon.api.usuario.model.Usuario;
 import com.cartoon.api.usuario.service.UsuarioService;
 import com.cartoon.api.veiculo.model.Veiculo;
@@ -31,7 +35,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,18 +46,23 @@ public class OrdemServicoService {
     private final OrdemServicoRepository ordemServicoRepository;
     private final VeiculoService veiculoService;
     private final UsuarioService usuarioService;
-    private final OficinaService oficinaService;
     private final PecaService pecaService;
     private final ServicoService servicoService;
     private final CalculadoraOrcamento calculadora;
 
     @Transactional
-    public OrdemServicoResponse salvar(OrdemServicoRequest request) {
+    public OrdemServicoResponse salvar(OrdemServicoRequest request, UsuarioAutenticado solicitante) {
         Veiculo veiculo = veiculoService.buscarEntidade(request.veiculoId());
-        Oficina oficina = oficinaService.buscarEntidade(request.oficinaId());
+        Oficina oficina = obterOficinaDoSolicitante(solicitante);
+
         Usuario mecanico = usuarioService.buscarEntidade(request.mecanicoId());
+        if (mecanico.getRole() != Role.MECANICO) {
+            throw new RegraDeNegocioException("O administrador não pode se responsabilizar pelo serviço");
+        }
+
         OrdemServico os = OrdemServicoMapper.paraOrdemServico(request, veiculo, oficina, mecanico);
         os.setDataOrcamento(LocalDate.now());
+        os.recalcularTotal();
         os = ordemServicoRepository.save(os);
 
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
@@ -68,7 +76,31 @@ public class OrdemServicoService {
 
     @Transactional(readOnly = true)
     public Page<OrdemServicoResumo> listar(OrdemServicoFiltro filtro, Pageable pageable) {
-        Specification<OrdemServico> spec = OrdemServicoSpecs.montarFiltros(filtro);
+        return listar(filtro, pageable, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrdemServicoResumo> listar(OrdemServicoFiltro filtro, Pageable pageable, UsuarioAutenticado solicitante) {
+        OrdemServicoFiltro filtroEfetivo = filtro != null
+                ? filtro
+                : new OrdemServicoFiltro(null, null, null, null, null, null);
+
+        if (filtroEfetivo.oficinaId() == null && solicitante != null && solicitante.id() != null
+                && !"SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
+            Usuario usuario = usuarioService.buscarEntidade(solicitante.id().intValue());
+            if (usuario.getOficina() != null) {
+                filtroEfetivo = new OrdemServicoFiltro(
+                        usuario.getOficina().getId(),
+                        filtroEfetivo.veiculoId(),
+                        filtroEfetivo.placa(),
+                        filtroEfetivo.mecanicoId(),
+                        filtroEfetivo.statusServico(),
+                        filtroEfetivo.status()
+                );
+            }
+        }
+
+        Specification<OrdemServico> spec = OrdemServicoSpecs.montarFiltros(filtroEfetivo);
         return ordemServicoRepository.findAll(spec, pageable).map(OrdemServicoMapper::paraOrdemServicoResumo);
     }
 
@@ -128,10 +160,19 @@ public class OrdemServicoService {
         Peca peca = pecaService.buscarEntidade(request.pecaId());
 
         validarNaoFinalizada(os);
+        if (peca.getOficina() != null && peca.getOficina().getId() != null
+                && os.getOficina() != null && os.getOficina().getId() != null
+                && !peca.getOficina().getId().equals(os.getOficina().getId())) {
+            throw new RegraDeNegocioException("A peça informada não pertence à oficina desta ordem de serviço.");
+        }
 
         ItemPeca itemPeca = OrdemServicoMapper.paraItemPeca(request, peca);
         os.adicionarItemPeca(itemPeca);
         os.recalcularTotal();
+        OrdemServico salvo = ordemServicoRepository.save(os);
+        if (salvo != null) {
+            os = salvo;
+        }
 
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
@@ -148,6 +189,10 @@ public class OrdemServicoService {
 
         ordem.removerItemPeca(item);
         ordem.recalcularTotal();
+        OrdemServico salvo = ordemServicoRepository.save(ordem);
+        if (salvo != null) {
+            ordem = salvo;
+        }
         return OrdemServicoMapper.paraOrdemServicoResponse(ordem);
     }
 
@@ -157,18 +202,51 @@ public class OrdemServicoService {
         Servico servico = servicoService.buscarEntidade(request.servicoId());
 
         validarNaoFinalizada(os);
+        if (servico.getOficina() != null && servico.getOficina().getId() != null
+                && os.getOficina() != null && os.getOficina().getId() != null
+                && !servico.getOficina().getId().equals(os.getOficina().getId())) {
+            throw new RegraDeNegocioException("O serviço informado não pertence à oficina desta ordem de serviço.");
+        }
 
         BigDecimal fipe = os.getVeiculo().getValorFipe();
         if (fipe == null) {
             throw new RegraDeNegocioException(
                     "Veículo sem valor FIPE cadastrado: não é possível calcular o serviço.");
         }
-        BigDecimal valorUnitario = calculadora.valorServico(servico.getValorBase(), fipe);
+        Double horasDecimais;
+        if (servico.getTempo() != null) {
+            horasDecimais = calculadora.converterParaDecimal(servico.getTempo());
+        } else if (servico.getQuantidadeHoras() != null) {
+            horasDecimais = servico.getQuantidadeHoras();
+        } else {
+            throw new RegraDeNegocioException(
+                    "Serviço sem quantidade de horas cadastrada: não é possível calcular o serviço.");
+        }
+
+        Oficina oficina = os.getOficina();
+        if (oficina == null || oficina.getValorHora() == null) {
+            throw new RegraDeNegocioException(
+                    "Oficina sem valor por hora cadastrado: não é possível calcular o serviço.");
+        }
+
+        BigDecimal taxaRisco = oficina.getTaxaRisco() != null ? oficina.getTaxaRisco() : BigDecimal.ZERO;
+
+        BigDecimal valorUnitario = calculadora.valorServico(
+                horasDecimais,
+                oficina.getValorHora(),
+                fipe,
+                taxaRisco
+        );
 
         ItemServico itemServico = OrdemServicoMapper.paraItemServico(request, servico);
         itemServico.setValorUnitario(valorUnitario);
         itemServico.calcSubtotal();
         os.adicionarItemServico(itemServico);
+        os.recalcularTotal();
+        OrdemServico salvo = ordemServicoRepository.save(os);
+        if (salvo != null) {
+            os = salvo;
+        }
 
         return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
@@ -184,7 +262,24 @@ public class OrdemServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Item de serviço", itemId));
 
         ordem.removerItemServico(item);
+        ordem.recalcularTotal();
+        OrdemServico salvo = ordemServicoRepository.save(ordem);
+        if (salvo != null) {
+            ordem = salvo;
+        }
         return OrdemServicoMapper.paraOrdemServicoResponse(ordem);
+    }
+
+    @Transactional
+    public OrdemServicoResponse aplicarDesconto(Integer id, DescontoRequest request) {
+        OrdemServico os = buscarEntidade(id);
+        validarNaoFinalizada(os);
+
+        os.setDesconto(request.desconto() != null ? request.desconto() : Desconto.SEM_DESCONTO);
+        os.recalcularTotal();
+        ordemServicoRepository.save(os);
+
+        return OrdemServicoMapper.paraOrdemServicoResponse(os);
     }
 
     @Transactional(readOnly = true)
@@ -197,5 +292,29 @@ public class OrdemServicoService {
         if (os.getStatusServico() == StatusServico.FINALIZADO) {
             throw new ConflitoException("Não é possível alterar uma ordem finalizada");
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrdemServicoResumo> listarHistoricoPorVeiculoId(Integer veiculoId) {
+        return ordemServicoRepository.findByVeiculoIdOrderByDataOrcamentoDescIdDesc(veiculoId).stream()
+                .map(OrdemServicoMapper::paraOrdemServicoResumo)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<OrdemServicoResumo> listarHistoricoPorVeiculoIdPaginado(Integer veiculoId, Pageable pageable) {
+        return ordemServicoRepository.findByVeiculoIdOrderByDataOrcamentoDescIdDesc(veiculoId, pageable)
+                .map(OrdemServicoMapper::paraOrdemServicoResumo);
+    }
+
+    private Oficina obterOficinaDoSolicitante(UsuarioAutenticado solicitante) {
+        if (solicitante == null || solicitante.id() == null) {
+            throw new RegraDeNegocioException("Usuário autenticado é obrigatório para identificar a oficina.");
+        }
+        Usuario usuarioLogado = usuarioService.buscarEntidade(solicitante.id().intValue());
+        if (usuarioLogado.getOficina() == null) {
+            throw new RegraDeNegocioException("O usuário autenticado não está vinculado a uma oficina.");
+        }
+        return usuarioLogado.getOficina();
     }
 }

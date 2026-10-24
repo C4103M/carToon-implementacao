@@ -2,6 +2,7 @@ package com.cartoon.api.ordemServico.service;
 
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
+import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.service.OficinaService;
 import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.ItemServicoResponse;
@@ -48,6 +49,7 @@ class OrdemServicoServicoAdicionalTest {
 
     private OrdemServico ordem;
     private Veiculo veiculo;
+    private Oficina oficina;
     private Servico servico;
 
     @BeforeEach
@@ -55,11 +57,16 @@ class OrdemServicoServicoAdicionalTest {
         veiculo = new Veiculo();
         veiculo.setValorFipe(new BigDecimal("50000"));
 
+        oficina = new Oficina();
+        oficina.setValorHora(new BigDecimal("100.00"));
+        oficina.setTaxaRisco(new BigDecimal("0.10"));
+
         ordem = new OrdemServico();
         ordem.setVeiculo(veiculo);
+        ordem.setOficina(oficina);
 
         servico = new Servico();
-        servico.setValorBase(new BigDecimal("150.00"));
+        servico.setQuantidadeHoras(1.5);
     }
 
     private void prepararBusca() {
@@ -68,27 +75,27 @@ class OrdemServicoServicoAdicionalTest {
     }
 
     @Test
-    @DisplayName("adicionarServico - Deve somar 1% do valor FIPE ao valor base do serviço")
-    void adicionarServico_DeveAplicarUmPorCentoDoFipe() {
+    @DisplayName("adicionarServico - Deve calcular valor unitário com fórmula de horas, valorHora, FIPE e taxa de risco")
+    void adicionarServico_DeveAplicarFormulaComFipeETaxaRisco() {
         prepararBusca();
 
         OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1));
 
         ItemServicoResponse item = resposta.itensServico().get(0);
-        assertEquals(0, BigDecimal.valueOf(650.0).compareTo(item.valorUnitario()));
-        assertEquals(0, BigDecimal.valueOf(650.0).compareTo(item.subtotal()));
+        assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.valorUnitario()));
+        assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.subtotal()));
     }
 
     @Test
-    @DisplayName("adicionarServico - O adicional vale para cada unidade do serviço")
+    @DisplayName("adicionarServico - Quantidade deve multiplicar valor unitário calculado")
     void adicionarServico_QuantidadeDeveMultiplicarValorComAdicional() {
         prepararBusca();
 
         OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 2));
 
         ItemServicoResponse item = resposta.itensServico().get(0);
-        assertEquals(0, BigDecimal.valueOf(650.0).compareTo(item.valorUnitario()));
-        assertEquals(0, BigDecimal.valueOf(1300.0).compareTo(item.subtotal()));
+        assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.valorUnitario()));
+        assertEquals(0, BigDecimal.valueOf(315.00).compareTo(item.subtotal()));
     }
 
     @Test
@@ -99,7 +106,7 @@ class OrdemServicoServicoAdicionalTest {
 
         OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1));
 
-        assertEquals(0, BigDecimal.valueOf(3150.0).compareTo(resposta.itensServico().get(0).valorUnitario()));
+        assertEquals(0, BigDecimal.valueOf(195.00).compareTo(resposta.itensServico().get(0).valorUnitario()));
     }
 
     @Test
