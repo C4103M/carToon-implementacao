@@ -6,6 +6,10 @@ public record PecaResponse(
         Integer id,
         String nome,
         String fabricante,
-        BigDecimal valorBase
+        BigDecimal valorBase,
+        Integer oficinaId
 ) {
+    public PecaResponse(Integer id, String nome, String fabricante, BigDecimal valorBase) {
+        this(id, nome, fabricante, valorBase, null);
+    }
 }

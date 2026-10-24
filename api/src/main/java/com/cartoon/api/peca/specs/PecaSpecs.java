@@ -13,8 +13,16 @@ public final class PecaSpecs {
     private PecaSpecs() {}
 
     public static Specification<Peca> montarFiltros(PecaFiltro filtro) {
+        return montarFiltros(filtro, null);
+    }
+
+    public static Specification<Peca> montarFiltros(PecaFiltro filtro, Integer oficinaId) {
         return (root, query, cb) -> {
             List<Predicate> condicoes = new ArrayList<>();
+
+            if (oficinaId != null) {
+                condicoes.add(cb.equal(root.get("oficina").get("id"), oficinaId));
+            }
 
             if (filtro != null) {
                 if (filtro.busca() != null && !filtro.busca().isBlank()) {

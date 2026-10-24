@@ -1,14 +1,29 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { Search, Plus, Edit, Package, Wrench, AlertCircle } from 'lucide-react'
-import { useStore } from '@/lib/store'
-import type { Servico, Peca } from '@/lib/types'
+import { useState, useEffect, useCallback } from 'react'
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Package,
+  Wrench,
+  Clock,
+} from 'lucide-react'
+import { catalogoService } from '@/lib/services'
+import { handleError, normalizeError } from '@/lib/error-handler'
+import type {
+  ServicoResponse,
+  ServicoRequest,
+  PecaResponse,
+  PecaRequest,
+} from '@/lib/types'
 import { formatCurrency } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
 import { EmptyState } from '@/components/empty-state'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
 import {
   InputGroup,
   InputGroupAddon,
@@ -31,90 +46,218 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 
-export default function CatalogoPage() {
-  const {
-    servicos,
-    addServico,
-    updateServico,
-    pecas,
-    addPeca,
-    updatePeca,
-  } = useStore()
+/**
+ * Converte qualquer entrada de tempo (ex: "1h30", "1:30", "01:30", "45min", "1.5")
+ * para o formato HH:mm padrão exigido pelo backend (ou null se inválido).
+ */
+function normalizarTempoParaEnvio(input: string): string | null {
+  const str = input.trim()
+  if (!str) return null
 
+  // 1. Formato HH:mm ou H:mm ou HH:mm:ss
+  const colonMatch = str.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/)
+  if (colonMatch) {
+    const h = parseInt(colonMatch[1], 10)
+    const m = parseInt(colonMatch[2], 10)
+    if (h === 0 && m === 0) return null
+    if (m > 59) return null
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
+  // 2. Formato 1h30, 1h30m, 1h, 1H
+  const horaMinMatch = str.match(/^(\d+)\s*[hH]\s*(\d+)?\s*(?:[mM])?$/)
+  if (horaMinMatch) {
+    const h = parseInt(horaMinMatch[1], 10)
+    const m = horaMinMatch[2] ? parseInt(horaMinMatch[2], 10) : 0
+    if (h === 0 && m === 0) return null
+    if (m > 59) return null
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
+  // 3. Formato de minutos apenas: 30m, 45min
+  const minMatch = str.match(/^(\d+)\s*(?:m|min|minutos)$/i)
+  if (minMatch) {
+    const totalMin = parseInt(minMatch[1], 10)
+    if (totalMin <= 0) return null
+    const h = Math.floor(totalMin / 60)
+    const m = totalMin % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
+  // 4. Formato decimal: 1.5 ou 1,5
+  const num = parseFloat(str.replace(',', '.'))
+  if (!isNaN(num) && num > 0) {
+    const h = Math.floor(num)
+    const m = Math.round((num - h) * 60)
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+
+  return null
+}
+
+/**
+ * Formata o tempo para exibição amigável:
+ * - "01:30" ou 1.5 -> "1h30"
+ * - "02:00" ou 2.0 -> "2h"
+ * - "00:45" ou 0.75 -> "45min"
+ */
+function formatarTempoExibicao(tempo?: string, quantidadeHoras?: number): string {
+  if (tempo) {
+    const [hStr, mStr] = tempo.split(':')
+    const h = parseInt(hStr, 10)
+    const m = parseInt(mStr, 10)
+    if (!isNaN(h) && !isNaN(m)) {
+      if (h > 0 && m > 0) return `${h}h${String(m).padStart(2, '0')}`
+      if (h > 0) return `${h}h`
+      return `${m}min`
+    }
+  }
+  if (quantidadeHoras != null) {
+    const h = Math.floor(quantidadeHoras)
+    const m = Math.round((quantidadeHoras - h) * 60)
+    if (h > 0 && m > 0) return `${h}h${String(m).padStart(2, '0')}`
+    if (h > 0) return `${h}h`
+    return `${m}min`
+  }
+  return '-'
+}
+
+export default function CatalogoPage() {
   const [activeTab, setActiveTab] = useState('servicos')
 
   // --- Filtros de Busca ---
   const [buscaServico, setBuscaServico] = useState('')
   const [buscaPeca, setBuscaPeca] = useState('')
 
+  // --- Estado de Serviços (API Spring Boot: /servicos) ---
+  const [servicos, setServicos] = useState<ServicoResponse[]>([])
+  const [carregandoServicos, setCarregandoServicos] = useState(true)
+  const [salvandoServico, setSalvandoServico] = useState(false)
+  const [servicoParaExcluir, setServicoParaExcluir] = useState<ServicoResponse | null>(null)
+  const [excluindoServico, setExcluindoServico] = useState(false)
+
+  // --- Estado de Peças (API Spring Boot: /pecas) ---
+  const [pecas, setPecas] = useState<PecaResponse[]>([])
+  const [carregandoPecas, setCarregandoPecas] = useState(true)
+  const [salvandoPeca, setSalvandoPeca] = useState(false)
+  const [pecaParaExcluir, setPecaParaExcluir] = useState<PecaResponse | null>(null)
+  const [excluindoPeca, setExcluindoPeca] = useState(false)
+
   // --- Modal de Serviço ---
   const [servicoModalAberto, setServicoModalAberto] = useState(false)
-  const [editandoServico, setEditandoServico] = useState<Servico | null>(null)
+  const [editandoServico, setEditandoServico] = useState<ServicoResponse | null>(null)
   const [servicoNome, setServicoNome] = useState('')
-  const [servicoValorBase, setServicoValorBase] = useState('')
-  const [servicoAtivo, setServicoAtivo] = useState(true)
-  const [servicoPecaIds, setServicoPecaIds] = useState<string[]>([])
+  const [servicoTempo, setServicoTempo] = useState('')
+  const [servicoDescricao, setServicoDescricao] = useState('')
   const [servicoErros, setServicoErros] = useState<Record<string, string>>({})
 
   // --- Modal de Peça ---
   const [pecaModalAberto, setPecaModalAberto] = useState(false)
-  const [editandoPeca, setEditandoPeca] = useState<Peca | null>(null)
+  const [editandoPeca, setEditandoPeca] = useState<PecaResponse | null>(null)
   const [pecaNome, setPecaNome] = useState('')
+  const [pecaFabricante, setPecaFabricante] = useState('')
   const [pecaValor, setPecaValor] = useState('')
-  const [pecaAtivo, setPecaAtivo] = useState(true)
   const [pecaErros, setPecaErros] = useState<Record<string, string>>({})
 
-  // --- Computados: Serviços Filtrados ---
-  const servicosFiltrados = useMemo(() => {
-    const q = buscaServico.toLowerCase().trim()
-    return servicos.filter((s) => s.nome.toLowerCase().includes(q))
-  }, [servicos, buscaServico])
+  // --- Carregamento de Serviços do Backend ---
+  const carregarServicos = useCallback(async (termoBusca?: string) => {
+    setCarregandoServicos(true)
+    try {
+      const resp = await catalogoService.listarServicos({
+        nome: termoBusca !== undefined ? (termoBusca.trim() || undefined) : undefined,
+        size: 100,
+      })
+      setServicos(resp.content || [])
+    } catch (err) {
+      console.error('Erro ao carregar serviços:', err)
+      toast.error('Erro ao carregar lista de serviços.')
+    } finally {
+      setCarregandoServicos(false)
+    }
+  }, [])
 
-  // --- Computados: Peças Filtradas ---
-  const pecasFiltradas = useMemo(() => {
-    const q = buscaPeca.toLowerCase().trim()
-    return pecas.filter((p) => p.nome.toLowerCase().includes(q))
-  }, [pecas, buscaPeca])
+  // --- Carregamento de Peças do Backend ---
+  const carregarPecas = useCallback(async (termoBusca?: string) => {
+    setCarregandoPecas(true)
+    try {
+      const resp = await catalogoService.listarPecas({
+        busca: termoBusca !== undefined ? (termoBusca.trim() || undefined) : undefined,
+        size: 100,
+      })
+      setPecas(resp.content || [])
+    } catch (err) {
+      console.error('Erro ao carregar peças:', err)
+      toast.error('Erro ao carregar lista de peças.')
+    } finally {
+      setCarregandoPecas(false)
+    }
+  }, [])
 
-  // Map para buscar nome das peças rapidamente
-  const pecaMap = useMemo(() => {
-    return new Map(pecas.map((p) => [p.id, p]))
-  }, [pecas])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      carregarServicos(buscaServico)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [buscaServico, carregarServicos])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      carregarPecas(buscaPeca)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [buscaPeca, carregarPecas])
 
   // --- Handlers: Modal Serviço ---
   const abrirNovoServico = () => {
     setEditandoServico(null)
     setServicoNome('')
-    setServicoValorBase('')
-    setServicoAtivo(true)
-    setServicoPecaIds([])
+    setServicoTempo('')
+    setServicoDescricao('')
     setServicoErros({})
     setServicoModalAberto(true)
   }
 
-  const abrirEditarServico = (servico: Servico) => {
+  const abrirEditarServico = (servico: ServicoResponse) => {
     setEditandoServico(servico)
     setServicoNome(servico.nome)
-    setServicoValorBase(servico.valorBase.toString())
-    setServicoAtivo(servico.ativo)
-    setServicoPecaIds(servico.pecaIds)
+    if (servico.tempo) {
+      setServicoTempo(formatarTempoExibicao(servico.tempo, servico.quantidadeHoras))
+    } else if (servico.quantidadeHoras) {
+      setServicoTempo(formatarTempoExibicao(undefined, servico.quantidadeHoras))
+    } else {
+      setServicoTempo('')
+    }
+    setServicoDescricao(servico.descricao || '')
     setServicoErros({})
     setServicoModalAberto(true)
   }
 
-  const handleSalvarServico = (e: React.FormEvent) => {
+  const handleSalvarServico = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const erros: Record<string, string> = {}
-    if (!servicoNome.trim()) erros.nome = 'Nome do serviço é obrigatório.'
-    const valor = Number.parseFloat(servicoValorBase)
-    if (!servicoValorBase || Number.isNaN(valor) || valor < 0) {
-      erros.valorBase = 'Valor base deve ser um número maior ou igual a zero.'
+    if (!servicoNome.trim()) {
+      erros.nome = 'Nome do serviço é obrigatório.'
+    }
+    const tempoFormatado = normalizarTempoParaEnvio(servicoTempo)
+    if (!tempoFormatado) {
+      erros.tempo = 'Informe um tempo válido (ex: 1h30, 1:30, 45min ou 2h).'
     }
 
     if (Object.keys(erros).length > 0) {
@@ -122,57 +265,74 @@ export default function CatalogoPage() {
       return
     }
 
-    const dados = {
-      nome: servicoNome.trim(),
-      valorBase: valor,
-      pecaIds: servicoPecaIds,
-      ativo: servicoAtivo,
-    }
+    setSalvandoServico(true)
+    try {
+      const payload: ServicoRequest = {
+        nome: servicoNome.trim(),
+        tempo: tempoFormatado!,
+        descricao: servicoDescricao.trim() || undefined,
+      }
 
-    if (editandoServico) {
-      updateServico(editandoServico.id, dados)
-      toast.success('Serviço atualizado com sucesso!')
-    } else {
-      addServico(dados)
-      toast.success('Serviço criado com sucesso!')
-    }
+      if (editandoServico) {
+        await catalogoService.atualizarServico(editandoServico.id, payload)
+        toast.success('Serviço atualizado com sucesso!')
+      } else {
+        await catalogoService.criarServico(payload)
+        toast.success('Serviço criado com sucesso!')
+      }
 
-    setServicoModalAberto(false)
+      setServicoModalAberto(false)
+      carregarServicos(buscaServico)
+    } catch (err) {
+      handleError(err, { fallbackMessage: 'Erro ao salvar serviço.' })
+    } finally {
+      setSalvandoServico(false)
+    }
   }
 
-  const toggleServicoPeca = (id: string) => {
-    setServicoPecaIds((prev) =>
-      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id],
-    )
+  const handleConfirmarExclusao = async () => {
+    if (!servicoParaExcluir) return
+    setExcluindoServico(true)
+    try {
+      await catalogoService.excluirServico(servicoParaExcluir.id)
+      toast.success('Serviço excluído com sucesso!')
+      setServicoParaExcluir(null)
+      carregarServicos(buscaServico)
+    } catch (err) {
+      handleError(err, { fallbackMessage: 'Erro ao excluir serviço.' })
+    } finally {
+      setExcluindoServico(false)
+    }
   }
 
   // --- Handlers: Modal Peça ---
   const abrirNovaPeca = () => {
     setEditandoPeca(null)
     setPecaNome('')
+    setPecaFabricante('')
     setPecaValor('')
-    setPecaAtivo(true)
     setPecaErros({})
     setPecaModalAberto(true)
   }
 
-  const abrirEditarPeca = (peca: Peca) => {
+  const abrirEditarPeca = (peca: PecaResponse) => {
     setEditandoPeca(peca)
     setPecaNome(peca.nome)
-    setPecaValor(peca.valor.toString())
-    setPecaAtivo(peca.ativo)
+    setPecaFabricante(peca.fabricante || '')
+    setPecaValor(peca.valorBase != null ? peca.valorBase.toString() : '')
     setPecaErros({})
     setPecaModalAberto(true)
   }
 
-  const handleSalvarPeca = (e: React.FormEvent) => {
+  const handleSalvarPeca = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const erros: Record<string, string> = {}
     if (!pecaNome.trim()) erros.nome = 'Nome da peça é obrigatório.'
-    const valor = Number.parseFloat(pecaValor)
+    if (!pecaFabricante.trim()) erros.fabricante = 'Fabricante da peça é obrigatório.'
+    const valor = Number.parseFloat(pecaValor.replace(',', '.'))
     if (!pecaValor || Number.isNaN(valor) || valor <= 0) {
-      erros.valor = 'Valor deve ser um número positivo maior que zero.'
+      erros.valor = 'Valor base deve ser um número positivo maior que zero.'
     }
 
     if (Object.keys(erros).length > 0) {
@@ -180,28 +340,51 @@ export default function CatalogoPage() {
       return
     }
 
-    const dados = {
-      nome: pecaNome.trim(),
-      valor,
-      ativo: pecaAtivo,
-    }
+    setSalvandoPeca(true)
+    try {
+      const payload: PecaRequest = {
+        nome: pecaNome.trim(),
+        fabricante: pecaFabricante.trim(),
+        valorBase: valor,
+      }
 
-    if (editandoPeca) {
-      updatePeca(editandoPeca.id, dados)
-      toast.success('Peça atualizada com sucesso!')
-    } else {
-      addPeca(dados)
-      toast.success('Peça cadastrada com sucesso!')
-    }
+      if (editandoPeca) {
+        await catalogoService.atualizarPeca(editandoPeca.id, payload)
+        toast.success('Peça atualizada com sucesso!')
+      } else {
+        await catalogoService.criarPeca(payload)
+        toast.success('Peça cadastrada com sucesso!')
+      }
 
-    setPecaModalAberto(false)
+      setPecaModalAberto(false)
+      carregarPecas(buscaPeca)
+    } catch (err) {
+      handleError(err, { fallbackMessage: 'Erro ao salvar peça.' })
+    } finally {
+      setSalvandoPeca(false)
+    }
+  }
+
+  const handleConfirmarExclusaoPeca = async () => {
+    if (!pecaParaExcluir) return
+    setExcluindoPeca(true)
+    try {
+      await catalogoService.excluirPeca(pecaParaExcluir.id)
+      toast.success('Peça excluída com sucesso!')
+      setPecaParaExcluir(null)
+      carregarPecas(buscaPeca)
+    } catch (err) {
+      handleError(err, { fallbackMessage: 'Erro ao excluir peça.' })
+    } finally {
+      setExcluindoPeca(false)
+    }
   }
 
   return (
     <div>
       <PageHeader
         title="Catálogo"
-        description="Mantenha a lista de peças e receitas de serviços da oficina."
+        description="Mantenha a lista de peças e serviços da sua oficina."
       />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -245,18 +428,25 @@ export default function CatalogoPage() {
                 />
               </InputGroup>
 
-              {servicosFiltrados.length === 0 ? (
+              {carregandoServicos ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+                  <Spinner className="size-6" />
+                  <span className="text-sm">Carregando serviços...</span>
+                </div>
+              ) : servicos.length === 0 ? (
                 <EmptyState
                   icon={Wrench}
                   title="Nenhum serviço encontrado"
-                  description="Cadastre um novo serviço ou altere os termos de busca."
+                  description={
+                    buscaServico
+                      ? 'Nenhum serviço corresponde aos termos de busca.'
+                      : 'Cadastre seu primeiro serviço informando nome, tempo estimado e descrição.'
+                  }
                   action={
-                    servicos.length === 0 ? (
-                      <Button onClick={abrirNovoServico}>
-                        <Plus data-icon="inline-start" />
-                        Cadastrar serviço
-                      </Button>
-                    ) : undefined
+                    <Button onClick={abrirNovoServico}>
+                      <Plus data-icon="inline-start" />
+                      Cadastrar serviço
+                    </Button>
                   }
                 />
               ) : (
@@ -265,62 +455,46 @@ export default function CatalogoPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Serviço</TableHead>
-                        <TableHead>Receita (Peças Vinculadas)</TableHead>
-                        <TableHead className="text-right">Mão de Obra Base</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
+                        <TableHead className="w-40">Tempo Estimado</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead className="text-right w-28">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {servicosFiltrados.map((s) => (
+                      {servicos.map((s) => (
                         <TableRow key={s.id}>
                           <TableCell className="font-medium">{s.nome}</TableCell>
                           <TableCell>
-                            {s.pecaIds.length === 0 ? (
-                              <span className="text-xs text-muted-foreground">
-                                Apenas mão de obra
-                              </span>
-                            ) : (
-                              <div className="flex flex-wrap gap-1.5 max-w-md">
-                                {s.pecaIds.map((pid) => {
-                                  const p = pecaMap.get(pid)
-                                  return (
-                                    <Badge
-                                      key={pid}
-                                      variant="secondary"
-                                      className="text-[10px] font-normal"
-                                    >
-                                      {p ? p.nome : 'Peça desconhecida'}
-                                    </Badge>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-mono font-medium">
-                            {formatCurrency(s.valorBase)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={
-                                s.ativo
-                                  ? 'bg-success/15 text-success border-success/40'
-                                  : 'bg-muted text-muted-foreground border-border'
-                              }
-                            >
-                              {s.ativo ? 'Ativo' : 'Inativo'}
+                            <Badge variant="outline" className="font-mono bg-muted/50 gap-1.5 py-1">
+                              <Clock className="size-3.5 text-muted-foreground" />
+                              {formatarTempoExibicao(s.tempo, s.quantidadeHoras)}
                             </Badge>
                           </TableCell>
+                          <TableCell className="text-muted-foreground text-sm max-w-md truncate">
+                            {s.descricao || '-'}
+                          </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => abrirEditarServico(s)}
-                            >
-                              <Edit className="size-3.5" />
-                              Editar
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => abrirEditarServico(s)}
+                                title="Editar serviço"
+                              >
+                                <Edit className="size-3.5" />
+                                <span className="sr-only">Editar</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => setServicoParaExcluir(s)}
+                                title="Excluir serviço"
+                              >
+                                <Trash2 className="size-3.5" />
+                                <span className="sr-only">Excluir</span>
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -341,24 +515,31 @@ export default function CatalogoPage() {
                   <Search />
                 </InputGroupAddon>
                 <InputGroupInput
-                  placeholder="Buscar peças..."
+                  placeholder="Buscar peças por nome ou fabricante..."
                   value={buscaPeca}
                   onChange={(e) => setBuscaPeca(e.target.value)}
                 />
               </InputGroup>
 
-              {pecasFiltradas.length === 0 ? (
+              {carregandoPecas ? (
+                <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+                  <Spinner className="size-6" />
+                  <span className="text-sm">Carregando peças...</span>
+                </div>
+              ) : pecas.length === 0 ? (
                 <EmptyState
                   icon={Package}
                   title="Nenhuma peça encontrada"
-                  description="Cadastre uma nova peça ou altere os termos de busca."
+                  description={
+                    buscaPeca
+                      ? 'Nenhuma peça corresponde aos termos de busca.'
+                      : 'Cadastre uma nova peça informando nome, fabricante e valor base.'
+                  }
                   action={
-                    pecas.length === 0 ? (
-                      <Button onClick={abrirNovaPeca}>
-                        <Plus data-icon="inline-start" />
-                        Cadastrar peça
-                      </Button>
-                    ) : undefined
+                    <Button onClick={abrirNovaPeca}>
+                      <Plus data-icon="inline-start" />
+                      Cadastrar peça
+                    </Button>
                   }
                 />
               ) : (
@@ -367,39 +548,43 @@ export default function CatalogoPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Peça</TableHead>
-                        <TableHead className="text-right">Valor Unitário</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
+                        <TableHead>Fabricante</TableHead>
+                        <TableHead className="text-right">Valor Base</TableHead>
+                        <TableHead className="text-right w-28">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {pecasFiltradas.map((p) => (
+                      {pecas.map((p) => (
                         <TableRow key={p.id}>
                           <TableCell className="font-medium">{p.nome}</TableCell>
-                          <TableCell className="text-right font-mono font-medium">
-                            {formatCurrency(p.valor)}
+                          <TableCell className="text-muted-foreground">
+                            {p.fabricante || '-'}
                           </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className={
-                                p.ativo
-                                  ? 'bg-success/15 text-success border-success/40'
-                                  : 'bg-muted text-muted-foreground border-border'
-                              }
-                            >
-                              {p.ativo ? 'Ativa' : 'Inativa'}
-                            </Badge>
+                          <TableCell className="text-right font-mono font-medium">
+                            {formatCurrency(p.valorBase)}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => abrirEditarPeca(p)}
-                            >
-                              <Edit className="size-3.5" />
-                              Editar
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => abrirEditarPeca(p)}
+                                title="Editar peça"
+                              >
+                                <Edit className="size-3.5" />
+                                <span className="sr-only">Editar</span>
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => setPecaParaExcluir(p)}
+                                title="Excluir peça"
+                              >
+                                <Trash2 className="size-3.5" />
+                                <span className="sr-only">Excluir</span>
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -414,22 +599,23 @@ export default function CatalogoPage() {
 
       {/* --- Dialog: Cadastro / Edição de Serviço --- */}
       <Dialog open={servicoModalAberto} onOpenChange={setServicoModalAberto}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editandoServico ? 'Editar Serviço' : 'Novo Serviço'}
             </DialogTitle>
             <DialogDescription>
-              Preencha os dados e selecione as peças que compõem a receita do serviço.
+              Informe o nome, o tempo estimado de execução (ex: 1h30 ou 1:30) e a descrição do serviço.
             </DialogDescription>
           </DialogHeader>
 
           <form onSubmit={handleSalvarServico}>
-            <div className="flex flex-col gap-5 py-4">
+            <div className="flex flex-col gap-4 py-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="srv-nome">Nome do Serviço</Label>
                 <Input
                   id="srv-nome"
+                  placeholder="Ex: Alinhamento e Balanceamento"
                   value={servicoNome}
                   onChange={(e) => {
                     setServicoNome(e.target.value)
@@ -449,19 +635,18 @@ export default function CatalogoPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="srv-valor-base">Mão de Obra Base (R$)</Label>
+                <Label htmlFor="srv-tempo">Tempo Estimado (ex: 1h30 ou 1:30)</Label>
                 <Input
-                  id="srv-valor-base"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={servicoValorBase}
+                  id="srv-tempo"
+                  type="text"
+                  placeholder="Ex: 1h30 ou 1:30"
+                  value={servicoTempo}
                   onChange={(e) => {
-                    setServicoValorBase(e.target.value)
-                    if (servicoErros.valorBase) {
+                    setServicoTempo(e.target.value)
+                    if (servicoErros.tempo) {
                       setServicoErros((prev) => {
                         const n = { ...prev }
-                        delete n.valorBase
+                        delete n.tempo
                         return n
                       })
                     }
@@ -469,66 +654,22 @@ export default function CatalogoPage() {
                   required
                 />
                 <span className="text-[11px] text-muted-foreground">
-                  *Este valor será multiplicado pelo multiplicador (lambda) do veículo no
-                  momento de gerar o orçamento. Peças avulsas podem ser cadastradas com valor de mão de obra zero.
+                  *Aceita formatos como 1h30, 1:30, 2h ou 45min. O sistema converte automaticamente para o cálculo do valor da mão de obra.
                 </span>
-                {servicoErros.valorBase && (
-                  <p className="text-xs text-destructive">{servicoErros.valorBase}</p>
+                {servicoErros.tempo && (
+                  <p className="text-xs text-destructive">{servicoErros.tempo}</p>
                 )}
               </div>
 
-              {editandoServico && (
-                <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <input
-                    type="checkbox"
-                    id="srv-ativo"
-                    checked={servicoAtivo}
-                    onChange={(e) => setServicoAtivo(e.target.checked)}
-                    className="size-4 rounded border-input"
-                  />
-                  <Label htmlFor="srv-ativo" className="cursor-pointer font-normal">
-                    Serviço Ativo (indisponibiliza para novos orçamentos se desmarcado)
-                  </Label>
-                </div>
-              )}
-
-              {/* Checklist de Peças */}
-              <div className="flex flex-col gap-2.5">
-                <Label className="text-sm font-medium">Receita de Peças</Label>
-                <span className="text-[11px] text-muted-foreground -mt-1.5">
-                  Selecione as peças que são trocadas/usadas sempre neste serviço.
-                </span>
-
-                {pecas.filter((p) => p.ativo || servicoPecaIds.includes(p.id)).length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border bg-muted/40 p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5">
-                    <AlertCircle className="size-4" />
-                    Nenhuma peça ativa no catálogo para vincular.
-                  </div>
-                ) : (
-                  <div className="max-h-48 overflow-y-auto border border-input rounded-md p-2.5 flex flex-col gap-2">
-                    {pecas
-                      .filter((p) => p.ativo || servicoPecaIds.includes(p.id))
-                      .map((p) => (
-                        <label
-                          key={p.id}
-                          className="flex items-center gap-2.5 py-1 text-xs cursor-pointer hover:bg-muted/40 px-1 rounded"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={servicoPecaIds.includes(p.id)}
-                            onChange={() => toggleServicoPeca(p.id)}
-                            className="size-4 rounded border-input text-primary"
-                          />
-                          <div className="flex flex-1 justify-between gap-2">
-                            <span className="font-medium text-foreground">{p.nome}</span>
-                            <span className="font-mono text-muted-foreground">
-                              {formatCurrency(p.valor)}
-                            </span>
-                          </div>
-                        </label>
-                      ))}
-                  </div>
-                )}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="srv-descricao">Descrição (Opcional)</Label>
+                <Textarea
+                  id="srv-descricao"
+                  placeholder="Detalhes ou procedimentos do serviço..."
+                  rows={3}
+                  value={servicoDescricao}
+                  onChange={(e) => setServicoDescricao(e.target.value)}
+                />
               </div>
             </div>
 
@@ -537,14 +678,43 @@ export default function CatalogoPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setServicoModalAberto(false)}
+                disabled={salvandoServico}
               >
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Serviço</Button>
+              <Button type="submit" disabled={salvandoServico}>
+                {salvandoServico && <Spinner className="size-4 mr-2" />}
+                {editandoServico ? 'Salvar Alterações' : 'Cadastrar Serviço'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* --- AlertDialog: Confirmação de Exclusão de Serviço --- */}
+      <AlertDialog
+        open={!!servicoParaExcluir}
+        onOpenChange={(open) => !open && setServicoParaExcluir(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Serviço</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o serviço &quot;{servicoParaExcluir?.nome}&quot;? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindoServico}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmarExclusao}
+              disabled={excluindoServico}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindoServico ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* --- Dialog: Cadastro / Edição de Peça --- */}
       <Dialog open={pecaModalAberto} onOpenChange={setPecaModalAberto}>
@@ -554,7 +724,7 @@ export default function CatalogoPage() {
               {editandoPeca ? 'Editar Peça' : 'Nova Peça'}
             </DialogTitle>
             <DialogDescription>
-              Forneça o nome e o valor de custo unitário padrão da peça no catálogo.
+              Forneça o nome, o fabricante e o valor de custo base da peça no catálogo da oficina.
             </DialogDescription>
           </DialogHeader>
 
@@ -564,6 +734,7 @@ export default function CatalogoPage() {
                 <Label htmlFor="peca-nome">Nome da Peça</Label>
                 <Input
                   id="peca-nome"
+                  placeholder="Ex: Filtro de Óleo"
                   value={pecaNome}
                   onChange={(e) => {
                     setPecaNome(e.target.value)
@@ -583,7 +754,30 @@ export default function CatalogoPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label htmlFor="peca-valor">Valor Unitário (R$)</Label>
+                <Label htmlFor="peca-fabricante">Fabricante</Label>
+                <Input
+                  id="peca-fabricante"
+                  placeholder="Ex: Bosch"
+                  value={pecaFabricante}
+                  onChange={(e) => {
+                    setPecaFabricante(e.target.value)
+                    if (pecaErros.fabricante) {
+                      setPecaErros((prev) => {
+                        const n = { ...prev }
+                        delete n.fabricante
+                        return n
+                      })
+                    }
+                  }}
+                  required
+                />
+                {pecaErros.fabricante && (
+                  <p className="text-xs text-destructive">{pecaErros.fabricante}</p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="peca-valor">Valor Base (R$)</Label>
                 <Input
                   id="peca-valor"
                   type="number"
@@ -606,21 +800,6 @@ export default function CatalogoPage() {
                   <p className="text-xs text-destructive">{pecaErros.valor}</p>
                 )}
               </div>
-
-              {editandoPeca && (
-                <div className="flex items-center gap-3 rounded-lg border border-border p-3">
-                  <input
-                    type="checkbox"
-                    id="peca-ativo"
-                    checked={pecaAtivo}
-                    onChange={(e) => setPecaAtivo(e.target.checked)}
-                    className="size-4 rounded border-input"
-                  />
-                  <Label htmlFor="peca-ativo" className="cursor-pointer font-normal">
-                    Peça Ativa (indisponibiliza para novas receitas se desmarcado)
-                  </Label>
-                </div>
-              )}
             </div>
 
             <DialogFooter>
@@ -628,14 +807,43 @@ export default function CatalogoPage() {
                 type="button"
                 variant="outline"
                 onClick={() => setPecaModalAberto(false)}
+                disabled={salvandoPeca}
               >
                 Cancelar
               </Button>
-              <Button type="submit">Salvar Peça</Button>
+              <Button type="submit" disabled={salvandoPeca}>
+                {salvandoPeca && <Spinner className="size-4 mr-2" />}
+                {editandoPeca ? 'Salvar Alterações' : 'Salvar Peça'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* --- AlertDialog: Confirmação de Exclusão de Peça --- */}
+      <AlertDialog
+        open={!!pecaParaExcluir}
+        onOpenChange={(open) => !open && setPecaParaExcluir(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Peça</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a peça &quot;{pecaParaExcluir?.nome}&quot;? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluindoPeca}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmarExclusaoPeca}
+              disabled={excluindoPeca}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {excluindoPeca ? 'Excluindo...' : 'Excluir'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

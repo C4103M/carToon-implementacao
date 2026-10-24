@@ -11,9 +11,8 @@ public final class ServicoMapper {
     public static Servico paraServico(ServicoRequest request) {
         Servico servico = new Servico();
         servico.setNome(request.nome());
-        servico.setValorBase(request.valorBase());
+        servico.setTempo(request.tempo());
         servico.setDescricao(request.descricao());
-        servico.setTempoEstimado(request.tempoEstimado());
         return servico;
     }
 
@@ -21,17 +20,17 @@ public final class ServicoMapper {
         return new ServicoResponse(
                 servico.getId(),
                 servico.getNome(),
-                servico.getValorBase(),
+                servico.getTempo(),
+                servico.getQuantidadeHoras(),
                 servico.getDescricao(),
-                servico.getTempoEstimado()
+                servico.getOficina() != null ? servico.getOficina().getId() : null
         );
     }
 
     public static void atualizarEntidade(Servico servico, ServicoRequest request) {
         servico.setNome(request.nome());
-        servico.setValorBase(request.valorBase());
+        servico.setTempo(request.tempo());
         servico.setDescricao(request.descricao());
-        servico.setTempoEstimado(request.tempoEstimado());
     }
 
     public static ServicoResponse toResponse(Servico servico) {
