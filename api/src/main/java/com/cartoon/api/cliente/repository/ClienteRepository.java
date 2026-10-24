@@ -12,6 +12,11 @@ public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
 
     List<Cliente> findAllByAtivoTrue();
 
+    List<Cliente> findAllByAtivoFalse();
 
+    List<Cliente> findAllByOficinaId(Integer oficinaId);
 
+    List<Cliente> findAllByOficinaIdAndAtivoTrue(Integer oficinaId);
+
+    List<Cliente> findAllByOficinaIdAndAtivoFalse(Integer oficinaId);
 }
