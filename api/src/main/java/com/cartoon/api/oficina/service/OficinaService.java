@@ -42,7 +42,15 @@ public class OficinaService {
 
     @Transactional(readOnly = true)
     public List<OficinaResponse> listar() {
-        return oficinaRepository.findAllByAtivoTrue().stream().map(mapper::toResponse).toList();
+        return listar(null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OficinaResponse> listar(Boolean ativo) {
+        List<Oficina> oficinas = (ativo == null)
+                ? oficinaRepository.findAll()
+                : oficinaRepository.findAllByAtivo(ativo);
+        return oficinas.stream().map(mapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
