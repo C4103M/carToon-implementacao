@@ -33,7 +33,6 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -91,7 +90,7 @@ class HistoricoVeiculoServiceTest {
         Servico servico = new Servico();
         servico.setId(1);
         servico.setNome("Troca de Óleo");
-        servico.setValorBase(BigDecimal.valueOf(100.0));
+        servico.setQuantidadeHoras(1.0);
 
         Peca peca = new Peca();
         peca.setId(1);
@@ -118,7 +117,7 @@ class HistoricoVeiculoServiceTest {
         itemServico.setQuantidade(1);
         itemServico.setValorUnitario(BigDecimal.valueOf(100.0));
         itemServico.setSubtotal(BigDecimal.valueOf(100.0));
-        itemServico.setTempo(LocalTime.of(1, 0));
+        itemServico.setQuantidadeHoras(1.0);
         ordemRecente.adicionarItemServico(itemServico);
 
         ItemPeca itemPeca = new ItemPeca();

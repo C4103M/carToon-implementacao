@@ -1,7 +1,7 @@
 'use client'
 
-import { use, useState, useMemo } from 'react'
-import { useRouter, notFound } from 'next/navigation'
+import { use, useState, useMemo, useEffect, useCallback, Suspense } from 'react'
+import { useRouter, useSearchParams, notFound } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Car,
@@ -10,14 +10,22 @@ import {
   History,
   AlertTriangle,
   RefreshCw,
+  Power,
+  RotateCcw,
 } from 'lucide-react'
-import { useStore } from '@/lib/store'
-import { formatCpf, isValidCpf, formatPlaca } from '@/lib/format'
-import { consultarFipe, type FipeResult } from '@/lib/fipe'
+import { clientesService } from '@/lib/services/clientes.service'
+import { veiculosService } from '@/lib/services/veiculos.service'
+import { formatCpf, isValidCpf, formatPlaca, formatCurrency } from '@/lib/format'
+import { computeLambda } from '@/lib/fipe'
+import { fipeService, type FipeItemDTO } from '@/lib/services/fipe.service'
+import { normalizeError } from '@/lib/error-handler'
+import type { ClienteResponse, VeiculoResponse } from '@/lib/types'
 import { PageHeader } from '@/components/page-header'
 import { VeiculoStatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import {
   Card,
   CardContent,
@@ -47,51 +55,46 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
-
-const MONTADORAS = [
-  'Volkswagen',
-  'Chevrolet',
-  'Fiat',
-  'Ford',
-  'Toyota',
-  'Honda',
-  'Hyundai',
-  'Renault',
-  'Jeep',
-  'Nissan',
-]
 
 export default function ClienteDetalhePage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[300px] items-center justify-center">
+          <Spinner />
+        </div>
+      }
+    >
+      <ClienteDetalheContent params={params} />
+    </Suspense>
+  )
+}
+
+function ClienteDetalheContent({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
   const { id } = use(params)
-  const {
-    clientes,
-    updateCliente,
-    veiculos,
-    addVeiculo,
-    trocarVeiculo,
-  } = useStore()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const cliente = clientes.find((c) => c.id === id)
-  if (!cliente) notFound()
+  const numericId = Number(id)
+  const [cliente, setCliente] = useState<ClienteResponse | null>(null)
+  const [veiculos, setVeiculos] = useState<VeiculoResponse[]>([])
+  const [carregandoGeral, setCarregandoGeral] = useState(true)
+  const [salvandoCliente, setSalvandoCliente] = useState(false)
 
-  // --- Estados do Cliente ---
-  const [nome, setNome] = useState(cliente.nome)
-  const [cpf, setCpf] = useState(formatCpf(cliente.cpf))
-  const [endereco, setEndereco] = useState(cliente.endereco)
+  // --- Estados do Formulário do Cliente ---
+  const [nome, setNome] = useState('')
+  const [cpf, setCpf] = useState('')
+  const [endereco, setEndereco] = useState('')
+  const [telefone, setTelefone] = useState('')
 
   const [nomeErro, setNomeErro] = useState(false)
   const [cpfErro, setCpfErro] = useState<string | null>(null)
@@ -100,34 +103,105 @@ export default function ClienteDetalhePage({
   // --- Estados de Veículos ---
   const [verAntigos, setVerAntigos] = useState(false)
 
-  // --- Estados do Modal de Veículo ---
+  // --- Estados do Modal de Veículo com FIPE ---
   const [modalAberto, setModalAberto] = useState(false)
   const [modalMode, setModalMode] = useState<'add' | 'swap'>('add')
-  const [veiculoAntigoId, setVeiculoAntigoId] = useState<string | null>(null)
+  const [veiculoAntigoId, setVeiculoAntigoId] = useState<number | null>(null)
 
-  const [montadora, setMontadora] = useState('')
-  const [modelo, setModelo] = useState('')
-  const [ano, setAno] = useState('')
+  // Cascata FIPE
+  const [marcas, setMarcas] = useState<FipeItemDTO[]>([])
+  const [carregandoMarcas, setCarregandoMarcas] = useState(false)
+  const [marcaCodigo, setMarcaCodigo] = useState('')
+  const [marcaNome, setMarcaNome] = useState('')
+
+  const [modelos, setModelos] = useState<FipeItemDTO[]>([])
+  const [carregandoModelos, setCarregandoModelos] = useState(false)
+  const [modeloCodigo, setModeloCodigo] = useState('')
+  const [modeloNome, setModeloNome] = useState('')
+
+  const [anos, setAnos] = useState<FipeItemDTO[]>([])
+  const [carregandoAnos, setCarregandoAnos] = useState(false)
+  const [anoCodigo, setAnoCodigo] = useState('')
+  const [anoNome, setAnoNome] = useState('')
+
+  // Campos Não Editáveis (dados retornados da FIPE)
+  const [codigoFipe, setCodigoFipe] = useState('')
+  const [valorFipe, setValorFipe] = useState<number | null>(null)
+  const [anoModelo, setAnoModelo] = useState<number | null>(null)
+  const [combustivelFipe, setCombustivelFipe] = useState('Flex')
+  const [mesReferenciaFipe, setMesReferenciaFipe] = useState('')
+  const [carregandoValor, setCarregandoValor] = useState(false)
+
+  // Placa e erros
   const [placa, setPlaca] = useState('')
-
   const [formVeiculoErros, setFormVeiculoErros] = useState<Record<string, string>>({})
-
-  // FIPE loading & error states
-  const [fipeLoading, setFipeLoading] = useState(false)
   const [fipeErro, setFipeErro] = useState<string | null>(null)
+  const [salvandoVeiculo, setSalvandoVeiculo] = useState(false)
+  const [atualizandoFipeId, setAtualizandoFipeId] = useState<number | null>(null)
+
+  // Opções pesquisáveis para os campos FIPE
+  const marcasOptions = useMemo(() => {
+    return marcas.map((m) => ({
+      value: m.codigo,
+      label: m.nome,
+      sublabel: `Cód: ${m.codigo}`,
+    }))
+  }, [marcas])
+
+  const modelosOptions = useMemo(() => {
+    return modelos.map((m) => ({
+      value: m.codigo,
+      label: m.nome,
+      sublabel: `Cód: ${m.codigo}`,
+    }))
+  }, [modelos])
+
+  const anosOptions = useMemo(() => {
+    return anos.map((a) => ({
+      value: a.codigo,
+      label: a.nome,
+    }))
+  }, [anos])
+
+  // Carrega os dados reais do cliente e seus veículos
+  const carregarDados = useCallback(async () => {
+    if (Number.isNaN(numericId)) {
+      notFound()
+      return
+    }
+    try {
+      setCarregandoGeral(true)
+      const [cli, veics] = await Promise.all([
+        clientesService.buscarPorId(numericId),
+        veiculosService.listarPorCliente(numericId).catch(() => []),
+      ])
+
+      setCliente(cli)
+      setNome(cli.nome || '')
+      setCpf(formatCpf(cli.cpf || ''))
+      setEndereco(cli.endereco || '')
+      setTelefone(cli.telefone || '')
+      setVeiculos(Array.isArray(veics) ? veics : [])
+    } catch (err: unknown) {
+      toast.error('Cliente não encontrado no sistema.')
+      router.push('/app/clientes')
+    } finally {
+      setCarregandoGeral(false)
+    }
+  }, [numericId, router])
+
+  useEffect(() => {
+    carregarDados()
+  }, [carregarDados])
 
   // --- Computados ---
-  const veiculosDoCliente = useMemo(() => {
-    return veiculos.filter((v) => v.clienteId === cliente.id)
-  }, [veiculos, cliente.id])
-
   const veiculosAtivos = useMemo(() => {
-    return veiculosDoCliente.filter((v) => v.ativo)
-  }, [veiculosDoCliente])
+    return veiculos.filter((v) => v.ativo !== false)
+  }, [veiculos])
 
   const veiculosInativos = useMemo(() => {
-    return veiculosDoCliente.filter((v) => !v.ativo)
-  }, [veiculosDoCliente])
+    return veiculos.filter((v) => v.ativo === false)
+  }, [veiculos])
 
   // --- Ações do Cliente ---
   const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,7 +209,7 @@ export default function ClienteDetalhePage({
     if (cpfErro) setCpfErro(null)
   }
 
-  const handleSalvarCliente = (e: React.FormEvent) => {
+  const handleSalvarCliente = async (e: React.FormEvent) => {
     e.preventDefault()
 
     let temErro = false
@@ -146,7 +220,8 @@ export default function ClienteDetalhePage({
       setNomeErro(false)
     }
 
-    if (!cpf.trim()) {
+    const cleanCpf = cpf.replace(/\D/g, '')
+    if (!cleanCpf) {
       setCpfErro('CPF é obrigatório.')
       temErro = true
     } else if (!isValidCpf(cpf)) {
@@ -165,64 +240,245 @@ export default function ClienteDetalhePage({
 
     if (temErro) return
 
-    updateCliente(cliente.id, {
-      nome: nome.trim(),
-      cpf: cpf.trim(),
-      endereco: endereco.trim(),
-    })
-
-    toast.success('Dados do cliente atualizados!')
+    setSalvandoCliente(true)
+    try {
+      const atualizado = await clientesService.atualizar(numericId, {
+        nome: nome.trim(),
+        cpf: cleanCpf,
+        endereco: endereco.trim(),
+        telefone: telefone.trim() || undefined,
+      })
+      setCliente(atualizado)
+      toast.success('Dados do cliente atualizados com sucesso!')
+    } catch (err: unknown) {
+      const norm = normalizeError(err, 'Erro ao salvar alterações do cliente.')
+      toast.error(norm.message)
+    } finally {
+      setSalvandoCliente(false)
+    }
   }
 
-  // --- Modal e Veículo Actions ---
-  const abrirAdicionarVeiculo = () => {
+  // --- Carregamento de Marcas da FIPE ---
+  const carregarMarcas = useCallback(async () => {
+    try {
+      setCarregandoMarcas(true)
+      const lista = await fipeService.listarMarcas('carros')
+      setMarcas(lista)
+    } catch {
+      toast.error('Não foi possível carregar as marcas da tabela FIPE.')
+    } finally {
+      setCarregandoMarcas(false)
+    }
+  }, [])
+
+  // Limpa os estados do modal de veículo
+  const resetFormVeiculo = () => {
+    setMarcaCodigo('')
+    setMarcaNome('')
+    setModelos([])
+    setModeloCodigo('')
+    setModeloNome('')
+    setAnos([])
+    setAnoCodigo('')
+    setAnoNome('')
+    setCodigoFipe('')
+    setValorFipe(null)
+    setAnoModelo(null)
+    setCombustivelFipe('Flex')
+    setMesReferenciaFipe('')
+    setPlaca('')
+    setFormVeiculoErros({})
+    setFipeErro(null)
+    setCarregandoModelos(false)
+    setCarregandoAnos(false)
+    setCarregandoValor(false)
+  }
+
+  // --- Abertura do Modal de Veículo ---
+  const abrirAdicionarVeiculo = useCallback(() => {
     setModalMode('add')
     setVeiculoAntigoId(null)
-    setMontadora('')
-    setModelo('')
-    setAno('')
-    setPlaca('')
-    setFormVeiculoErros({})
-    setFipeErro(null)
-    setFipeLoading(false)
+    resetFormVeiculo()
     setModalAberto(true)
-  }
+    carregarMarcas()
+  }, [carregarMarcas])
 
-  const abrirTrocarVeiculo = (antigoId: string) => {
+  const abrirTrocarVeiculo = (antigoId: number) => {
     setModalMode('swap')
     setVeiculoAntigoId(antigoId)
-    setMontadora('')
-    setModelo('')
-    setAno('')
-    setPlaca('')
-    setFormVeiculoErros({})
-    setFipeErro(null)
-    setFipeLoading(false)
+    resetFormVeiculo()
     setModalAberto(true)
+    carregarMarcas()
+  }
+
+  // Abre automaticamente o modal se vier query param ?novoVeiculo=true
+  useEffect(() => {
+    if (searchParams.get('novoVeiculo') === 'true') {
+      abrirAdicionarVeiculo()
+    }
+  }, [searchParams, abrirAdicionarVeiculo])
+
+  // --- Mudança de Montadora (Marca) ---
+  const handleMarcaChange = async (codigo: string | null) => {
+    const cod = codigo ?? ''
+    setMarcaCodigo(cod)
+    const encontrada = marcas.find((m) => m.codigo === cod)
+    setMarcaNome(encontrada?.nome ?? '')
+
+    // Limpar campos dependentes
+    setModeloCodigo('')
+    setModeloNome('')
+    setModelos([])
+    setAnoCodigo('')
+    setAnoNome('')
+    setAnos([])
+    setCodigoFipe('')
+    setValorFipe(null)
+    setAnoModelo(null)
+    setFipeErro(null)
+
+    if (formVeiculoErros.montadora) {
+      setFormVeiculoErros((prev) => {
+        const next = { ...prev }
+        delete next.montadora
+        return next
+      })
+    }
+
+    if (!cod) return
+
+    try {
+      setCarregandoModelos(true)
+      const listaModelos = await fipeService.listarModelos(cod, 'carros')
+      setModelos(listaModelos)
+    } catch {
+      setFipeErro('Não foi possível carregar os modelos da marca na FIPE.')
+    } finally {
+      setCarregandoModelos(false)
+    }
+  }
+
+  // --- Mudança de Modelo ---
+  const handleModeloChange = async (codigo: string | null) => {
+    const cod = codigo ?? ''
+    setModeloCodigo(cod)
+    const encontrado = modelos.find((m) => m.codigo === cod)
+    setModeloNome(encontrado?.nome ?? '')
+
+    // Limpar ano e valor
+    setAnoCodigo('')
+    setAnoNome('')
+    setAnos([])
+    setCodigoFipe('')
+    setValorFipe(null)
+    setAnoModelo(null)
+    setFipeErro(null)
+
+    if (formVeiculoErros.modelo) {
+      setFormVeiculoErros((prev) => {
+        const next = { ...prev }
+        delete next.modelo
+        return next
+      })
+    }
+
+    if (!cod || !marcaCodigo) return
+
+    try {
+      setCarregandoAnos(true)
+      const listaAnos = await fipeService.listarAnos(marcaCodigo, cod, 'carros')
+      setAnos(listaAnos)
+    } catch {
+      setFipeErro('Não foi possível carregar os anos deste modelo na FIPE.')
+    } finally {
+      setCarregandoAnos(false)
+    }
+  }
+
+  // --- Mudança de Código do Modelo ---
+  const handleCodigoModeloChange = (valor: string) => {
+    const limpo = valor.replace(/\D/g, '')
+    setModeloCodigo(limpo)
+    const encontrado = modelos.find((m) => m.codigo === limpo)
+    if (encontrado) {
+      handleModeloChange(limpo)
+    } else {
+      setModeloNome('')
+      setAnoCodigo('')
+      setAnoNome('')
+      setAnos([])
+      setCodigoFipe('')
+      setValorFipe(null)
+      setAnoModelo(null)
+    }
+  }
+
+  // --- Mudança de Ano ---
+  const handleAnoChange = async (codigo: string | null) => {
+    const cod = codigo ?? ''
+    setAnoCodigo(cod)
+    const encontrado = anos.find((a) => a.codigo === cod)
+    setAnoNome(encontrado?.nome ?? '')
+
+    setCodigoFipe('')
+    setValorFipe(null)
+    setAnoModelo(null)
+    setFipeErro(null)
+
+    if (formVeiculoErros.ano) {
+      setFormVeiculoErros((prev) => {
+        const next = { ...prev }
+        delete next.ano
+        return next
+      })
+    }
+
+    if (!cod || !marcaCodigo || !modeloCodigo) return
+
+    try {
+      setCarregandoValor(true)
+      const dadosFipe = await fipeService.consultarValor(
+        marcaCodigo,
+        modeloCodigo,
+        cod,
+        'carros'
+      )
+      setCodigoFipe(dadosFipe.codigoFipe)
+      setValorFipe(Number(dadosFipe.valorFipe))
+      setAnoModelo(dadosFipe.anoModelo)
+      setCombustivelFipe(dadosFipe.combustivel || 'Flex')
+      setMesReferenciaFipe(dadosFipe.mesReferencia || '')
+    } catch {
+      setFipeErro('Não foi possível consultar o valor de mercado na tabela FIPE.')
+    } finally {
+      setCarregandoValor(false)
+    }
   }
 
   const handlePlacaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPlaca(formatPlaca(e.target.value))
+    if (formVeiculoErros.placa) {
+      setFormVeiculoErros((prev) => {
+        const next = { ...prev }
+        delete next.placa
+        return next
+      })
+    }
   }
 
   const submeterVeiculo = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
 
-    // Validação
     const erros: Record<string, string> = {}
-    if (!montadora) erros.montadora = 'Selecione uma montadora.'
-    if (!modelo.trim()) erros.modelo = 'Modelo é obrigatório.'
-    if (!ano) {
-      erros.ano = 'Ano é obrigatório.'
-    } else {
-      const numAno = Number.parseInt(ano, 10)
-      if (Number.isNaN(numAno) || numAno < 1900 || numAno > new Date().getFullYear() + 2) {
-        erros.ano = 'Informe um ano válido.'
-      }
-    }
+    if (!marcaCodigo) erros.montadora = 'Selecione uma montadora.'
+    if (!modeloCodigo) erros.modelo = 'Selecione um modelo.'
+    if (!anoCodigo) erros.ano = 'Selecione o ano do veículo.'
     const cleanPlaca = placa.replace(/[^A-Z0-9]/g, '')
     if (cleanPlaca.length < 7) {
       erros.placa = 'Placa deve ter no mínimo 7 caracteres alfanuméricos.'
+    }
+    if (valorFipe == null) {
+      erros.valorFipe = 'Aguarde a consulta do valor FIPE do veículo.'
     }
 
     if (Object.keys(erros).length > 0) {
@@ -231,38 +487,94 @@ export default function ClienteDetalhePage({
     }
 
     setFormVeiculoErros({})
-    setFipeErro(null)
-    setFipeLoading(true)
+    setSalvandoVeiculo(true)
 
     try {
-      const fipeResult = await consultarFipe({
-        montadora,
-        modelo: modelo.trim(),
-        ano: Number.parseInt(ano, 10),
+      const anoCalculado =
+        anoModelo || Number.parseInt(anoNome, 10) || new Date().getFullYear()
+
+      // Se estiver no modo troca, inativa o veículo antigo
+      if (modalMode === 'swap' && veiculoAntigoId) {
+        await veiculosService.inativar(veiculoAntigoId).catch(() => null)
+      }
+
+      await veiculosService.criar({
+        clienteId: numericId,
+        placa: placa.trim().toUpperCase(),
+        marca: marcaNome,
+        modelo: modeloNome,
+        anoModelo: anoCalculado,
+        combustivel: combustivelFipe,
+        codigoFipe,
+        valorFipe: valorFipe ?? 0,
+        mesReferencia: mesReferenciaFipe,
       })
 
-      const veiculoData = {
-        clienteId: cliente.id,
-        placa: placa.trim().toUpperCase(),
-        modelo: modelo.trim(),
-        montadora,
-        ano: Number.parseInt(ano, 10),
-      }
-
-      if (modalMode === 'swap' && veiculoAntigoId) {
-        trocarVeiculo(veiculoAntigoId, veiculoData, fipeResult)
-        toast.success('Veículo antigo desativado e novo veículo cadastrado!')
-      } else {
-        addVeiculo(veiculoData, fipeResult)
-        toast.success('Veículo adicionado com sucesso!')
-      }
+      toast.success(
+        modalMode === 'swap'
+          ? 'Veículo antigo desativado e novo veículo cadastrado com sucesso!'
+          : 'Veículo adicionado com sucesso!'
+      )
 
       setModalAberto(false)
-    } catch (err: any) {
-      setFipeErro(err.message || 'Falha ao consultar FIPE.')
+      // Atualiza lista de veículos
+      const novosVeiculos = await veiculosService.listarPorCliente(numericId)
+      setVeiculos(novosVeiculos)
+    } catch (err: unknown) {
+      const norm = normalizeError(err, 'Erro ao cadastrar veículo.')
+      toast.error(norm.message)
     } finally {
-      setFipeLoading(false)
+      setSalvandoVeiculo(false)
     }
+  }
+
+  const handleAlternarStatusVeiculo = async (veiculo: VeiculoResponse) => {
+    try {
+      if (veiculo.ativo !== false) {
+        await veiculosService.inativar(veiculo.id)
+        toast.success(`Veículo ${veiculo.placa} inativado.`)
+      } else {
+        await veiculosService.reativar(veiculo.id)
+        toast.success(`Veículo ${veiculo.placa} reativado.`)
+      }
+      const novos = await veiculosService.listarPorCliente(numericId)
+      setVeiculos(novos)
+    } catch (err: unknown) {
+      const norm = normalizeError(err, 'Erro ao alterar status do veículo.')
+      toast.error(norm.message)
+    }
+  }
+
+  const handleAtualizarFipe = async (v: VeiculoResponse) => {
+    try {
+      setAtualizandoFipeId(v.id)
+      toast.loading(`Atualizando valor FIPE de ${v.modelo}...`, { id: `fipe-${v.id}` })
+
+      const atualizado = await veiculosService.atualizarFipe(v.id)
+      const novoValor = Number(atualizado.valorFipe || 0)
+
+      toast.success(
+        `FIPE atualizada: ${formatCurrency(novoValor)} (${atualizado.mesReferencia || 'mês atual'})`,
+        { id: `fipe-${v.id}` }
+      )
+
+      const novos = await veiculosService.listarPorCliente(numericId)
+      setVeiculos(novos)
+    } catch (err: unknown) {
+      const norm = normalizeError(err, 'Erro ao atualizar valor FIPE do veículo.')
+      toast.error(norm.message, { id: `fipe-${v.id}` })
+    } finally {
+      setAtualizandoFipeId(null)
+    }
+  }
+
+  if (carregandoGeral) {
+    return (
+      <div className="flex min-h-[350px] items-center justify-center gap-2 text-muted-foreground">
+        <Spinner className="size-6" />
+        <span>Carregando dados do cliente...</span>
+      </div>
+    )
   }
 
   return (
@@ -270,13 +582,19 @@ export default function ClienteDetalhePage({
       <div className="lg:col-span-1">
         <PageHeader
           title="Editar Cliente"
-          description="Ajuste os dados cadastrais básico do cliente."
+          description="Ajuste os dados cadastrais básicos do cliente."
           backHref="/app/clientes"
           backLabel="Clientes"
         />
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="mt-4">
+          <CardHeader>
+            <CardTitle>Dados Pessoais</CardTitle>
+            <CardDescription>
+              Atualize as informações de contato do cliente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <form onSubmit={handleSalvarCliente}>
               <FieldGroup className="gap-4">
                 <Field data-invalid={nomeErro || undefined}>
@@ -312,6 +630,16 @@ export default function ClienteDetalhePage({
                   )}
                 </Field>
 
+                <Field>
+                  <FieldLabel htmlFor="telefone">Telefone (Opcional)</FieldLabel>
+                  <Input
+                    id="telefone"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                    placeholder="(11) 99999-9999"
+                  />
+                </Field>
+
                 <Field data-invalid={enderecoErro || undefined}>
                   <FieldLabel htmlFor="endereco">Endereço Completo</FieldLabel>
                   <Input
@@ -330,9 +658,11 @@ export default function ClienteDetalhePage({
                   )}
                 </Field>
 
-                <Button type="submit" className="w-full mt-2">
-                  Salvar Cliente
-                </Button>
+                <div className="pt-2">
+                  <Button type="submit" className="w-full" disabled={salvandoCliente}>
+                    {salvandoCliente ? 'Salvando...' : 'Salvar Alterações'}
+                  </Button>
+                </div>
               </FieldGroup>
             </form>
           </CardContent>
@@ -340,41 +670,39 @@ export default function ClienteDetalhePage({
       </div>
 
       <div className="lg:col-span-2">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-pretty text-2xl font-semibold tracking-tight">
-              Veículos
-            </h2>
-            <p className="text-pretty text-sm text-muted-foreground">
-              Gerencie a frota ativa e antiga deste cliente.
-            </p>
-          </div>
-          <Button onClick={abrirAdicionarVeiculo}>
-            <Plus data-icon="inline-start" />
-            Adicionar Veículo
-          </Button>
-        </div>
-
         <Card>
-          <CardContent className="pt-6">
-            <div className="mb-4 flex items-center justify-between">
-              <span className="text-sm font-medium text-muted-foreground">
-                Exibindo {verAntigos ? veiculosDoCliente.length : veiculosAtivos.length}{' '}
-                veículo(s)
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Veículos do Cliente</CardTitle>
+              <CardDescription>
+                Frota e histórico de veículos cadastrados na oficina.
+              </CardDescription>
+            </div>
+            <Button onClick={abrirAdicionarVeiculo}>
+              <Plus data-icon="inline-start" />
+              Adicionar Veículo
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b pb-2">
+              <span className="text-sm font-medium">
+                {veiculosAtivos.length}{' '}
+                {veiculosAtivos.length === 1 ? 'veículo ativo' : 'veículos ativos'}
               </span>
               <button
                 type="button"
                 onClick={() => setVerAntigos(!verAntigos)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                className="text-xs text-primary hover:underline"
               >
-                <History className="size-3.5" />
-                {verAntigos ? 'Ocultar veículos antigos' : 'Ver veículos antigos'}
+                {verAntigos
+                  ? 'Ocultar inativos'
+                  : `Ver inativos / substituídos (${veiculosInativos.length})`}
               </button>
             </div>
 
-            {((verAntigos ? veiculosDoCliente : veiculosAtivos).length === 0) ? (
+            {(verAntigos ? veiculos : veiculosAtivos).length === 0 ? (
               <div className="py-8 text-center text-muted-foreground">
-                Nenhum veículo ativo cadastrado.
+                Nenhum veículo ativo cadastrado para este cliente.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -383,68 +711,101 @@ export default function ClienteDetalhePage({
                     <TableRow>
                       <TableHead>Modelo / Placa</TableHead>
                       <TableHead>Montadora / Ano</TableHead>
-                      <TableHead className="text-right">FIPE / Lambda</TableHead>
+                      <TableHead className="text-right">Valor FIPE</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(verAntigos ? veiculosDoCliente : veiculosAtivos).map((v) => (
-                      <TableRow
-                        key={v.id}
-                        className="cursor-pointer"
-                        onClick={() => router.push(`/app/veiculos/${v.id}/historico`)}
-                      >
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-medium">{v.modelo}</span>
-                            <span className="text-xs text-muted-foreground font-mono">
-                              {v.placa}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col text-sm">
-                            <span>{v.montadora}</span>
-                            <span className="text-xs text-muted-foreground">
-                              Ano {v.ano}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          <div className="flex flex-col">
-                            <span>
-                              {new Intl.NumberFormat('pt-BR', {
-                                style: 'currency',
-                                currency: 'BRL',
-                              }).format(v.fipeValor)}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {v.lambda.toFixed(2)}x
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <VeiculoStatusBadge ativo={v.ativo} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {v.ativo && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                abrirTrocarVeiculo(v.id)
-                              }}
-                              title="Trocar por um novo veículo"
-                            >
-                              <ArrowRightLeft className="size-3.5 mr-1" />
-                              Trocar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {(verAntigos ? veiculos : veiculosAtivos).map((v) => {
+                      const vValorFipe = Number(v.valorFipe || 0)
+                      const vAtivo = v.ativo !== false
+
+                      return (
+                        <TableRow
+                          key={v.id}
+                          className="cursor-pointer"
+                          onClick={() => router.push(`/app/veiculos/${v.id}/historico`)}
+                        >
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{v.modelo}</span>
+                              <span className="text-xs text-muted-foreground font-mono">
+                                {v.placa}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col text-sm">
+                              <span>{v.marca}</span>
+                              <span className="text-xs text-muted-foreground">
+                                Ano {v.anoModelo}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                {vValorFipe > 0 ? formatCurrency(vValorFipe) : '—'}
+                              </span>
+                              {v.mesReferencia && (
+                                <span className="text-[11px] text-muted-foreground font-mono">
+                                  {v.mesReferencia}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <VeiculoStatusBadge ativo={vAtivo} />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              {vAtivo ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={atualizandoFipeId === v.id}
+                                    onClick={() => handleAtualizarFipe(v)}
+                                    title="Consultar novamente o valor oficial na Tabela FIPE e atualizar o veículo"
+                                  >
+                                    <RefreshCw className={atualizandoFipeId === v.id ? 'size-3.5 mr-1 animate-spin' : 'size-3.5 mr-1'} />
+                                    {atualizandoFipeId === v.id ? 'Atualizando...' : 'Atualizar FIPE'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => abrirTrocarVeiculo(v.id)}
+                                    title="Substituir por outro veículo na oficina"
+                                  >
+                                    <ArrowRightLeft className="size-3.5 mr-1" />
+                                    Trocar
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleAlternarStatusVeiculo(v)}
+                                    title="Desativar veículo"
+                                  >
+                                    <Power className="size-3.5 text-muted-foreground hover:text-destructive" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleAlternarStatusVeiculo(v)}
+                                  title="Reativar veículo"
+                                >
+                                  <RotateCcw className="size-3.5 mr-1" />
+                                  Reativar
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -453,164 +814,212 @@ export default function ClienteDetalhePage({
         </Card>
       </div>
 
-      {/* Modal / Dialog de Cadastro/Substituição de Veículo */}
+      {/* --- Modal de Adicionar / Trocar Veículo com Cascata FIPE --- */}
       <Dialog open={modalAberto} onOpenChange={setModalAberto}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>
-              {modalMode === 'add' ? 'Adicionar Veículo' : 'Trocar Veículo'}
+            <DialogTitle className="flex items-center gap-2">
+              <Car className="size-5 text-primary" />
+              {modalMode === 'swap' ? 'Substituir Veículo' : 'Cadastrar Novo Veículo'}
             </DialogTitle>
             <DialogDescription>
-              {modalMode === 'add'
-                ? 'Insira as informações do veículo para consultar a tabela FIPE.'
-                : 'Insira o novo veículo. O veículo anterior será marcado como inativo.'}
+              {modalMode === 'swap'
+                ? 'O veículo atual será desativado e o novo será vinculado a este cliente com o valor FIPE atualizado.'
+                : 'Selecione a montadora, o modelo e o ano para congelar o valor FIPE oficial deste veículo.'}
             </DialogDescription>
           </DialogHeader>
 
-          {fipeErro && (
-            <div className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-destructive">
-              <AlertTriangle className="size-5 shrink-0 mt-0.5" />
-              <div className="flex flex-col gap-1.5 text-sm">
-                <span className="font-semibold">Erro na consulta FIPE</span>
-                <span>{fipeErro}</span>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => submeterVeiculo()}
-                  className="w-fit"
-                >
-                  <RefreshCw className="size-3.5 mr-1.5" />
-                  Tentar Novamente
-                </Button>
-              </div>
-            </div>
-          )}
-
           <form onSubmit={submeterVeiculo}>
-            <FieldGroup className="gap-4">
-              <Field data-invalid={!!formVeiculoErros.montadora || undefined}>
-                <FieldLabel htmlFor="montadora">Montadora</FieldLabel>
-                <Select
-                  value={montadora}
-                  onValueChange={(v) => {
-                    setMontadora(v ?? '')
-                    if (formVeiculoErros.montadora) {
-                      setFormVeiculoErros((prev) => {
-                        const next = { ...prev }
-                        delete next.montadora
-                        return next
-                      })
-                    }
-                  }}
-                  disabled={fipeLoading}
-                >
-                  <SelectTrigger id="montadora" className="w-full">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {MONTADORAS.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                {formVeiculoErros.montadora && (
-                  <FieldDescription className="text-destructive">
-                    {formVeiculoErros.montadora}
-                  </FieldDescription>
-                )}
-              </Field>
+            <FieldGroup className="gap-4 py-2">
+              {fipeErro && (
+                <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertTriangle className="size-4 shrink-0" />
+                  <span>{fipeErro}</span>
+                </div>
+              )}
 
-              <Field data-invalid={!!formVeiculoErros.modelo || undefined}>
-                <FieldLabel htmlFor="modelo">Modelo</FieldLabel>
-                <Input
-                  id="modelo"
-                  placeholder="Ex: Corolla 2.0 XEi"
-                  value={modelo}
-                  onChange={(e) => {
-                    setModelo(e.target.value)
-                    if (formVeiculoErros.modelo) {
-                      setFormVeiculoErros((prev) => {
-                        const next = { ...prev }
-                        delete next.modelo
-                        return next
-                      })
-                    }
-                  }}
-                  disabled={fipeLoading}
-                  required
-                />
-                {formVeiculoErros.modelo && (
-                  <FieldDescription className="text-destructive">
-                    {formVeiculoErros.modelo}
-                  </FieldDescription>
-                )}
-              </Field>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Field data-invalid={!!formVeiculoErros.ano || undefined}>
-                  <FieldLabel htmlFor="ano">Ano</FieldLabel>
-                  <Input
-                    id="ano"
-                    type="number"
-                    placeholder="Ex: 2020"
-                    value={ano}
-                    onChange={(e) => {
-                      setAno(e.target.value)
-                      if (formVeiculoErros.ano) {
-                        setFormVeiculoErros((prev) => {
-                          const next = { ...prev }
-                          delete next.ano
-                          return next
-                        })
+              {/* 1. Montadora (Marca) - Proporção 80% (Nome com busca) / 20% (Código numérico não editável) */}
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                <div className="sm:col-span-4">
+                  <Field data-invalid={!!formVeiculoErros.montadora || undefined}>
+                    <FieldLabel>Montadora</FieldLabel>
+                    <SearchableSelect
+                      value={marcaCodigo}
+                      onChange={handleMarcaChange}
+                      options={marcasOptions}
+                      placeholder={
+                        carregandoMarcas ? 'Carregando marcas FIPE...' : 'Selecione a montadora'
                       }
-                    }}
-                    disabled={fipeLoading}
-                    required
-                  />
-                  {formVeiculoErros.ano && (
-                    <FieldDescription className="text-destructive">
-                      {formVeiculoErros.ano}
-                    </FieldDescription>
-                  )}
-                </Field>
-
-                <Field data-invalid={!!formVeiculoErros.placa || undefined}>
-                  <FieldLabel htmlFor="placa">Placa</FieldLabel>
-                  <Input
-                    id="placa"
-                    placeholder="ABC-1234"
-                    value={placa}
-                    onChange={handlePlacaChange}
-                    disabled={fipeLoading}
-                    required
-                  />
-                  {formVeiculoErros.placa && (
-                    <FieldDescription className="text-destructive">
-                      {formVeiculoErros.placa}
-                    </FieldDescription>
-                  )}
-                </Field>
+                      searchPlaceholder="Pesquisar montadora (ex: Fiat, Chevrolet, Volkswagen)..."
+                      disabled={carregandoMarcas || salvandoVeiculo}
+                      loading={carregandoMarcas}
+                      error={!!formVeiculoErros.montadora}
+                    />
+                    {formVeiculoErros.montadora && (
+                      <FieldDescription className="text-destructive">
+                        {formVeiculoErros.montadora}
+                      </FieldDescription>
+                    )}
+                  </Field>
+                </div>
+                <div className="sm:col-span-1">
+                  <Field>
+                    <FieldLabel>Cód. Montadora</FieldLabel>
+                    <Input
+                      type="number"
+                      readOnly
+                      value={marcaCodigo}
+                      placeholder="Cód."
+                      className="bg-muted font-mono cursor-not-allowed select-none text-center"
+                      tabIndex={-1}
+                      title="Código numérico da montadora na tabela FIPE (não pode ser alterado)"
+                    />
+                  </Field>
+                </div>
               </div>
 
-              <DialogFooter className="pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setModalAberto(false)}
-                  disabled={fipeLoading}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" disabled={fipeLoading}>
-                  {fipeLoading && <Spinner data-icon="inline-start" />}
-                  {fipeLoading ? 'Consultando FIPE...' : 'Salvar Veículo'}
-                </Button>
-              </DialogFooter>
+              {/* 2. Modelo - Modelo vem ANTES do código modelo; Proporção 80% (Nome do modelo com busca) / 20% (Código numérico) */}
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                <div className="sm:col-span-4">
+                  <Field data-invalid={!!formVeiculoErros.modelo || undefined}>
+                    <FieldLabel>Modelo</FieldLabel>
+                    <SearchableSelect
+                      value={modeloCodigo}
+                      onChange={handleModeloChange}
+                      options={modelosOptions}
+                      placeholder={
+                        !marcaCodigo
+                          ? 'Aguardando montadora'
+                          : carregandoModelos
+                            ? 'Buscando modelos...'
+                            : 'Selecione o modelo'
+                      }
+                      searchPlaceholder="Pesquisar modelo (ex: Gol, Onix, Civic, Corolla)..."
+                      disabled={!marcaCodigo || carregandoModelos || salvandoVeiculo}
+                      loading={carregandoModelos}
+                      error={!!formVeiculoErros.modelo}
+                    />
+                    {formVeiculoErros.modelo && (
+                      <FieldDescription className="text-destructive">
+                        {formVeiculoErros.modelo}
+                      </FieldDescription>
+                    )}
+                  </Field>
+                </div>
+                <div className="sm:col-span-1">
+                  <Field>
+                    <FieldLabel>Cód. Modelo</FieldLabel>
+                    <Input
+                      type="number"
+                      placeholder="Cód."
+                      value={modeloCodigo}
+                      onChange={(e) => handleCodigoModeloChange(e.target.value)}
+                      disabled={!marcaCodigo || carregandoModelos || salvandoVeiculo}
+                      className="font-mono text-center"
+                      title="Código numérico do modelo na tabela FIPE"
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              {/* 3. Ano Modelo - Com pesquisa rápida */}
+              <Field data-invalid={!!formVeiculoErros.ano || undefined}>
+                <FieldLabel>Ano Modelo</FieldLabel>
+                <SearchableSelect
+                  value={anoCodigo}
+                  onChange={handleAnoChange}
+                  options={anosOptions}
+                  placeholder={
+                    !modeloCodigo
+                      ? 'Aguardando modelo'
+                      : carregandoAnos
+                        ? 'Buscando anos...'
+                        : 'Selecione o ano'
+                  }
+                  searchPlaceholder="Pesquisar ano (ex: 2021, 2022, 2023)..."
+                  disabled={!modeloCodigo || carregandoAnos || salvandoVeiculo}
+                  loading={carregandoAnos}
+                  error={!!formVeiculoErros.ano}
+                />
+                {formVeiculoErros.ano && (
+                  <FieldDescription className="text-destructive">
+                    {formVeiculoErros.ano}
+                  </FieldDescription>
+                )}
+              </Field>
+
+              {/* 4. Placa */}
+              <Field data-invalid={!!formVeiculoErros.placa || undefined}>
+                <FieldLabel htmlFor="modal-placa">Placa do Veículo</FieldLabel>
+                <Input
+                  id="modal-placa"
+                  placeholder="Ex: ABC-1234 ou BRA2E19"
+                  value={placa}
+                  onChange={handlePlacaChange}
+                  maxLength={8}
+                  className="font-mono uppercase"
+                  disabled={salvandoVeiculo}
+                />
+                {formVeiculoErros.placa && (
+                  <FieldDescription className="text-destructive">
+                    {formVeiculoErros.placa}
+                  </FieldDescription>
+                )}
+              </Field>
+
+              {/* 5. Dados FIPE Congelados */}
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Referência FIPE Oficial
+                </span>
+                <div className="mt-2 grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-xs text-muted-foreground">Código FIPE</span>
+                    <p className="font-mono font-medium">
+                      {carregandoValor ? 'Consultando...' : codigoFipe || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground">Valor de Mercado</span>
+                    <p className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                      {carregandoValor ? (
+                        'Consultando...'
+                      ) : valorFipe != null ? (
+                        formatCurrency(valorFipe)
+                      ) : (
+                        '—'
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </FieldGroup>
+
+            <DialogFooter className="mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalAberto(false)}
+                disabled={salvandoVeiculo}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  salvandoVeiculo ||
+                  carregandoValor ||
+                  valorFipe == null ||
+                  !placa.trim()
+                }
+              >
+                {salvandoVeiculo
+                  ? 'Salvando...'
+                  : modalMode === 'swap'
+                    ? 'Confirmar Substituição'
+                    : 'Cadastrar Veículo'}
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

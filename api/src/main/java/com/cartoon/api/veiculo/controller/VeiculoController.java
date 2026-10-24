@@ -34,14 +34,14 @@ public class VeiculoController {
         return ResponseEntity.created(URI.create("/api/veiculos/" + criada.id())).body(criada);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     @Operation(summary = "Atualizar veículo", description = "UC05 - Edita os dados cadastrais de um veículo existente")
     public VeiculoResponse atualizar(@PathVariable Integer id,
                                     @Valid @RequestBody VeiculoAtualizacaoRequest request) {
         return veiculoService.atualizar(id, request);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     @Operation(summary = "Buscar veículo por ID", description = "UC05 - Consulta os detalhes de um veículo pelo ID")
     public VeiculoResponse buscarPorId(@PathVariable Integer id) {
         return veiculoService.buscarPorId(id);
@@ -59,23 +59,30 @@ public class VeiculoController {
         return veiculoService.listar(filtro, pageable);
     }
 
-    @GetMapping("/cliente/{clienteId}")
+    @GetMapping("/cliente/{clienteId:\\d+}")
     @Operation(summary = "Listar veículos por cliente", description = "UC05 - Retorna todos os veículos pertencentes a um cliente")
     public List<VeiculoResponse> listarPorCliente(@PathVariable Integer clienteId) {
         return veiculoService.listarPorCliente(clienteId);
     }
 
-    @PatchMapping("/{id}/inativar")
+    @PatchMapping("/{id:\\d+}/inativar")
     @Operation(summary = "Inativar veículo", description = "UC05 - Inativa o veículo (soft delete) preservando o histórico de ordens")
     public VeiculoResponse inativar(@PathVariable Integer id) {
         return veiculoService.inativar(id);
     }
 
-    @PatchMapping("/{id}/reativar")
+    @PatchMapping("/{id:\\d+}/reativar")
     @Operation(summary = "Reativar veículo", description = "UC05 - Reativa um veículo previamente inativado")
     public VeiculoResponse reativar(@PathVariable Integer id) {
         return veiculoService.reativar(id);
     }
+
+    @PatchMapping("/{id:\\d+}/atualizar-fipe")
+    @Operation(summary = "Atualizar valor FIPE do veículo", description = "UC05 - Atualiza o valor FIPE do veículo com a cotação mais recente")
+    public VeiculoResponse atualizarValorFipe(@PathVariable Integer id) {
+        return veiculoService.atualizarValorFipe(id);
+    }
+
     @GetMapping({"/placa/{placa}/historico", "/{placa}/historico"})
     @Operation(summary = "Consultar histórico de manutenção pela placa", description = "UC06 - Retorna todas as ordens de serviço do veículo ordenadas da mais recente para a mais antiga")
     public HistoricoVeiculoResponse consultarHistorico(@PathVariable String placa) {
