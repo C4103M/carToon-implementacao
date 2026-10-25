@@ -96,6 +96,35 @@ export const ordemServicoService = {
     },
 
     /**
+     * Atualiza o valor unitário e/ou o peso de risco de um item de serviço e recalcula a OS.
+     */
+    atualizarValorItemServico: async (
+        id: number,
+        itemServicoId: number,
+        dados: number | { valorUnitario?: number; pesoServico?: number },
+    ): Promise<OrdemServicoResponse> => {
+        const body = typeof dados === 'number' ? { valorUnitario: dados } : dados;
+        return api.patch<OrdemServicoResponse>(
+            `/ordem-servico/${id}/itens-servico/${itemServicoId}`,
+            body,
+        );
+    },
+
+    /**
+     * Atualiza manualmente o valor unitário de um item de peça e recalcula a OS.
+     */
+    atualizarValorItemPeca: async (
+        id: number,
+        itemPecaId: number,
+        valorUnitario: number,
+    ): Promise<OrdemServicoResponse> => {
+        return api.patch<OrdemServicoResponse>(
+            `/ordem-servico/${id}/itens-peca/${itemPecaId}`,
+            { valorUnitario },
+        );
+    },
+
+    /**
      * Aplica ou atualiza o percentual de desconto da ordem de serviço (0%, 5%, 10% ou 15%).
      */
     aplicarDesconto: async (

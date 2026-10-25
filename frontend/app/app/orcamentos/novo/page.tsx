@@ -157,7 +157,7 @@ export default function NovoOrcamentoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl w-full min-w-0">
       <PageHeader
         title="Iniciar Novo Orçamento"
         description="Selecione o cliente, o veículo ativo e configure os dados iniciais da Ordem de Serviço."
@@ -165,9 +165,9 @@ export default function NovoOrcamentoPage() {
         backLabel="Voltar para orçamentos"
       />
 
-      <Card>
-        <CardContent className="pt-6">
-          <form onSubmit={handleCriarOrcamento} className="flex flex-col gap-6">
+      <Card className="w-full min-w-0 overflow-hidden">
+        <CardContent className="pt-6 w-full min-w-0">
+          <form onSubmit={handleCriarOrcamento} className="flex flex-col gap-6 w-full min-w-0">
             {erroSubmit && (
               <Alert variant="destructive">
                 <AlertCircle className="size-4" />

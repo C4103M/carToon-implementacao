@@ -64,6 +64,7 @@ public final class OrdemServicoMapper {
         String oficinaNome = oficina != null ? oficina.getNome() : null;
         BigDecimal oficinaValorHora = oficina != null ? oficina.getValorHora() : null;
         BigDecimal oficinaTaxaRisco = oficina != null ? oficina.getTaxaRisco() : null;
+        BigDecimal oficinaMargemPeca = oficina != null ? oficina.getMargemPeca() : null;
 
         Integer mecanicoId = mecanico != null ? mecanico.getId() : null;
         String mecanicoNome = mecanico != null ? mecanico.getNome() : null;
@@ -75,6 +76,11 @@ public final class OrdemServicoMapper {
         List<ItemServicoResponse> itensServico = ordem.getItensServico() != null
                 ? ordem.getItensServico().stream().map(item -> paraItemServicoResponse(item, ordem)).toList()
                 : List.of();
+
+        BigDecimal totalPecasBruto = itensPeca.stream()
+                .map(i -> i.subtotalBruto() != null ? i.subtotalBruto() : (i.subtotal() != null ? i.subtotal() : BigDecimal.ZERO))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal totalPecas = itensPeca.stream()
                 .map(i -> i.subtotal() != null ? i.subtotal() : BigDecimal.ZERO)
@@ -107,10 +113,12 @@ public final class OrdemServicoMapper {
                 oficinaNome,
                 oficinaValorHora,
                 oficinaTaxaRisco,
+                oficinaMargemPeca,
                 mecanicoId,
                 mecanicoNome,
                 itensPeca,
                 itensServico,
+                totalPecasBruto,
                 totalPecas,
                 totalServicos,
                 ordem.getDesconto(),
@@ -128,13 +136,38 @@ public final class OrdemServicoMapper {
         Integer pecaId = item.getPeca() != null ? item.getPeca().getId() : null;
         String pecaNome = item.getPeca() != null ? item.getPeca().getNome() : null;
         String fabricante = item.getPeca() != null ? item.getPeca().getFabricante() : null;
+
+        BigDecimal valorBase = item.getValorBase();
+        if (valorBase == null && item.getPeca() != null) {
+            valorBase = item.getPeca().getValorBase();
+        }
+        if (valorBase == null) {
+            valorBase = item.getValorUnitario();
+        }
+
+        BigDecimal margem = item.getMargem();
+        if (margem == null) {
+            if (item.getOrdemServico() != null && item.getOrdemServico().getOficina() != null && item.getOrdemServico().getOficina().getMargemPeca() != null) {
+                margem = item.getOrdemServico().getOficina().getMargemPeca();
+            } else {
+                margem = BigDecimal.ONE;
+            }
+        }
+
+        BigDecimal subtotalBruto = (valorBase != null && item.getQuantidade() != null)
+                ? valorBase.multiply(BigDecimal.valueOf(item.getQuantidade())).setScale(2, RoundingMode.HALF_UP)
+                : subtotal;
+
         return new ItemPecaResponse(
                 item.getId(),
                 pecaId,
                 pecaNome,
                 fabricante,
                 item.getQuantidade(),
+                valorBase,
+                margem,
                 item.getValorUnitario(),
+                subtotalBruto,
                 subtotal
         );
     }
@@ -159,6 +192,10 @@ public final class OrdemServicoMapper {
                 ? item.getQuantidadeHoras()
                 : (item.getServico() != null ? item.getServico().getQuantidadeHoras() : null);
 
+        BigDecimal peso = item.getPesoServico() != null
+                ? item.getPesoServico()
+                : (item.getServico() != null && item.getServico().getPesoServicoPadrao() != null ? item.getServico().getPesoServicoPadrao() : new BigDecimal("0.5"));
+
         BigDecimal valorHoraBase = null;
         BigDecimal multiplicadorFipe = null;
 
@@ -172,7 +209,8 @@ public final class OrdemServicoMapper {
                         ? ordem.getOficina().getTaxaRisco()
                         : BigDecimal.ZERO;
                 BigDecimal fatorFipe = ordem.getVeiculo().getValorFipe().divide(DIVISOR_FIPE, 8, RoundingMode.HALF_UP);
-                multiplicadorFipe = BigDecimal.ONE.add(fatorFipe.multiply(taxa)).setScale(4, RoundingMode.HALF_UP);
+                BigDecimal adicionalRisco = fatorFipe.multiply(taxa).multiply(peso);
+                multiplicadorFipe = BigDecimal.ONE.add(adicionalRisco).setScale(4, RoundingMode.HALF_UP);
             }
         }
 
@@ -186,7 +224,8 @@ public final class OrdemServicoMapper {
                 horas,
                 tempo,
                 valorHoraBase,
-                multiplicadorFipe
+                multiplicadorFipe,
+                peso
         );
     }
 
@@ -201,6 +240,15 @@ public final class OrdemServicoMapper {
         String clienteNome = cliente != null ? cliente.getNome() : null;
         String mecanicoNome = ordem.getMecanico() != null ? ordem.getMecanico().getNome() : null;
         String oficinaNome = ordem.getOficina() != null ? ordem.getOficina().getNome() : null;
+
+        List<ItemPecaResponse> itensPeca = (ordem.getItensPeca() == null || ordem.getItensPeca().isEmpty())
+                ? List.of()
+                : ordem.getItensPeca().stream().map(OrdemServicoMapper::paraItemPecaResponse).toList();
+
+        BigDecimal totalPecasBruto = itensPeca.stream()
+                .map(i -> i.subtotalBruto() != null ? i.subtotalBruto() : (i.subtotal() != null ? i.subtotal() : BigDecimal.ZERO))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal totalPecas = (ordem.getItensPeca() == null || ordem.getItensPeca().isEmpty())
                 ? BigDecimal.ZERO
@@ -242,30 +290,45 @@ public final class OrdemServicoMapper {
                 clienteNome,
                 mecanicoNome,
                 oficinaNome,
+                totalPecasBruto,
                 totalPecas,
                 totalServicos,
                 ordem.getValorBruto(),
                 ordem.getDesconto(),
                 ordem.getValorDesconto(),
-                ordem.getTotal()
+                ordem.getTotal(),
+                itensPeca
         );
     }
 
-    public static ItemPeca paraItemPeca(ItemPecaRequest request, Peca peca) {
+    public static ItemPeca paraItemPeca(ItemPecaRequest request, Peca peca, BigDecimal valorUnitario, BigDecimal margem) {
         ItemPeca item = new ItemPeca();
         item.setPeca(peca);
         item.setQuantidade(request.quantidade());
-        item.setValorUnitario(peca.getValorBase());
+        item.setValorBase(peca != null ? peca.getValorBase() : null);
+        item.setMargem(margem != null ? margem : BigDecimal.ONE);
+        item.setValorUnitario(valorUnitario);
         item.calcSubtotal();
         return item;
+    }
+
+    public static ItemPeca paraItemPeca(ItemPecaRequest request, Peca peca, BigDecimal valorUnitario) {
+        return paraItemPeca(request, peca, valorUnitario, BigDecimal.ONE);
+    }
+
+    public static ItemPeca paraItemPeca(ItemPecaRequest request, Peca peca) {
+        return paraItemPeca(request, peca, peca != null ? peca.getValorBase() : null, BigDecimal.ONE);
     }
 
     public static ItemServico paraItemServico(ItemServicoRequest request, Servico servico) {
         ItemServico item = new ItemServico();
         item.setServico(servico);
         item.setQuantidade(request.quantidade());
-        item.setQuantidadeHoras(servico != null ? servico.getQuantidadeHoras() : null);
         item.setTempo(servico != null ? servico.getTempo() : null);
+        BigDecimal peso = request.pesoServico() != null
+                ? request.pesoServico()
+                : (servico != null && servico.getPesoServicoPadrao() != null ? servico.getPesoServicoPadrao() : new BigDecimal("0.5"));
+        item.setPesoServico(peso);
         item.calcSubtotal();
         return item;
     }

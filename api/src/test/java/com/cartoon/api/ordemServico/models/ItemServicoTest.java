@@ -77,6 +77,7 @@ class ItemServicoTest {
         item.setValorUnitario(new BigDecimal("120.50"));
         item.setSubtotal(new BigDecimal("241.00"));
         item.setQuantidadeHoras(1.5);
+        item.setPesoServico(new BigDecimal("0.5"));
 
         assertEquals(10, item.getId());
         assertEquals(servico, item.getServico());
@@ -84,5 +85,14 @@ class ItemServicoTest {
         assertThat(item.getValorUnitario()).isEqualByComparingTo(new BigDecimal("120.50"));
         assertThat(item.getSubtotal()).isEqualByComparingTo(new BigDecimal("241.00"));
         assertEquals(1.5, item.getQuantidadeHoras());
+        assertThat(item.getPesoServico()).isEqualByComparingTo(new BigDecimal("0.5"));
+    }
+
+    @Test
+    @DisplayName("ItemServico - Deve atribuir peso padrão 0.5 quando setado com nulo")
+    void deveAtribuirPesoPadraoQuandoNulo() {
+        ItemServico item = new ItemServico();
+        item.setPesoServico(null);
+        assertThat(item.getPesoServico()).isEqualByComparingTo(new BigDecimal("0.5"));
     }
 }

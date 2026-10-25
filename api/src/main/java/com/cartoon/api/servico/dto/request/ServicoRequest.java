@@ -1,13 +1,17 @@
 package com.cartoon.api.servico.dto.request;
 
 import com.cartoon.api.servico.dto.deserializer.TempoDeserializer;
+import com.cartoon.api.servico.models.Servico;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.math.BigDecimal;
 import java.time.LocalTime;
 
 public record ServicoRequest(
@@ -19,36 +23,49 @@ public record ServicoRequest(
         @JsonAlias({"quantidadeHoras", "hora", "horas", "tempoEstimado"})
         LocalTime tempo,
 
-        String descricao
+        String descricao,
+
+        @DecimalMin(value = "0.0", inclusive = true, message = "O peso do serviço deve ser no mínimo 0.0")
+        @DecimalMax(value = "1.0", inclusive = true, message = "O peso do serviço deve ser no máximo 1.0")
+        @JsonAlias({"peso", "peso_servico"})
+        BigDecimal pesoServico
 ) {
+    private static final BigDecimal PESO_PADRAO = new BigDecimal("0.5");
+
     @JsonCreator
     public ServicoRequest(
             @JsonProperty("nome") String nome,
             @JsonProperty("tempo") @JsonDeserialize(using = TempoDeserializer.class) LocalTime tempo,
-            @JsonProperty("descricao") String descricao
+            @JsonProperty("descricao") String descricao,
+            @JsonProperty("pesoServico") BigDecimal pesoServico
     ) {
         this.nome = nome;
         this.tempo = tempo;
         this.descricao = descricao;
+        this.pesoServico = pesoServico != null ? pesoServico : PESO_PADRAO;
+    }
+
+    public ServicoRequest(
+            String nome,
+            LocalTime tempo,
+            String descricao
+    ) {
+        this(nome, tempo, descricao, PESO_PADRAO);
     }
 
     public ServicoRequest(String nome, Double quantidadeHoras, String descricao) {
-        this(nome, converterDoubleParaLocalTime(quantidadeHoras), descricao);
+        this(nome, converterDoubleParaLocalTime(quantidadeHoras), descricao, PESO_PADRAO);
+    }
+
+    public ServicoRequest(String nome, Double quantidadeHoras, String descricao, BigDecimal pesoServico) {
+        this(nome, converterDoubleParaLocalTime(quantidadeHoras), descricao, pesoServico != null ? pesoServico : PESO_PADRAO);
     }
 
     public Double quantidadeHoras() {
-        if (tempo == null) return null;
-        return tempo.getHour() + (tempo.getMinute() / 60.0) + (tempo.getSecond() / 3600.0);
+        return Servico.converterParaHorasDecimais(tempo);
     }
 
     private static LocalTime converterDoubleParaLocalTime(Double horas) {
-        if (horas == null) return null;
-        int h = horas.intValue();
-        int m = (int) Math.round((horas - h) * 60);
-        if (m >= 60) {
-            h += m / 60;
-            m = m % 60;
-        }
-        return LocalTime.of(Math.min(h, 23), Math.min(m, 59));
+        return Servico.converterParaLocalTime(horas);
     }
 }

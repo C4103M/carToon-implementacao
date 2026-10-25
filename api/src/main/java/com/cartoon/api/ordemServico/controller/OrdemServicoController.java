@@ -4,6 +4,7 @@ import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.dto.request.DescontoRequest;
+import com.cartoon.api.ordemServico.dto.request.AtualizarItemValorRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
@@ -94,6 +95,42 @@ public class OrdemServicoController {
     @DeleteMapping("/{id}/itens-servico/{itemId}")
     public OrdemServicoResponse removerServico(@PathVariable Integer id, @PathVariable Integer itemId) {
         return ordemServicoService.removerServico(id, itemId);
+    }
+
+    @PutMapping("/{id}/itens-servico/{itemId}")
+    public OrdemServicoResponse atualizarValorItemServico(
+            @PathVariable Integer id,
+            @PathVariable Integer itemId,
+            @Valid @RequestBody AtualizarItemValorRequest request
+    ) {
+        return ordemServicoService.atualizarItemServico(id, itemId, request);
+    }
+
+    @PatchMapping("/{id}/itens-servico/{itemId}")
+    public OrdemServicoResponse patchValorItemServico(
+            @PathVariable Integer id,
+            @PathVariable Integer itemId,
+            @Valid @RequestBody AtualizarItemValorRequest request
+    ) {
+        return ordemServicoService.atualizarItemServico(id, itemId, request);
+    }
+
+    @PutMapping("/{id}/itens-peca/{itemId}")
+    public OrdemServicoResponse atualizarValorItemPeca(
+            @PathVariable Integer id,
+            @PathVariable Integer itemId,
+            @Valid @RequestBody AtualizarItemValorRequest request
+    ) {
+        return ordemServicoService.atualizarValorItemPeca(id, itemId, request.valorUnitario());
+    }
+
+    @PatchMapping("/{id}/itens-peca/{itemId}")
+    public OrdemServicoResponse patchValorItemPeca(
+            @PathVariable Integer id,
+            @PathVariable Integer itemId,
+            @Valid @RequestBody AtualizarItemValorRequest request
+    ) {
+        return ordemServicoService.atualizarValorItemPeca(id, itemId, request.valorUnitario());
     }
 
     @PatchMapping("/{id}/desconto")

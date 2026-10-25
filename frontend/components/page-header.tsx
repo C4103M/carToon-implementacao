@@ -30,8 +30,8 @@ export function PageHeader({
           {backLabel}
         </Link>
       )}
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="flex flex-col gap-1">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center min-w-0 w-full">
+        <div className="flex flex-col gap-1 min-w-0">
           <h1 className="text-pretty text-2xl font-semibold tracking-tight">
             {title}
           </h1>
@@ -42,7 +42,7 @@ export function PageHeader({
           )}
         </div>
         {actions && (
-          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>
         )}
       </div>
     </div>

@@ -157,7 +157,7 @@ function OrcamentosContent() {
   }, [orcamentos, busca])
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 w-full min-w-0 max-w-full">
       <PageHeader
         title="Orçamentos e Ordens de Serviço"
         description="Acompanhe o fluxo de status, valores de mão de obra, peças e descontos."
@@ -180,11 +180,11 @@ function OrcamentosContent() {
         }
       />
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 pt-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center">
-              <InputGroup className="sm:max-w-sm flex-1">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden">
+        <CardContent className="flex flex-col gap-4 pt-6 w-full min-w-0">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between w-full min-w-0">
+            <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center w-full min-w-0">
+              <InputGroup className="w-full sm:max-w-sm flex-1 min-w-0">
                 <InputGroupAddon>
                   <Search />
                 </InputGroupAddon>
@@ -199,7 +199,7 @@ function OrcamentosContent() {
                 value={statusFiltro}
                 onValueChange={handleMudarStatus}
               >
-                <SelectTrigger className="sm:w-56">
+                <SelectTrigger className="w-full sm:w-56 min-w-0">
                   <SelectValue placeholder="Filtrar por status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -219,7 +219,7 @@ function OrcamentosContent() {
                   variant="ghost"
                   size="sm"
                   onClick={limparFiltros}
-                  className="text-xs text-muted-foreground hover:text-foreground h-9 gap-1"
+                  className="text-xs text-muted-foreground hover:text-foreground h-9 gap-1 shrink-0"
                 >
                   <X className="size-3.5" />
                   Limpar filtros
@@ -227,7 +227,7 @@ function OrcamentosContent() {
               )}
             </div>
 
-            <Badge variant="secondary" className="self-start sm:self-auto px-2.5 py-1 text-xs">
+            <Badge variant="secondary" className="self-start lg:self-auto px-2.5 py-1 text-xs shrink-0">
               {filtrados.length} {filtrados.length === 1 ? 'orçamento' : 'orçamentos'}
             </Badge>
           </div>
@@ -261,8 +261,13 @@ function OrcamentosContent() {
               }
             />
           ) : (
-            <div className="overflow-x-auto rounded-md border border-border">
-              <Table>
+            <div
+              tabIndex={0}
+              role="region"
+              aria-label="Tabela de orçamentos e ordens de serviço"
+              className="w-full max-w-full overflow-x-auto rounded-md border border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Table className="w-full min-w-[720px] md:min-w-full text-sm">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-20">OS</TableHead>

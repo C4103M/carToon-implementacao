@@ -120,7 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-svh bg-background">
+    <div className="flex min-h-svh w-full max-w-full overflow-x-hidden bg-background">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex items-center gap-2 border-b border-sidebar-border px-5 py-4">
           <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -195,7 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Barra superior mobile */}
-      <div className="flex flex-1 flex-col md:pl-64">
+      <div className="flex flex-1 flex-col min-w-0 w-full max-w-full md:pl-64">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
           <div className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -245,7 +245,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <main className="flex-1 p-4 md:p-8">{children}</main>
+        <main className="flex-1 p-4 md:p-8 min-w-0 w-full max-w-full">{children}</main>
       </div>
 
       <MeusDadosModal

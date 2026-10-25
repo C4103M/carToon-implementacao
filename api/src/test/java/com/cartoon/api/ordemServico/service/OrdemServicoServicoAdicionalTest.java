@@ -67,6 +67,7 @@ class OrdemServicoServicoAdicionalTest {
 
         servico = new Servico();
         servico.setQuantidadeHoras(1.5);
+        servico.setPesoServicoPadrao(BigDecimal.ONE);
     }
 
     private void prepararBusca() {

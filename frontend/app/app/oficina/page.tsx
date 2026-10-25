@@ -29,6 +29,7 @@ import {
   Info,
   RefreshCw,
   ExternalLink,
+  Package,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { oficinasService, usuariosService } from "@/lib/services";
@@ -126,9 +127,10 @@ export default function MinhaOficinaPage() {
   const [endereco, setEndereco] = useState("");
   const [oficinaAtiva, setOficinaAtiva] = useState(true);
 
-  // Parâmetros de Precificação da Oficina (Mão de Obra e Risco FIPE)
+  // Parâmetros de Precificação da Oficina (Mão de Obra, Risco FIPE e Margem sobre Peças)
   const [valorHora, setValorHora] = useState(100.0);
   const [taxaRisco, setTaxaRisco] = useState(0.1);
+  const [margemPeca, setMargemPeca] = useState(1.0);
 
   // Variáveis para o simulador interativo (Calculadora baseada em FIPE)
   const [simHoras, setSimHoras] = useState(2);
@@ -177,6 +179,7 @@ export default function MinhaOficinaPage() {
       setEndereco(dadosOficina.endereco || "");
       setValorHora(dadosOficina.valorHora != null ? Number(dadosOficina.valorHora) : 100.0);
       setTaxaRisco(dadosOficina.taxaRisco != null ? Number(dadosOficina.taxaRisco) : 0.1);
+      setMargemPeca(dadosOficina.margemPeca != null ? Number(dadosOficina.margemPeca) : 1.0);
       setOficinaAtiva(dadosOficina.ativo !== false);
 
       const usuariosFormatados: UsuarioOficinaUI[] = (listaUsuarios || [])
@@ -229,8 +232,8 @@ export default function MinhaOficinaPage() {
   }, [simFipe, taxaRisco]);
 
   const totalPecasSimulado = useMemo(() => {
-    return simCustoPecas;
-  }, [simCustoPecas]);
+    return simCustoPecas * margemPeca;
+  }, [simCustoPecas, margemPeca]);
 
   const totalMaoDeObraSimulado = useMemo(() => {
     return simHoras * valorHora * fatorVeiculoSimulado;
@@ -243,13 +246,13 @@ export default function MinhaOficinaPage() {
   // Cenários Comparativos Fixos do Exemplo
   // Corsa Classic (R$ 20.000) com Peças R$ 100 e 2h
   const corsaFator = 1 + (20000 / 100000) * taxaRisco;
-  const corsaPecas = 100;
+  const corsaPecas = 100 * margemPeca;
   const corsaMO = 2 * valorHora * corsaFator;
   const corsaTotal = corsaPecas + corsaMO;
 
   // Sedan Premium (R$ 250.000) com Peças R$ 500 e 2h
   const sedanFator = 1 + (250000 / 100000) * taxaRisco;
-  const sedanPecas = 500;
+  const sedanPecas = 500 * margemPeca;
   const sedanMO = 2 * valorHora * sedanFator;
   const sedanTotal = sedanPecas + sedanMO;
 
@@ -296,6 +299,10 @@ export default function MinhaOficinaPage() {
       toast.error("A taxa de risco deve ser positiva ou zero.");
       return;
     }
+    if (margemPeca < 1) {
+      toast.error("A margem da peça deve ser maior ou igual a 1.");
+      return;
+    }
 
     try {
       setSalvandoOficina(true);
@@ -306,6 +313,7 @@ export default function MinhaOficinaPage() {
         endereco: enderecoFormatado,
         valorHora,
         taxaRisco,
+        margemPeca,
       });
 
       setOficinaOriginal(atualizada);
@@ -315,6 +323,7 @@ export default function MinhaOficinaPage() {
       setEndereco(atualizada.endereco);
       setValorHora(atualizada.valorHora != null ? Number(atualizada.valorHora) : valorHora);
       setTaxaRisco(atualizada.taxaRisco != null ? Number(atualizada.taxaRisco) : taxaRisco);
+      setMargemPeca(atualizada.margemPeca != null ? Number(atualizada.margemPeca) : margemPeca);
       setOficinaAtiva(atualizada.ativo !== false);
 
       toast.success("Configurações da oficina salvas com sucesso!");
@@ -334,6 +343,7 @@ export default function MinhaOficinaPage() {
       setEndereco(oficinaOriginal.endereco || "");
       setValorHora(oficinaOriginal.valorHora != null ? Number(oficinaOriginal.valorHora) : 100.0);
       setTaxaRisco(oficinaOriginal.taxaRisco != null ? Number(oficinaOriginal.taxaRisco) : 0.1);
+      setMargemPeca(oficinaOriginal.margemPeca != null ? Number(oficinaOriginal.margemPeca) : 1.0);
       toast.info("Valores revertidos para os dados salvos da oficina.");
     }
   };
@@ -647,8 +657,8 @@ export default function MinhaOficinaPage() {
                 </p>
               </div>
 
-              {/* 2 Campos de Configuração Persistentes no Backend */}
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* 3 Campos de Configuração Persistentes no Backend */}
+              <div className="grid gap-4 md:grid-cols-3">
                 {/* 1. Valor da Hora Técnica */}
                 <div className="rounded-lg border border-border bg-background p-4 flex flex-col justify-between">
                   <div className="flex flex-col gap-1.5">
@@ -714,6 +724,38 @@ export default function MinhaOficinaPage() {
                     </InputGroup>
                   </div>
                 </div>
+
+                {/* 3. Margem sobre Peças */}
+                <div className="rounded-lg border border-border bg-background p-4 flex flex-col justify-between">
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                        <Package className="size-3.5 text-primary" />
+                        Margem sobre Peças
+                      </span>
+                      <Badge variant="secondary" className="font-mono text-xs">
+                        {margemPeca >= 1 ? `+${((margemPeca - 1) * 100).toFixed(0)}%` : `${((margemPeca - 1) * 100).toFixed(0)}%`} ({margemPeca.toFixed(2)}x)
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Multiplicador cobrado sobre peças no orçamento. Padrão: 1.0 (sem acréscimo). Ex: 1.10 = +10%.
+                    </p>
+                  </div>
+                  <div className="mt-3">
+                    <InputGroup>
+                      <InputGroupInput
+                        type="number"
+                        step="0.01"
+                        min="1"
+                        value={margemPeca}
+                        onChange={(e) => setMargemPeca(parseFloat(e.target.value) || 0)}
+                        className="font-mono font-semibold"
+                        required
+                      />
+                      <InputGroupAddon>fator</InputGroupAddon>
+                    </InputGroup>
+                  </div>
+                </div>
               </div>
 
               {/* Explicação Didática da Fórmula */}
@@ -725,14 +767,13 @@ export default function MinhaOficinaPage() {
                 <div className="grid gap-2 sm:grid-cols-2 text-muted-foreground">
                   <div className="rounded-md bg-muted/40 p-2.5 flex flex-col gap-1">
                     <span className="font-semibold text-foreground">
-                      1. Peças: Valor de Catálogo
+                      1. Peças: Valor de Catálogo × Margem
                     </span>
                     <span>
-                      As peças são cobradas pelo seu valor unitário de venda cadastrado diretamente
-                      no catálogo da oficina.
+                      As peças são cobradas pelo seu valor base de catálogo multiplicado pela margem da oficina ({margemPeca.toFixed(2)}x).
                     </span>
                     <code className="text-foreground font-mono mt-0.5">
-                      Total Peças = Σ (Quantidade × Valor Unitário)
+                      Total Peças = Σ (Quantidade × Valor Base × {margemPeca.toFixed(2)})
                     </code>
                   </div>
 

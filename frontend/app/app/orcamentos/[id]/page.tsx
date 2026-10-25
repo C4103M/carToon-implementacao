@@ -22,6 +22,8 @@ import {
   Percent,
   Receipt,
   Sparkles,
+  Printer,
+  Pencil,
 } from 'lucide-react'
 import { ordemServicoService, catalogoService } from '@/lib/services'
 import { handleError, normalizeError } from '@/lib/error-handler'
@@ -33,7 +35,10 @@ import type {
   Desconto,
   ServicoResponse,
   PecaResponse,
+  ItemServicoResponse,
+  ItemPecaResponse,
 } from '@/lib/types'
+import { PESO_SERVICO_OPCOES } from '@/lib/types'
 import { formatCurrency, formatDate, formatCpf } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
 import { OrcamentoStatusBadge } from '@/components/status-badge'
@@ -58,7 +63,6 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -67,25 +71,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import {
+  NovoServicoDialog,
+  NovaPecaDialog,
+  EditarValorItemDialog,
+  type ItemEmEdicao,
+  ImpressaoOrcamentoDialog,
+  ConfirmarStatusDialog,
+  type AcaoStatus,
+} from '@/components/orcamentos'
 
 const DESCONTO_OPCOES: { value: Desconto; label: string; pct: number }[] = [
   { value: 'SEM_DESCONTO', label: 'Sem Desconto (0%)', pct: 0 },
@@ -94,46 +89,7 @@ const DESCONTO_OPCOES: { value: Desconto; label: string; pct: number }[] = [
   { value: 'QUINZE_PORCENTO', label: '15% de Desconto', pct: 15 },
 ]
 
-function normalizarTempoParaEnvio(input: string): string | null {
-  const str = input.trim()
-  if (!str) return null
 
-  const colonMatch = str.match(/^(\d{1,2}):(\d{1,2})(?::\d{1,2})?$/)
-  if (colonMatch) {
-    const h = parseInt(colonMatch[1], 10)
-    const m = parseInt(colonMatch[2], 10)
-    if (h === 0 && m === 0) return null
-    if (m > 59) return null
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-
-  const horaMinMatch = str.match(/^(\d+)\s*[hH]\s*(\d+)?\s*(?:[mM])?$/)
-  if (horaMinMatch) {
-    const h = parseInt(horaMinMatch[1], 10)
-    const m = horaMinMatch[2] ? parseInt(horaMinMatch[2], 10) : 0
-    if (h === 0 && m === 0) return null
-    if (m > 59) return null
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-
-  const minMatch = str.match(/^(\d+)\s*(?:m|min|minutos)$/i)
-  if (minMatch) {
-    const totalMin = parseInt(minMatch[1], 10)
-    if (totalMin <= 0) return null
-    const h = Math.floor(totalMin / 60)
-    const m = totalMin % 60
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-
-  const num = parseFloat(str.replace(',', '.'))
-  if (!isNaN(num) && num > 0) {
-    const h = Math.floor(num)
-    const m = Math.round((num - h) * 60)
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  }
-
-  return null
-}
 
 function formatarTempoExibicao(tempo?: string, quantidadeHoras?: number): string {
   if (tempo) {
@@ -175,6 +131,7 @@ export default function OrcamentoDetalhePage({
   // --- Adicionar Serviço na OS ---
   const [abaAdicionar, setAbaAdicionar] = useState<'servico' | 'peca'>('servico')
   const [selecionadoServicoId, setSelecionadoServicoId] = useState('')
+  const [pesoServicoOS, setPesoServicoOS] = useState<number>(0.5)
   const [qtdServico, setQtdServico] = useState('1')
   const [adicionandoServico, setAdicionandoServico] = useState(false)
 
@@ -183,25 +140,15 @@ export default function OrcamentoDetalhePage({
   const [qtdPeca, setQtdPeca] = useState('1')
   const [adicionandoPeca, setAdicionandoPeca] = useState(false)
 
-  // --- Modal de Cadastro Rápido de Novo Serviço (caso não esteja na lista) ---
+  // --- Diálogos e Modais ---
   const [novoServicoModalAberto, setNovoServicoModalAberto] = useState(false)
-  const [novoServicoNome, setNovoServicoNome] = useState('')
-  const [novoServicoTempo, setNovoServicoTempo] = useState('')
-  const [novoServicoDescricao, setNovoServicoDescricao] = useState('')
-  const [salvandoNovoServico, setSalvandoNovoServico] = useState(false)
-
-  // --- Modal de Cadastro Rápido de Nova Peça (caso não esteja na lista) ---
   const [novaPecaModalAberto, setNovaPecaModalAberto] = useState(false)
-  const [novaPecaNome, setNovaPecaNome] = useState('')
-  const [novaPecaFabricante, setNovaPecaFabricante] = useState('')
-  const [novaPecaValor, setNovaPecaValor] = useState('')
-  const [salvandoNovaPeca, setSalvandoNovaPeca] = useState(false)
+  const [modalImpressaoAberto, setModalImpressaoAberto] = useState(false)
+  const [itemEmEdicao, setItemEmEdicao] = useState<ItemEmEdicao | null>(null)
 
   // --- Desconto e Status ---
   const [atualizandoDesconto, setAtualizandoDesconto] = useState(false)
-  const [acaoStatusConfirmar, setAcaoStatusConfirmar] = useState<
-    'aceitar' | 'iniciar' | 'finalizar' | 'rejeitar' | null
-  >(null)
+  const [acaoStatusConfirmar, setAcaoStatusConfirmar] = useState<AcaoStatus | null>(null)
   const [executandoStatus, setExecutandoStatus] = useState(false)
   const [erroAcao, setErroAcao] = useState<string | null>(null)
 
@@ -253,9 +200,10 @@ export default function OrcamentoDetalhePage({
     const valorHora = Number(os.oficinaValorHora ?? 100)
     const valorFipe = Number(os.veiculoValorFipe ?? 0)
     const taxaRisco = Number(os.oficinaTaxaRisco ?? 0)
+    const peso = pesoServicoOS ?? servicoSelecionado.pesoServico ?? 0.5
 
     const maoDeObraBase = horas * valorHora
-    const multiplicador = 1 + (valorFipe / 100000) * taxaRisco
+    const multiplicador = 1 + (valorFipe / 100000) * taxaRisco * peso
     const valorUnitario = Math.round(maoDeObraBase * multiplicador * 100) / 100
     const qtd = Math.max(1, parseInt(qtdServico, 10) || 1)
     const subtotal = Math.round(valorUnitario * qtd * 100) / 100
@@ -263,26 +211,30 @@ export default function OrcamentoDetalhePage({
     return {
       horas,
       valorHora,
+      peso,
       maoDeObraBase,
       multiplicador,
       valorUnitario,
       qtd,
       subtotal,
     }
-  }, [servicoSelecionado, os, qtdServico])
+  }, [servicoSelecionado, os, qtdServico, pesoServicoOS])
 
   const previaPeca = useMemo(() => {
     if (!pecaSelecionada) return null
-    const valorUnitario = Number(pecaSelecionada.valorBase ?? 0)
+    const margem = Number(os?.oficinaMargemPeca ?? 1)
+    const valorBase = Number(pecaSelecionada.valorBase ?? 0)
+    const valorUnitario = Math.round(valorBase * margem * 100) / 100
     const qtd = Math.max(1, parseInt(qtdPeca, 10) || 1)
     const subtotal = Math.round(valorUnitario * qtd * 100) / 100
-    return { valorUnitario, qtd, subtotal }
-  }, [pecaSelecionada, qtdPeca])
+    return { valorBase, margem, valorUnitario, qtd, subtotal }
+  }, [pecaSelecionada, qtdPeca, os?.oficinaMargemPeca])
 
   const valoresResumo = useMemo(() => {
     if (!os) {
       return {
         totalServicos: 0,
+        totalPecasBruto: 0,
         totalPecas: 0,
         valorBruto: 0,
         valorDesconto: 0,
@@ -300,6 +252,14 @@ export default function OrcamentoDetalhePage({
         ? Number(os.totalPecas)
         : (os.itensPeca || []).reduce((acc, i) => acc + Number(i.subtotal || 0), 0)
 
+    const totalPecasBruto =
+      os.totalPecasBruto != null
+        ? Number(os.totalPecasBruto)
+        : (os.itensPeca || []).reduce((acc, i) => {
+            const base = i.valorBase ?? i.valorBruto ?? i.valorUnitario
+            return acc + Number(base) * Number(i.quantidade || 1)
+          }, 0)
+
     const valorBruto =
       os.valorBruto != null ? Number(os.valorBruto) : totalServicos + totalPecas
 
@@ -309,6 +269,7 @@ export default function OrcamentoDetalhePage({
 
     return {
       totalServicos,
+      totalPecasBruto,
       totalPecas,
       valorBruto,
       valorDesconto,
@@ -335,9 +296,11 @@ export default function OrcamentoDetalhePage({
       const atualizada = await ordemServicoService.adicionarItemServico(os.id, {
         servicoId: Number(selecionadoServicoId),
         quantidade,
+        pesoServico: pesoServicoOS,
       })
       setOs(atualizada)
       setSelecionadoServicoId('')
+      setPesoServicoOS(0.5)
       setQtdServico('1')
       toast.success('Serviço adicionado ao orçamento!')
       setErroAcao(null)
@@ -407,74 +370,35 @@ export default function OrcamentoDetalhePage({
     }
   }
 
-  // --- Handlers: Cadastrar Novo Serviço no Catálogo e Selecionar ---
-  const handleCriarNovoServicoCatalogo = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!novoServicoNome.trim()) {
-      toast.error('Informe o nome do serviço.')
-      return
-    }
-    const tempoFormatado = normalizarTempoParaEnvio(novoServicoTempo)
-    if (!tempoFormatado) {
-      toast.error('Informe um tempo válido (ex: 1h30, 1:30 ou 45min).')
-      return
-    }
-
-    setSalvandoNovoServico(true)
-    try {
-      const criado = await catalogoService.criarServico({
-        nome: novoServicoNome.trim(),
-        tempo: tempoFormatado,
-        descricao: novoServicoDescricao.trim() || undefined,
-      })
-      setServicosCatalogo((prev) => [criado, ...prev])
-      setSelecionadoServicoId(String(criado.id))
-      setAbaAdicionar('servico')
-      setNovoServicoModalAberto(false)
-      setNovoServicoNome('')
-      setNovoServicoTempo('')
-      setNovoServicoDescricao('')
-      toast.success('Serviço cadastrado no catálogo e selecionado!')
-    } catch (err) {
-      toast.error(normalizeError(err).message || 'Erro ao cadastrar serviço.')
-    } finally {
-      setSalvandoNovoServico(false)
-    }
+  // --- Handlers de Diálogos ---
+  const handleAbrirModalEditarItem = (
+    tipo: 'servico' | 'peca',
+    item: ItemServicoResponse | ItemPecaResponse
+  ) => {
+    const nome =
+      tipo === 'servico'
+        ? (item as ItemServicoResponse).servicoNome || `Serviço #${item.id}`
+        : (item as ItemPecaResponse).pecaNome || (item as ItemPecaResponse).nomePeca || `Peça #${item.id}`
+    setItemEmEdicao({
+      id: item.id,
+      tipo,
+      nome,
+      quantidade: item.quantidade || 1,
+      valorUnitarioAtual: Number(item.valorUnitario || 0),
+      pesoServicoAtual: tipo === 'servico' ? Number((item as ItemServicoResponse).pesoServico ?? 0.5) : undefined,
+    })
   }
 
-  // --- Handlers: Cadastrar Nova Peça no Catálogo e Selecionar ---
-  const handleCriarNovaPecaCatalogo = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!novaPecaNome.trim() || !novaPecaFabricante.trim()) {
-      toast.error('Preencha o nome e o fabricante da peça.')
-      return
-    }
-    const valorBase = Number.parseFloat(novaPecaValor.replace(',', '.'))
-    if (Number.isNaN(valorBase) || valorBase <= 0) {
-      toast.error('Informe um valor base válido maior que zero.')
-      return
-    }
+  const handleServicoCriado = (criado: ServicoResponse) => {
+    setServicosCatalogo((prev) => [criado, ...prev])
+    setSelecionadoServicoId(String(criado.id))
+    setAbaAdicionar('servico')
+  }
 
-    setSalvandoNovaPeca(true)
-    try {
-      const criada = await catalogoService.criarPeca({
-        nome: novaPecaNome.trim(),
-        fabricante: novaPecaFabricante.trim(),
-        valorBase,
-      })
-      setPecasCatalogo((prev) => [criada, ...prev])
-      setSelecionadoPecaId(String(criada.id))
-      setAbaAdicionar('peca')
-      setNovaPecaModalAberto(false)
-      setNovaPecaNome('')
-      setNovaPecaFabricante('')
-      setNovaPecaValor('')
-      toast.success('Peça cadastrada no catálogo e selecionada!')
-    } catch (err) {
-      toast.error(normalizeError(err).message || 'Erro ao cadastrar peça.')
-    } finally {
-      setSalvandoNovaPeca(false)
-    }
+  const handlePecaCriada = (criada: PecaResponse) => {
+    setPecasCatalogo((prev) => [criada, ...prev])
+    setSelecionadoPecaId(String(criada.id))
+    setAbaAdicionar('peca')
   }
 
   // --- Handler: Aplicar Desconto (Desconto.java) ---
@@ -599,15 +523,19 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 w-full min-w-0 max-w-full">
       <PageHeader
         title={`Orçamento / OS #${os.id}`}
         description={os.descricao || 'Detalhamento transparente de serviços, peças e valores.'}
         backHref="/app/orcamentos"
         backLabel="Todos os orçamentos"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <OrcamentoStatusBadge status={os.status} />
+            <Button variant="outline" size="sm" onClick={() => setModalImpressaoAberto(true)}>
+              <Printer className="size-4" data-icon="inline-start" />
+              Imprimir Orçamento
+            </Button>
             <Button variant="outline" size="sm" onClick={copiarResumoWhatsApp}>
               <Share2 data-icon="inline-start" />
               Copiar p/ WhatsApp
@@ -617,10 +545,10 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
       />
 
       {/* Barra de Progresso do Fluxo de Status (StatusServico.java) */}
-      <Card>
-        <CardContent className="py-4">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
+      <Card className="w-full min-w-0 max-w-full overflow-hidden">
+        <CardContent className="py-4 w-full min-w-0">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between w-full min-w-0">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 xl:pb-0 w-full min-w-0">
               {(
                 [
                   { key: 'PENDENTE', label: '1. Pendente', date: os.dataOrcamento },
@@ -640,9 +568,9 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                 const isConcluido = idxAtual > idx && os.status !== 'REJEITADO'
 
                 return (
-                  <div key={step.key} className="flex items-center gap-2">
+                  <div key={step.key} className="flex items-center gap-2 shrink-0">
                     <div
-                      className={`flex flex-col rounded-lg border px-3 py-1.5 transition-colors ${
+                      className={`flex flex-col rounded-lg border px-3 py-1.5 transition-colors whitespace-nowrap ${
                         isAtivo
                           ? 'border-primary bg-primary/15 text-primary font-semibold'
                           : isConcluido
@@ -663,7 +591,7 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
               })}
 
               {os.status === 'REJEITADO' && (
-                <div className="flex flex-col rounded-lg border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-destructive font-semibold">
+                <div className="flex flex-col rounded-lg border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-destructive font-semibold shrink-0 whitespace-nowrap">
                   <span>Orçamento Rejeitado</span>
                   {os.dataRejeicao && (
                     <span className="text-[10px] font-mono">
@@ -732,9 +660,9 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 max-w-full">
         {/* Coluna Esquerda: Dados do Cliente/Veículo + Resumo Financeiro Transparente */}
-        <div className="flex flex-col gap-6 lg:col-span-1">
+        <div className="flex flex-col gap-6 lg:col-span-1 w-full min-w-0">
           {/* Card: Resumo Financeiro Transparente e Desconto */}
           <Card className="border-primary/30">
             <CardHeader className="pb-3">
@@ -910,12 +838,26 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                       {os.oficinaTaxaRisco != null ? Number(os.oficinaTaxaRisco) : '—'}
                     </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span>Margem sobre Peças:</span>
+                    <span className="font-semibold text-foreground">
+                      {os.oficinaMargemPeca != null ? `${Number(os.oficinaMargemPeca)}x` : '1x'}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-2 flex items-start gap-1.5 rounded-md bg-muted/60 border border-border p-2 text-[11px] text-muted-foreground">
-                  <Info className="size-3.5 text-primary shrink-0 mt-0.5" />
-                  <span>
-                    Fórmula da mão de obra: <strong>Horas × Valor/Hora × [1 + (FIPE / 100.000) × Taxa Risco]</strong>.
-                  </span>
+                <div className="mt-2 flex flex-col gap-1 rounded-md bg-muted/60 border border-border p-2 text-[11px] text-muted-foreground">
+                  <div className="flex items-start gap-1.5">
+                    <Info className="size-3.5 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      Fórmula da mão de obra: <strong>Horas × Valor/Hora × [1 + (FIPE / 100.000) × Taxa Risco]</strong>.
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <Info className="size-3.5 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      Fórmula das peças: <strong>Valor Base × Margem da Oficina</strong>.
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -939,10 +881,10 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
         </div>
 
         {/* Coluna Direita: Adicionar Serviço/Peça + Tabelas Separadas de Mão de Obra e Peças */}
-        <div className="flex flex-col gap-6 lg:col-span-2">
+        <div className="flex flex-col gap-6 lg:col-span-2 w-full min-w-0">
           {/* Painel para Adicionar Serviços (Mão de Obra) e Peças */}
           {podeEditar && (
-            <Card>
+            <Card className="w-full min-w-0 max-w-full overflow-hidden">
               <CardHeader className="pb-3">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -955,12 +897,12 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="w-full min-w-0">
                 <Tabs
                   value={abaAdicionar}
                   onValueChange={(v) => setAbaAdicionar(v as 'servico' | 'peca')}
                 >
-                  <TabsList className="mb-4">
+                  <TabsList className="mb-4 flex flex-wrap h-auto gap-1">
                     <TabsTrigger value="servico">
                       <Wrench className="size-4" />
                       Adicionar Serviço (Mão de Obra)
@@ -974,8 +916,8 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                   {/* ABA: ADICIONAR SERVIÇO */}
                   <TabsContent value="servico">
                     <form onSubmit={handleAdicionarServico} className="flex flex-col gap-4">
-                      <div className="grid gap-4 sm:grid-cols-4 items-end">
-                        <div className="flex flex-col gap-1.5 sm:col-span-3">
+                      <div className="grid gap-4 sm:grid-cols-12 items-end">
+                        <div className="flex flex-col gap-1.5 sm:col-span-6">
                           <div className="flex items-center justify-between">
                             <Label htmlFor="select-servico">Serviço do Catálogo</Label>
                             <button
@@ -984,12 +926,21 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                               className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
                             >
                               <Sparkles className="size-3" />
-                              Não está na lista? Cadastrar novo serviço
+                              Não está na lista? Cadastrar
                             </button>
                           </div>
                           <Select
                             value={selecionadoServicoId}
-                            onValueChange={(v) => setSelecionadoServicoId(v ?? '')}
+                            onValueChange={(v) => {
+                              const val = v ?? ''
+                              setSelecionadoServicoId(val)
+                              const enc = servicosCatalogo.find((s) => String(s.id) === val)
+                              if (enc && enc.pesoServico != null) {
+                                setPesoServicoOS(Number(enc.pesoServico))
+                              } else {
+                                setPesoServicoOS(0.5)
+                              }
+                            }}
                             disabled={adicionandoServico}
                           >
                             <SelectTrigger id="select-servico" className="w-full">
@@ -1011,7 +962,30 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                           </Select>
                         </div>
 
-                        <div className="flex flex-col gap-1.5 sm:col-span-1">
+                        <div className="flex flex-col gap-1.5 sm:col-span-4">
+                          <Label htmlFor="select-peso-servico">Nível de Risco (Peso)</Label>
+                          <Select
+                            value={String(pesoServicoOS)}
+                            onValueChange={(v) => setPesoServicoOS(Number(v))}
+                            disabled={adicionandoServico}
+                          >
+                            <SelectTrigger id="select-peso-servico" className="w-full">
+                              <SelectValue placeholder="Selecione o peso..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PESO_SERVICO_OPCOES.map((opcao) => (
+                                <SelectItem key={opcao.valor} value={String(opcao.valor)}>
+                                  <div className="flex flex-col text-left py-0.5">
+                                    <span className="font-medium text-foreground">{opcao.label}</span>
+                                    <span className="text-[10px] text-muted-foreground">{opcao.descricao}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 sm:col-span-2">
                           <Label htmlFor="qtd-servico">Quantidade</Label>
                           <Input
                             id="qtd-servico"
@@ -1052,7 +1026,7 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                             </div>
                             <div className="rounded bg-background/80 p-2 border">
                               <span className="text-[10px] text-muted-foreground block">
-                                Fator FIPE/Risco
+                                Fator FIPE/Risco ({previaServico.peso}x peso)
                               </span>
                               <span className="font-semibold text-primary">
                                 {previaServico.multiplicador.toFixed(4)}x
@@ -1166,6 +1140,11 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                                 Fabricante: {pecaSelecionada.fabricante}
                               </span>
                             )}
+                            {previaPeca.margem !== 1 && (
+                              <div className="text-[11px] text-muted-foreground mt-0.5">
+                                Base: {formatCurrency(previaPeca.valorBase)} × Margem ({previaPeca.margem}x)
+                              </div>
+                            )}
                           </div>
                           <div className="font-mono text-sm">
                             {previaPeca.qtd}x {formatCurrency(previaPeca.valorUnitario)} ={' '}
@@ -1203,10 +1182,10 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
           )}
 
           {/* Tabela 1: Mão de Obra (Serviços) */}
-          <Card>
-            <CardHeader className="flex-row items-center justify-between pb-3">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3">
               <div className="flex items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-md bg-primary/15 text-primary">
+                <div className="flex size-8 items-center justify-center rounded-md bg-primary/15 text-primary shrink-0">
                   <Wrench className="size-4" />
                 </div>
                 <div>
@@ -1218,7 +1197,7 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                   </CardDescription>
                 </div>
               </div>
-              <div className="text-right">
+              <div className="text-left sm:text-right">
                 <span className="text-[10px] uppercase tracking-wide text-muted-foreground block">
                   Subtotal Mão de Obra
                 </span>
@@ -1227,18 +1206,24 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                 </span>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="w-full min-w-0 p-3 sm:p-6">
               {!os.itensServico || os.itensServico.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground text-sm border border-dashed rounded-lg">
                   Nenhum serviço (mão de obra) adicionado a este orçamento.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
+                <div
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Tabela de Mão de Obra e Serviços"
+                  className="w-full max-w-full overflow-x-auto rounded-md border border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <Table className="w-full min-w-[660px] md:min-w-full text-sm">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Serviço</TableHead>
                         <TableHead>Tempo</TableHead>
+                        <TableHead className="w-28 text-center">Risco (Peso)</TableHead>
                         <TableHead className="text-right hidden sm:table-cell">
                           Base (Horas × Valor/h)
                         </TableHead>
@@ -1257,6 +1242,21 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                               <Clock className="size-3 text-muted-foreground" />
                               {formatarTempoExibicao(item.tempo, item.quantidadeHoras)}
                             </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {Number(item.pesoServico ?? 0.5) === 0 ? (
+                              <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 text-[11px] whitespace-nowrap">
+                                0,0 — Sem risco
+                              </Badge>
+                            ) : Number(item.pesoServico ?? 0.5) === 1 ? (
+                              <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[11px] whitespace-nowrap">
+                                1,0 — Alto
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-blue-500/30 text-blue-600 dark:text-blue-400 bg-blue-500/10 text-[11px] whitespace-nowrap">
+                                0,5 — Moderado
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right font-mono text-xs text-muted-foreground hidden sm:table-cell">
                             {item.valorHoraBase != null
@@ -1278,16 +1278,27 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                             {formatCurrency(Number(item.subtotal))}
                           </TableCell>
                           {podeEditar && (
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:bg-destructive/10"
-                                onClick={() => handleRemoverServico(item.id)}
-                                title="Remover serviço"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
+                            <TableCell className="text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  onClick={() => handleAbrirModalEditarItem('servico', item)}
+                                  title="Alterar valor do serviço"
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-destructive hover:bg-destructive/10"
+                                  onClick={() => handleRemoverServico(item.id)}
+                                  title="Remover serviço"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           )}
                         </TableRow>
@@ -1300,10 +1311,10 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
           </Card>
 
           {/* Tabela 2: Peças e Componentes */}
-          <Card>
-            <CardHeader className="flex-row items-center justify-between pb-3">
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3">
               <div className="flex items-center gap-2">
-                <div className="flex size-8 items-center justify-center rounded-md bg-info/15 text-info">
+                <div className="flex size-8 items-center justify-center rounded-md bg-info/15 text-info shrink-0">
                   <Package className="size-4" />
                 </div>
                 <div>
@@ -1311,70 +1322,130 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
                     2. Peças e Componentes
                   </CardTitle>
                   <CardDescription>
-                    Peças aplicadas na manutenção pelo valor base unitário do catálogo.
+                    Peças aplicadas na manutenção com discriminação de valor bruto e margem da oficina.
                   </CardDescription>
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase tracking-wide text-muted-foreground block">
-                  Subtotal Peças
-                </span>
-                <span className="text-lg font-bold font-mono text-info">
-                  {formatCurrency(valoresResumo.totalPecas)}
-                </span>
+              <div className="flex items-center gap-4 text-left sm:text-right">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground block">
+                    Custo Bruto
+                  </span>
+                  <span className="text-sm font-semibold font-mono text-muted-foreground">
+                    {formatCurrency(valoresResumo.totalPecasBruto)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground block">
+                    Subtotal Peças
+                  </span>
+                  <span className="text-lg font-bold font-mono text-info">
+                    {formatCurrency(valoresResumo.totalPecas)}
+                  </span>
+                </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="w-full min-w-0 p-3 sm:p-6">
               {!os.itensPeca || os.itensPeca.length === 0 ? (
                 <div className="py-8 text-center text-muted-foreground text-sm border border-dashed rounded-lg">
                   Nenhuma peça adicionada a este orçamento.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
+                <div
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Tabela de Peças Utilizadas"
+                  className="w-full max-w-full overflow-x-auto rounded-md border border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <Table className="w-full min-w-[660px] md:min-w-full text-sm">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Peça</TableHead>
                         <TableHead>Fabricante</TableHead>
-                        <TableHead className="text-right">Valor Unitário</TableHead>
+                        <TableHead className="text-right">Valor Bruto (Base)</TableHead>
+                        <TableHead className="text-center">Margem</TableHead>
+                        <TableHead className="text-right">Valor Final (Unit.)</TableHead>
                         <TableHead className="text-center w-16">Qtd</TableHead>
                         <TableHead className="text-right">Subtotal</TableHead>
                         {podeEditar && <TableHead className="w-10"></TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {os.itensPeca.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">
-                            {item.pecaNome || item.nomePeca || `Peça #${item.pecaId}`}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {item.fabricante || '—'}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            {formatCurrency(Number(item.valorUnitario))}
-                          </TableCell>
-                          <TableCell className="text-center font-medium">
-                            {item.quantidade}
-                          </TableCell>
-                          <TableCell className="text-right font-mono font-semibold">
-                            {formatCurrency(Number(item.subtotal))}
-                          </TableCell>
-                          {podeEditar && (
-                            <TableCell className="text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:bg-destructive/10"
-                                onClick={() => handleRemoverPeca(item.id)}
-                                title="Remover peça"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </Button>
+                      {os.itensPeca.map((item) => {
+                        const valorBruto = Number(item.valorBase ?? item.valorBruto ?? item.valorUnitario)
+                        const valorFinal = Number(item.valorFinal ?? item.valorUnitario)
+                        const margemFator =
+                          item.margem != null
+                            ? Number(item.margem)
+                            : valorBruto > 0
+                            ? valorFinal / valorBruto
+                            : 1.0
+                        const margemPercentual = Math.round((margemFator - 1) * 100)
+
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">
+                              {item.pecaNome || item.nomePeca || `Peça #${item.pecaId}`}
                             </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
+                            <TableCell className="text-muted-foreground text-sm">
+                              {item.fabricante || '—'}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                              {formatCurrency(valorBruto)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {margemFator > 1.0001 ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="font-mono text-xs font-semibold text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
+                                >
+                                  +{margemPercentual}% ({margemFator.toFixed(2)}x)
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="font-mono text-xs text-muted-foreground"
+                                >
+                                  1.00x (0%)
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm font-semibold text-foreground">
+                              {formatCurrency(valorFinal)}
+                            </TableCell>
+                            <TableCell className="text-center font-medium">
+                              {item.quantidade}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold">
+                              {formatCurrency(Number(item.subtotal))}
+                            </TableCell>
+                            {podeEditar && (
+                              <TableCell className="text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                    onClick={() => handleAbrirModalEditarItem('peca', item)}
+                                    title="Alterar valor da peça"
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleRemoverPeca(item.id)}
+                                    title="Remover peça"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </div>
@@ -1384,158 +1455,51 @@ ${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
         </div>
       </div>
 
-      {/* Dialog: Cadastrar Novo Serviço no Catálogo (sem sair do orçamento) */}
-      <Dialog open={novoServicoModalAberto} onOpenChange={setNovoServicoModalAberto}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Cadastrar Novo Serviço no Catálogo</DialogTitle>
-            <DialogDescription>
-              O serviço será salvo no catálogo da sua oficina e selecionado automaticamente para este orçamento.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCriarNovoServicoCatalogo}>
-            <div className="flex flex-col gap-4 py-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="modal-srv-nome">Nome do Serviço</Label>
-                <Input
-                  id="modal-srv-nome"
-                  placeholder="Ex: Troca da Correia Dentada"
-                  value={novoServicoNome}
-                  onChange={(e) => setNovoServicoNome(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="modal-srv-tempo">Tempo Estimado (ex: 1h30 ou 1:30)</Label>
-                <Input
-                  id="modal-srv-tempo"
-                  placeholder="Ex: 1h30 ou 01:30"
-                  value={novoServicoTempo}
-                  onChange={(e) => setNovoServicoTempo(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="modal-srv-desc">Descrição (Opcional)</Label>
-                <Textarea
-                  id="modal-srv-desc"
-                  rows={2}
-                  placeholder="Procedimentos inclusos..."
-                  value={novoServicoDescricao}
-                  onChange={(e) => setNovoServicoDescricao(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setNovoServicoModalAberto(false)}
-                disabled={salvandoNovoServico}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={salvandoNovoServico}>
-                {salvandoNovoServico && <Spinner className="size-4 mr-2" />}
-                Cadastrar e Selecionar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
-      {/* Dialog: Cadastrar Nova Peça no Catálogo (sem sair do orçamento) */}
-      <Dialog open={novaPecaModalAberto} onOpenChange={setNovaPecaModalAberto}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Cadastrar Nova Peça no Catálogo</DialogTitle>
-            <DialogDescription>
-              A peça será salva no catálogo da sua oficina e selecionada automaticamente para este orçamento.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCriarNovaPecaCatalogo}>
-            <div className="flex flex-col gap-4 py-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="modal-peca-nome">Nome da Peça</Label>
-                <Input
-                  id="modal-peca-nome"
-                  placeholder="Ex: Jogo de Pastilhas Dianteiras"
-                  value={novaPecaNome}
-                  onChange={(e) => setNovaPecaNome(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="modal-peca-fab">Fabricante</Label>
-                <Input
-                  id="modal-peca-fab"
-                  placeholder="Ex: Cobreq / Bosch"
-                  value={novaPecaFabricante}
-                  onChange={(e) => setNovaPecaFabricante(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="modal-peca-valor">Valor Base Unitário (R$)</Label>
-                <Input
-                  id="modal-peca-valor"
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={novaPecaValor}
-                  onChange={(e) => setNovaPecaValor(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setNovaPecaModalAberto(false)}
-                disabled={salvandoNovaPeca}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={salvandoNovaPeca}>
-                {salvandoNovaPeca && <Spinner className="size-4 mr-2" />}
-                Cadastrar e Selecionar
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Dialog: Cadastrar Novo Serviço no Catálogo */}
+      <NovoServicoDialog
+        aberto={novoServicoModalAberto}
+        onOpenChange={setNovoServicoModalAberto}
+        onServicoCriado={handleServicoCriado}
+      />
 
-      {/* AlertDialog para Confirmação de Transição de Status */}
-      <AlertDialog
-        open={acaoStatusConfirmar !== null}
-        onOpenChange={(aberto) => !aberto && setAcaoStatusConfirmar(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar alteração de status?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {acaoStatusConfirmar === 'aceitar' &&
-                'O orçamento será marcado como ACEITO pelo cliente, habilitando o início da execução.'}
-              {acaoStatusConfirmar === 'iniciar' &&
-                'A Ordem de Serviço mudará para EM ANDAMENTO e a data de início da manutenção será registrada.'}
-              {acaoStatusConfirmar === 'finalizar' &&
-                'A Ordem de Serviço será marcada como FINALIZADA. Após finalizar, não será mais possível adicionar/remover itens ou alterar descontos.'}
-              {acaoStatusConfirmar === 'rejeitar' &&
-                'O orçamento será marcado como REJEITADO e a data de rejeição será registrada.'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={executandoStatus}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={executarMudancaStatus}
-              disabled={executandoStatus}
-            >
-              {executandoStatus ? 'Processando...' : 'Confirmar'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Dialog: Cadastrar Nova Peça no Catálogo */}
+      <NovaPecaDialog
+        aberto={novaPecaModalAberto}
+        onOpenChange={setNovaPecaModalAberto}
+        onPecaCriada={handlePecaCriada}
+      />
+
+      {/* Dialog: Visualização e Impressão do Orçamento (Folha A4) */}
+      {os && (
+        <ImpressaoOrcamentoDialog
+          aberto={modalImpressaoAberto}
+          onOpenChange={setModalImpressaoAberto}
+          os={os}
+          valoresResumo={valoresResumo}
+        />
+      )}
+
+      {/* Dialog: Alterar Valor Unitário de Item (Mão de Obra ou Peça) */}
+      {os && (
+        <EditarValorItemDialog
+          item={itemEmEdicao}
+          ordemId={os.id}
+          onClose={() => setItemEmEdicao(null)}
+          onSucesso={setOs}
+        />
+      )}
+
+
+
+
+      {/* AlertDialog: Confirmação de Mudança de Status */}
+      <ConfirmarStatusDialog
+        acao={acaoStatusConfirmar}
+        executando={executandoStatus}
+        onClose={() => setAcaoStatusConfirmar(null)}
+        onConfirmar={executarMudancaStatus}
+      />
     </div>
   )
 }

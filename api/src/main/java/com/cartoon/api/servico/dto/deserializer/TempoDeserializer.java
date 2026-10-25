@@ -1,5 +1,6 @@
 package com.cartoon.api.servico.dto.deserializer;
 
+import com.cartoon.api.servico.models.Servico;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -19,14 +20,7 @@ public class TempoDeserializer extends JsonDeserializer<LocalTime> {
     @Override
     public LocalTime deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         if (p.currentToken() == JsonToken.VALUE_NUMBER_FLOAT || p.currentToken() == JsonToken.VALUE_NUMBER_INT) {
-            double val = p.getDoubleValue();
-            int horas = (int) val;
-            int minutos = (int) Math.round((val - horas) * 60);
-            if (minutos >= 60) {
-                horas += minutos / 60;
-                minutos = minutos % 60;
-            }
-            return LocalTime.of(Math.min(horas, 23), Math.min(minutos, 59));
+            return Servico.converterParaLocalTime(p.getDoubleValue());
         }
 
         String text = p.getText();

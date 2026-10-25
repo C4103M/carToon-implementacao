@@ -1,5 +1,6 @@
 package com.cartoon.api.oficina.dto.request;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -33,9 +34,17 @@ public record OficinaRequest (
         BigDecimal valorHora,
 
         @PositiveOrZero(message = "A taxa de risco deve ser positiva ou zero.")
-        BigDecimal taxaRisco) {
+        BigDecimal taxaRisco,
+
+        @DecimalMin(value = "1.0", message = "A margem da peça deve ser maior ou igual a 1.")
+        BigDecimal margemPeca) {
 
     public OficinaRequest(String nome, String endereco, String telefone, String email) {
-        this(nome, endereco, telefone, email, null, null);
+        this(nome, endereco, telefone, email, null, null, null);
+    }
+
+    public OficinaRequest(String nome, String endereco, String telefone, String email,
+                          BigDecimal valorHora, BigDecimal taxaRisco) {
+        this(nome, endereco, telefone, email, valorHora, taxaRisco, null);
     }
 }

@@ -16,7 +16,8 @@ public record ItemServicoResponse(
         @JsonFormat(pattern = "HH:mm")
         LocalTime tempo,
         BigDecimal valorHoraBase,
-        BigDecimal multiplicadorFipe
+        BigDecimal multiplicadorFipe,
+        BigDecimal pesoServico
 ) {
     public ItemServicoResponse(
             Integer id,
@@ -27,6 +28,21 @@ public record ItemServicoResponse(
             BigDecimal subtotal,
             Double quantidadeHoras
     ) {
-        this(id, servicoId, servicoNome, quantidade, valorUnitario, subtotal, quantidadeHoras, null, null, null);
+        this(id, servicoId, servicoNome, quantidade, valorUnitario, subtotal, quantidadeHoras, null, null, null, new BigDecimal("0.5"));
+    }
+
+    public ItemServicoResponse(
+            Integer id,
+            Integer servicoId,
+            String servicoNome,
+            Integer quantidade,
+            BigDecimal valorUnitario,
+            BigDecimal subtotal,
+            Double quantidadeHoras,
+            LocalTime tempo,
+            BigDecimal valorHoraBase,
+            BigDecimal multiplicadorFipe
+    ) {
+        this(id, servicoId, servicoNome, quantidade, valorUnitario, subtotal, quantidadeHoras, tempo, valorHoraBase, multiplicadorFipe, new BigDecimal("0.5"));
     }
 }

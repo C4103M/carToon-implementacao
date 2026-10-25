@@ -7,6 +7,7 @@ import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.dto.request.AtualizarItemValorRequest;
 import com.cartoon.api.ordemServico.dto.request.DescontoRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
@@ -37,6 +38,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -166,7 +168,12 @@ public class OrdemServicoService {
             throw new RegraDeNegocioException("A peça informada não pertence à oficina desta ordem de serviço.");
         }
 
-        ItemPeca itemPeca = OrdemServicoMapper.paraItemPeca(request, peca);
+        BigDecimal margemPeca = (os.getOficina() != null && os.getOficina().getMargemPeca() != null)
+                ? os.getOficina().getMargemPeca()
+                : BigDecimal.ONE;
+        BigDecimal valorUnitario = calculadora.valorPeca(peca.getValorBase(), margemPeca);
+
+        ItemPeca itemPeca = OrdemServicoMapper.paraItemPeca(request, peca, valorUnitario, margemPeca);
         os.adicionarItemPeca(itemPeca);
         os.recalcularTotal();
         OrdemServico salvo = ordemServicoRepository.save(os);
@@ -230,15 +237,20 @@ public class OrdemServicoService {
         }
 
         BigDecimal taxaRisco = oficina.getTaxaRisco() != null ? oficina.getTaxaRisco() : BigDecimal.ZERO;
+        BigDecimal pesoServico = request.pesoServico() != null
+                ? request.pesoServico()
+                : (servico.getPesoServicoPadrao() != null ? servico.getPesoServicoPadrao() : new BigDecimal("0.5"));
 
         BigDecimal valorUnitario = calculadora.valorServico(
                 horasDecimais,
                 oficina.getValorHora(),
                 fipe,
-                taxaRisco
+                taxaRisco,
+                pesoServico
         );
 
         ItemServico itemServico = OrdemServicoMapper.paraItemServico(request, servico);
+        itemServico.setPesoServico(pesoServico);
         itemServico.setValorUnitario(valorUnitario);
         itemServico.calcSubtotal();
         os.adicionarItemServico(itemServico);
@@ -262,6 +274,103 @@ public class OrdemServicoService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Item de serviço", itemId));
 
         ordem.removerItemServico(item);
+        ordem.recalcularTotal();
+        OrdemServico salvo = ordemServicoRepository.save(ordem);
+        if (salvo != null) {
+            ordem = salvo;
+        }
+        return OrdemServicoMapper.paraOrdemServicoResponse(ordem);
+    }
+
+    @Transactional
+    public OrdemServicoResponse atualizarItemServico(Integer ordemId, Integer itemId, AtualizarItemValorRequest request) {
+        OrdemServico ordem = buscarEntidade(ordemId);
+        validarNaoFinalizada(ordem);
+
+        ItemServico item = ordem.getItensServico().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Item de serviço", itemId));
+
+        if (request == null || (request.pesoServico() == null && request.valorUnitario() == null)) {
+            throw new RegraDeNegocioException("Informe o novo peso do serviço ou o novo valor unitário.");
+        }
+
+        if (request.pesoServico() != null) {
+            item.setPesoServico(request.pesoServico());
+            if (request.valorUnitario() == null) {
+                BigDecimal fipe = ordem.getVeiculo() != null ? ordem.getVeiculo().getValorFipe() : null;
+                Double horasDecimais = item.getTempo() != null
+                        ? calculadora.converterParaDecimal(item.getTempo())
+                        : (item.getQuantidadeHoras() != null ? item.getQuantidadeHoras() : 1.0);
+                Oficina oficina = ordem.getOficina();
+                BigDecimal valorHora = (oficina != null && oficina.getValorHora() != null)
+                        ? oficina.getValorHora()
+                        : BigDecimal.ZERO;
+                BigDecimal taxaRisco = (oficina != null && oficina.getTaxaRisco() != null)
+                        ? oficina.getTaxaRisco()
+                        : BigDecimal.ZERO;
+
+                if (fipe != null && valorHora.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal recalculado = calculadora.valorServico(
+                            horasDecimais,
+                            valorHora,
+                            fipe,
+                            taxaRisco,
+                            request.pesoServico()
+                    );
+                    item.setValorUnitario(recalculado);
+                }
+            }
+        }
+
+        if (request.valorUnitario() != null) {
+            if (request.valorUnitario().compareTo(BigDecimal.ZERO) < 0) {
+                throw new RegraDeNegocioException("O valor unitário do serviço deve ser maior ou igual a zero.");
+            }
+            item.setValorUnitario(request.valorUnitario().setScale(2, RoundingMode.HALF_UP));
+        }
+
+        item.calcSubtotal();
+        ordem.recalcularTotal();
+        OrdemServico salvo = ordemServicoRepository.save(ordem);
+        if (salvo != null) {
+            ordem = salvo;
+        }
+        return OrdemServicoMapper.paraOrdemServicoResponse(ordem);
+    }
+
+    @Transactional
+    public OrdemServicoResponse atualizarValorItemServico(Integer ordemId, Integer itemId, BigDecimal novoValorUnitario) {
+        return atualizarItemServico(ordemId, itemId, new AtualizarItemValorRequest(novoValorUnitario, null));
+    }
+
+    @Transactional
+    public OrdemServicoResponse atualizarValorItemPeca(Integer ordemId, Integer itemId, BigDecimal novoValorUnitario) {
+        OrdemServico ordem = buscarEntidade(ordemId);
+        validarNaoFinalizada(ordem);
+
+        ItemPeca item = ordem.getItensPeca().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Item de peça", itemId));
+
+        if (novoValorUnitario == null || novoValorUnitario.compareTo(BigDecimal.ZERO) < 0) {
+            throw new RegraDeNegocioException("O valor unitário da peça deve ser maior ou igual a zero.");
+        }
+
+        item.setValorUnitario(novoValorUnitario.setScale(2, RoundingMode.HALF_UP));
+        item.calcSubtotal();
+
+        BigDecimal base = item.getValorBase();
+        if (base == null && item.getPeca() != null) {
+            base = item.getPeca().getValorBase();
+        }
+        if (base != null && base.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal novaMargem = item.getValorUnitario().divide(base, 4, RoundingMode.HALF_UP);
+            item.setMargem(novaMargem);
+        }
+
         ordem.recalcularTotal();
         OrdemServico salvo = ordemServicoRepository.save(ordem);
         if (salvo != null) {

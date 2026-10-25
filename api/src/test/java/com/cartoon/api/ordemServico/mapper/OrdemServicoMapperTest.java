@@ -3,6 +3,8 @@ package com.cartoon.api.ordemServico.mapper;
 import com.cartoon.api.ordemServico.dto.response.ItemServicoResponse;
 import com.cartoon.api.ordemServico.models.ItemServico;
 import com.cartoon.api.servico.models.Servico;
+import com.cartoon.api.peca.models.Peca;
+import com.cartoon.api.ordemServico.models.ItemPeca;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -118,5 +120,77 @@ class OrdemServicoMapperTest {
         assertEquals(servico, item.getServico());
         assertEquals(2, item.getQuantidade());
         assertEquals(1.0, item.getQuantidadeHoras());
+    }
+
+    @Test
+    @DisplayName("paraItemPecaResponse - Deve discriminar valorBase (bruto), margem, valorUnitario (final) e subtotais")
+    void paraItemPecaResponse_DeveDiscriminarValorBrutoEMargemEValorFinal() {
+        Peca peca = new Peca();
+        peca.setId(10);
+        peca.setNome("Pastilha de Freio");
+        peca.setFabricante("Bosch");
+        peca.setValorBase(new BigDecimal("100.00"));
+
+        ItemPeca item = new ItemPeca();
+        item.setId(1);
+        item.setPeca(peca);
+        item.setQuantidade(2);
+        item.setValorBase(new BigDecimal("100.00"));
+        item.setMargem(new BigDecimal("1.10"));
+        item.setValorUnitario(new BigDecimal("110.00"));
+        item.setSubtotal(new BigDecimal("220.00"));
+
+        com.cartoon.api.ordemServico.dto.response.ItemPecaResponse response = OrdemServicoMapper.paraItemPecaResponse(item);
+
+        assertNotNull(response);
+        assertEquals(1, response.id());
+        assertEquals(10, response.pecaId());
+        assertEquals("Pastilha de Freio", response.pecaNome());
+        assertEquals("Bosch", response.fabricante());
+        assertEquals(2, response.quantidade());
+        assertThat(response.valorBase()).isEqualByComparingTo(new BigDecimal("100.00"));
+        assertThat(response.valorBruto()).isEqualByComparingTo(new BigDecimal("100.00"));
+        assertThat(response.margem()).isEqualByComparingTo(new BigDecimal("1.10"));
+        assertThat(response.valorUnitario()).isEqualByComparingTo(new BigDecimal("110.00"));
+        assertThat(response.valorFinal()).isEqualByComparingTo(new BigDecimal("110.00"));
+        assertThat(response.subtotalBruto()).isEqualByComparingTo(new BigDecimal("200.00"));
+        assertThat(response.subtotal()).isEqualByComparingTo(new BigDecimal("220.00"));
+    }
+
+    @Test
+    @DisplayName("paraOrdemServicoResumo - Deve mapear totalPecasBruto e totalPecas discriminados e itensPeca")
+    void paraOrdemServicoResumo_DeveMapearTotalPecasBrutoETotalPecas() {
+        Peca peca = new Peca();
+        peca.setId(10);
+        peca.setNome("Amortecedor");
+        peca.setValorBase(new BigDecimal("200.00"));
+
+        ItemPeca item = new ItemPeca();
+        item.setId(2);
+        item.setPeca(peca);
+        item.setQuantidade(2);
+        item.setValorBase(new BigDecimal("200.00"));
+        item.setMargem(new BigDecimal("1.20"));
+        item.setValorUnitario(new BigDecimal("240.00"));
+        item.setSubtotal(new BigDecimal("480.00"));
+
+        com.cartoon.api.ordemServico.models.OrdemServico os = new com.cartoon.api.ordemServico.models.OrdemServico();
+        os.setId(50);
+        os.setItensPeca(java.util.List.of(item));
+        os.setItensServico(java.util.List.of());
+        os.setValorBruto(new BigDecimal("480.00"));
+        os.setDesconto(com.cartoon.api.ordemServico.models.Desconto.SEM_DESCONTO);
+        os.setValorDesconto(BigDecimal.ZERO);
+        os.setTotal(new BigDecimal("480.00"));
+
+        com.cartoon.api.ordemServico.dto.OrdemServicoResumo resumo = OrdemServicoMapper.paraOrdemServicoResumo(os);
+
+        assertNotNull(resumo);
+        assertThat(resumo.totalPecasBruto()).isEqualByComparingTo(new BigDecimal("400.00"));
+        assertThat(resumo.totalPecas()).isEqualByComparingTo(new BigDecimal("480.00"));
+        assertNotNull(resumo.itensPeca());
+        assertEquals(1, resumo.itensPeca().size());
+        assertThat(resumo.itensPeca().get(0).valorBruto()).isEqualByComparingTo(new BigDecimal("200.00"));
+        assertThat(resumo.itensPeca().get(0).valorFinal()).isEqualByComparingTo(new BigDecimal("240.00"));
     }
 }

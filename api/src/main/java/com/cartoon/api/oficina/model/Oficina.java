@@ -38,6 +38,9 @@ public class Oficina {
     @Column(name = "taxa_risco", precision = 6, scale = 4)
     BigDecimal taxaRisco = new BigDecimal("0.10");
 
+    @Column(name = "margem_peca", precision = 6, scale = 4)
+    BigDecimal margemPeca = new BigDecimal("1.00");
+
     @Column(nullable = false)
     Boolean ativo = true;
 

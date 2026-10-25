@@ -73,6 +73,13 @@ export const veiculosService = {
     },
 
     /**
+     * Atualiza o valor FIPE do veículo com a cotação mais recente.
+     */
+    atualizarFipe: async (id: number): Promise<VeiculoResponse> => {
+        return api.patch<VeiculoResponse>(`/veiculos/${id}/atualizar-fipe`);
+    },
+
+    /**
      * Consulta o histórico completo de manutenções de um veículo pela placa.
      */
     consultarHistorico: async (

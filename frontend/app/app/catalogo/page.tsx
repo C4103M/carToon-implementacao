@@ -60,7 +60,15 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
+import { PESO_SERVICO_OPCOES } from '@/lib/types'
 
 /**
  * Converte qualquer entrada de tempo (ex: "1h30", "1:30", "01:30", "45min", "1.5")
@@ -165,6 +173,7 @@ export default function CatalogoPage() {
   const [servicoNome, setServicoNome] = useState('')
   const [servicoTempo, setServicoTempo] = useState('')
   const [servicoDescricao, setServicoDescricao] = useState('')
+  const [servicoPeso, setServicoPeso] = useState<number>(0.5)
   const [servicoErros, setServicoErros] = useState<Record<string, string>>({})
 
   // --- Modal de Peça ---
@@ -229,6 +238,7 @@ export default function CatalogoPage() {
     setServicoNome('')
     setServicoTempo('')
     setServicoDescricao('')
+    setServicoPeso(0.5)
     setServicoErros({})
     setServicoModalAberto(true)
   }
@@ -244,6 +254,7 @@ export default function CatalogoPage() {
       setServicoTempo('')
     }
     setServicoDescricao(servico.descricao || '')
+    setServicoPeso(servico.pesoServico != null ? Number(servico.pesoServico) : 0.5)
     setServicoErros({})
     setServicoModalAberto(true)
   }
@@ -271,6 +282,7 @@ export default function CatalogoPage() {
         nome: servicoNome.trim(),
         tempo: tempoFormatado!,
         descricao: servicoDescricao.trim() || undefined,
+        pesoServico: servicoPeso,
       }
 
       if (editandoServico) {
@@ -455,7 +467,8 @@ export default function CatalogoPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Serviço</TableHead>
-                        <TableHead className="w-40">Tempo Estimado</TableHead>
+                        <TableHead className="w-36">Tempo Estimado</TableHead>
+                        <TableHead className="w-44">Risco / Peso</TableHead>
                         <TableHead>Descrição</TableHead>
                         <TableHead className="text-right w-28">Ações</TableHead>
                       </TableRow>
@@ -469,6 +482,21 @@ export default function CatalogoPage() {
                               <Clock className="size-3.5 text-muted-foreground" />
                               {formatarTempoExibicao(s.tempo, s.quantidadeHoras)}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {Number(s.pesoServico ?? 0.5) === 0 ? (
+                              <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 font-medium whitespace-nowrap">
+                                0,0 — Sem risco
+                              </Badge>
+                            ) : Number(s.pesoServico ?? 0.5) === 1 ? (
+                              <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 font-medium whitespace-nowrap">
+                                1,0 — Alto risco
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-blue-500/30 text-blue-600 dark:text-blue-400 bg-blue-500/10 font-medium whitespace-nowrap">
+                                0,5 — Moderado
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm max-w-md truncate">
                             {s.descricao || '-'}
@@ -659,6 +687,31 @@ export default function CatalogoPage() {
                 {servicoErros.tempo && (
                   <p className="text-xs text-destructive">{servicoErros.tempo}</p>
                 )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="srv-peso">Nível de Risco do Serviço (Peso Padrão)</Label>
+                <Select
+                  value={String(servicoPeso)}
+                  onValueChange={(val) => setServicoPeso(Number(val))}
+                >
+                  <SelectTrigger id="srv-peso" className="w-full">
+                    <SelectValue placeholder="Selecione o nível de risco..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PESO_SERVICO_OPCOES.map((opcao) => (
+                      <SelectItem key={opcao.valor} value={String(opcao.valor)}>
+                        <div className="flex flex-col text-left py-0.5">
+                          <span className="font-medium text-foreground">{opcao.label}</span>
+                          <span className="text-[11px] text-muted-foreground">{opcao.descricao}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-[11px] text-muted-foreground">
+                  Multiplicador na fórmula de precificação sobre a FIPE: Horas × Valor_Hora × (1 + FIPE/100000 × Taxa_Risco × Peso). Pode ser ajustado em cada orçamento individual.
+                </span>
               </div>
 
               <div className="flex flex-col gap-2">

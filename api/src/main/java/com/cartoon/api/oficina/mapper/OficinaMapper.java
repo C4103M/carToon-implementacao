@@ -23,6 +23,7 @@ public class OficinaMapper {
                 oficina.getEmail(),
                 oficina.getValorHora(),
                 oficina.getTaxaRisco(),
+                oficina.getMargemPeca(),
                 oficina.getAtivo()
         );
     }
@@ -39,6 +40,9 @@ public class OficinaMapper {
         }
         if (request.taxaRisco() != null) {
             oficina.setTaxaRisco(request.taxaRisco());
+        }
+        if (request.margemPeca() != null) {
+            oficina.setMargemPeca(request.margemPeca());
         }
     }
 

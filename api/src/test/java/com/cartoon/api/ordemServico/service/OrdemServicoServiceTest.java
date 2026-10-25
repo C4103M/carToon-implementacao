@@ -6,6 +6,7 @@ import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.dto.request.AtualizarItemValorRequest;
 import com.cartoon.api.ordemServico.dto.request.DescontoRequest;
 import com.cartoon.api.ordemServico.models.Desconto;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
@@ -232,7 +233,29 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Adicionar Peça - Deve adicionar peça à ordem não finalizada")
+    @DisplayName("Adicionar Peça - Deve aplicar margemPeca da oficina (ex: 10% em peça de 100 sai a 110)")
+    void adicionarPeca_ComMargemPeca_DeveAplicarMargemSobreValorBase() {
+        oficina.setMargemPeca(new BigDecimal("1.10"));
+        ItemPecaRequest request = new ItemPecaRequest(5, 1);
+        Peca peca = new Peca();
+        peca.setId(5);
+        peca.setNome("Pastilha de Freio");
+        peca.setValorBase(new BigDecimal("100.00"));
+
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+        when(pecaService.buscarEntidade(5)).thenReturn(peca);
+
+        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, request);
+
+        assertNotNull(response);
+        assertEquals(1, ordemServico.getItensPeca().size());
+        assertEquals(new BigDecimal("110.00"), ordemServico.getItensPeca().get(0).getValorUnitario());
+        assertEquals(new BigDecimal("110.00"), ordemServico.getItensPeca().get(0).getSubtotal());
+        assertEquals(0, new BigDecimal("110.00").compareTo(response.total()));
+    }
+
+    @Test
+    @DisplayName("Adicionar Peca - Deve adicionar peca a ordem nao finalizada")
     void adicionarPeca_QuandoOrdemNaoFinalizada_DeveAdicionarPeca() {
         ItemPecaRequest request = new ItemPecaRequest(5, 2);
         Peca peca = new Peca();
@@ -609,8 +632,9 @@ class OrdemServicoServiceTest {
         assertEquals(1, ordemServico.getItensServico().size());
         ItemServico item = ordemServico.getItensServico().get(0);
         assertEquals("Alinhamento e Balanceamento", item.getServico().getNome());
-        assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.getValorUnitario()));
-        assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.getSubtotal()));
+        assertEquals(0, BigDecimal.valueOf(153.75).compareTo(item.getValorUnitario()));
+        assertEquals(0, BigDecimal.valueOf(153.75).compareTo(item.getSubtotal()));
+        assertEquals(0, new BigDecimal("0.5").compareTo(item.getPesoServico()));
     }
 
     @Test
@@ -695,5 +719,103 @@ class OrdemServicoServiceTest {
 
         DescontoRequest request = new DescontoRequest(Desconto.QUINZE_PORCENTO);
         assertThrows(ConflitoException.class, () -> ordemServicoService.aplicarDesconto(10, request));
+    }
+
+    @Test
+    @DisplayName("Atualizar Valor Item Serviço - Mecânico/Admin pode alterar valor proposto do serviço e recalcular totais")
+    void atualizarValorItemServico_DeveAtualizarValorUnitarioESubtotalETotal() {
+        Servico servico = new Servico();
+        servico.setId(1);
+        servico.setNome("Troca de Óleo");
+
+        ItemServico item = new ItemServico();
+        item.setId(50);
+        item.setServico(servico);
+        item.setQuantidade(2);
+        item.setValorUnitario(new BigDecimal("80.00"));
+        item.setSubtotal(new BigDecimal("160.00"));
+        ordemServico.adicionarItemServico(item);
+        ordemServico.recalcularTotal();
+
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+
+        OrdemServicoResponse response = ordemServicoService.atualizarValorItemServico(10, 50, new BigDecimal("120.00"));
+
+        assertNotNull(response);
+        assertEquals(new BigDecimal("120.00"), item.getValorUnitario());
+        assertEquals(new BigDecimal("240.00"), item.getSubtotal());
+        assertEquals(0, new BigDecimal("240.00").compareTo(response.total()));
+    }
+
+    @Test
+    @DisplayName("Atualizar Peso Item Serviço - Deve atualizar peso e recalcular valor unitário automaticamente pela fórmula")
+    void atualizarItemServico_ComNovoPeso_DeveRecalcularValorUnitarioPelaFormula() {
+        veiculo.setValorFipe(new BigDecimal("50000.00")); // Fipe = 50.000 -> fator = 0.5
+        // oficina taxaRisco = 0.10, valorHora = 100.00
+        Servico servico = new Servico();
+        servico.setId(1);
+        servico.setNome("Manutenção de Freios");
+        servico.setQuantidadeHoras(2.0); // 2h -> Base = 200.00
+
+        ItemServico item = new ItemServico();
+        item.setId(51);
+        item.setServico(servico);
+        item.setQuantidadeHoras(2.0);
+        item.setQuantidade(1);
+        // Inicial com peso 0.5: 200 * (1 + 0.5 * 0.10 * 0.5) = 200 * 1.025 = 205.00
+        item.setPesoServico(new BigDecimal("0.5"));
+        item.setValorUnitario(new BigDecimal("205.00"));
+        item.setSubtotal(new BigDecimal("205.00"));
+        ordemServico.adicionarItemServico(item);
+        ordemServico.recalcularTotal();
+
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+
+        // Atualiza para peso 0.0 (sem risco extra): valor esperado 200.00
+        AtualizarItemValorRequest requestSemRisco = new AtualizarItemValorRequest(null, BigDecimal.ZERO);
+        OrdemServicoResponse response = ordemServicoService.atualizarItemServico(10, 51, requestSemRisco);
+
+        assertNotNull(response);
+        assertEquals(new BigDecimal("200.00"), item.getValorUnitario());
+        assertEquals(new BigDecimal("200.00"), item.getSubtotal());
+        assertEquals(BigDecimal.ZERO, item.getPesoServico());
+
+        // Atualiza para peso 1.0 (alto risco): 200 * (1 + 0.5 * 0.10 * 1.0) = 200 * 1.05 = 210.00
+        AtualizarItemValorRequest requestAltoRisco = new AtualizarItemValorRequest(null, BigDecimal.ONE);
+        response = ordemServicoService.atualizarItemServico(10, 51, requestAltoRisco);
+
+        assertEquals(new BigDecimal("210.00"), item.getValorUnitario());
+        assertEquals(new BigDecimal("210.00"), item.getSubtotal());
+        assertEquals(BigDecimal.ONE, item.getPesoServico());
+    }
+
+    @Test
+    @DisplayName("Atualizar Valor Item Peça - Mecânico/Admin pode alterar valor da peça e recalcular subtotal e totais")
+    void atualizarValorItemPeca_DeveAtualizarValorUnitarioESubtotalETotal() {
+        Peca peca = new Peca();
+        peca.setId(5);
+        peca.setNome("Pastilha de Freio");
+        peca.setValorBase(new BigDecimal("100.00"));
+
+        ItemPeca item = new ItemPeca();
+        item.setId(60);
+        item.setPeca(peca);
+        item.setQuantidade(2);
+        item.setValorBase(new BigDecimal("100.00"));
+        item.setMargem(new BigDecimal("1.10"));
+        item.setValorUnitario(new BigDecimal("110.00"));
+        item.setSubtotal(new BigDecimal("220.00"));
+        ordemServico.adicionarItemPeca(item);
+        ordemServico.recalcularTotal();
+
+        when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
+
+        OrdemServicoResponse response = ordemServicoService.atualizarValorItemPeca(10, 60, new BigDecimal("130.00"));
+
+        assertNotNull(response);
+        assertEquals(new BigDecimal("130.00"), item.getValorUnitario());
+        assertEquals(new BigDecimal("260.00"), item.getSubtotal());
+        assertEquals(new BigDecimal("1.3000"), item.getMargem());
+        assertEquals(0, new BigDecimal("260.00").compareTo(response.total()));
     }
 }
