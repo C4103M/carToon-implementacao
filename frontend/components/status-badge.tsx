@@ -1,22 +1,46 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { OficinaStatus, OrcamentoStatus } from "@/lib/types";
+import type { OficinaStatus, OrcamentoStatus, StatusServico } from "@/lib/types";
 
 const orcamentoConfig: Record<
-  OrcamentoStatus,
+  string,
   { label: string; className: string }
 > = {
+  PENDENTE: {
+    label: "Pendente",
+    className: "bg-warning/15 text-warning-foreground border-warning/40",
+  },
   pendente: {
     label: "Pendente",
     className: "bg-warning/15 text-warning-foreground border-warning/40",
+  },
+  ACEITO: {
+    label: "Aceito",
+    className: "bg-success/15 text-success border-success/40",
   },
   aceito: {
     label: "Aceito",
     className: "bg-success/15 text-success border-success/40",
   },
+  EM_ANDAMENTO: {
+    label: "Em Andamento",
+    className: "bg-primary/15 text-primary border-primary/40",
+  },
+  em_andamento: {
+    label: "Em Andamento",
+    className: "bg-primary/15 text-primary border-primary/40",
+  },
+  REJEITADO: {
+    label: "Rejeitado",
+    className: "bg-destructive/15 text-destructive border-destructive/40",
+  },
   rejeitado: {
     label: "Rejeitado",
     className: "bg-destructive/15 text-destructive border-destructive/40",
+  },
+  FINALIZADO: {
+    label: "Finalizado",
+    className: "bg-info/15 text-info border-info/40",
   },
   finalizado: {
     label: "Finalizado",
@@ -24,8 +48,13 @@ const orcamentoConfig: Record<
   },
 };
 
-export function OrcamentoStatusBadge({ status }: { status: OrcamentoStatus }) {
-  const cfg = orcamentoConfig[status];
+export function OrcamentoStatusBadge({
+  status,
+}: {
+  status: StatusServico | OrcamentoStatus | string | undefined;
+}) {
+  const key = status || "PENDENTE";
+  const cfg = orcamentoConfig[key] || orcamentoConfig.PENDENTE;
   return (
     <Badge variant="outline" className={cn("font-medium", cfg.className)}>
       {cfg.label}

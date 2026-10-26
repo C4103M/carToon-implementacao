@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -10,6 +10,9 @@ import {
   FileText,
   LogOut,
   Wrench,
+  User,
+  UserCog,
+  Building2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { authService } from "@/lib/services";
@@ -18,13 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "./theme-toggle";
-
-const nav = [
-  { href: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/app/clientes", label: "Clientes", icon: Users },
-  { href: "/app/catalogo", label: "Catálogo", icon: BookOpen },
-  { href: "/app/orcamentos", label: "Orçamentos", icon: FileText },
-];
+import { MeusDadosModal } from "./meus-dados-modal";
 
 function isOficinaRole(role?: string): boolean {
   if (!role) return false;
@@ -37,9 +34,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [checkingAuth, setCheckingAuth] = useState(!user);
+  const [meusDadosOpen, setMeusDadosOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+
+    // Se já estiver logado como Superadmin, redireciona imediatamente
+    if (user && user.role?.toUpperCase().replace(/^ROLE_/, "") === "SUPERADMIN") {
+      router.replace("/superadmin");
+      return;
+    }
 
     // Se já temos usuário válido na store com role de oficina, encerra checagem
     if (user && isOficinaRole(user.role)) {
@@ -81,6 +85,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [user, setUser, router]);
 
+  const isAdmin = user?.role?.toUpperCase().replace(/^ROLE_/, "") === "ADMIN";
+
+  const navigationItems = useMemo(() => {
+    const items = [
+      { href: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { href: "/app/clientes", label: "Clientes", icon: Users, exact: false },
+      { href: "/app/catalogo", label: "Catálogo", icon: BookOpen, exact: false },
+      { href: "/app/orcamentos", label: "Orçamentos", icon: FileText, exact: false },
+    ];
+
+    if (isAdmin) {
+      items.push(
+        { href: "/app/mecanicos", label: "Mecânicos", icon: UserCog, exact: false },
+        { href: "/app/oficina", label: "Minha Oficina", icon: Building2, exact: false }
+      );
+    }
+
+    return items;
+  }, [isAdmin]);
+
   if (checkingAuth || !user || !isOficinaRole(user.role)) {
     return (
       <div className="flex min-h-svh items-center justify-center">
@@ -96,7 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="flex min-h-svh bg-background">
+    <div className="flex min-h-svh w-full max-w-full overflow-x-hidden bg-background">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-sidebar text-sidebar-foreground md:flex">
         <div className="flex items-center gap-2 border-b border-sidebar-border px-5 py-4">
           <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -111,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-3">
-          {nav.map((item) => {
+          {navigationItems.map((item) => {
             const active = item.exact
               ? pathname === item.href
               : pathname.startsWith(item.href);
@@ -154,6 +178,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Button
             variant="ghost"
             className="mt-1 w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            onClick={() => setMeusDadosOpen(true)}
+          >
+            <User data-icon="inline-start" />
+            Meus Dados
+          </Button>
+          <Button
+            variant="ghost"
+            className="mt-1 w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             onClick={handleLogout}
           >
             <LogOut data-icon="inline-start" />
@@ -163,7 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Barra superior mobile */}
-      <div className="flex flex-1 flex-col md:pl-64">
+      <div className="flex flex-1 flex-col min-w-0 w-full max-w-full md:pl-64">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
           <div className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
@@ -171,8 +203,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-semibold">OficinaPro</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMeusDadosOpen(true)}
+              className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <User data-icon="inline-start" />
+              <span className="sr-only">Meus Dados</span>
+            </Button>
             <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut data-icon="inline-start" />
               Sair
@@ -181,7 +222,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <nav className="flex gap-1 overflow-x-auto border-b border-border bg-card px-2 py-2 md:hidden">
-          {nav.map((item) => {
+          {navigationItems.map((item) => {
             const active = item.exact
               ? pathname === item.href
               : pathname.startsWith(item.href);
@@ -204,8 +245,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <main className="flex-1 p-4 md:p-8">{children}</main>
+        <main className="flex-1 p-4 md:p-8 min-w-0 w-full max-w-full">{children}</main>
       </div>
+
+      <MeusDadosModal
+        open={meusDadosOpen}
+        onOpenChange={setMeusDadosOpen}
+      />
     </div>
   );
 }

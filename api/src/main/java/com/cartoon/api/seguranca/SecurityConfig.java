@@ -65,10 +65,15 @@ public class SecurityConfig {
                         .requestMatchers("/fipe/**").authenticated()
 
                         .requestMatchers("/clientes/**").hasAnyRole("MECANICO", "ADMIN")
-                        .requestMatchers("/veiculos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.GET, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.POST, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.PUT, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.PATCH, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.DELETE, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO")
 
                         .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                         .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.PATCH, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                         .requestMatchers(HttpMethod.DELETE, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                         .requestMatchers(HttpMethod.GET, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
 
@@ -93,7 +98,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/usuario/mecanico").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/usuario/admin").hasRole("SUPERADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/usuario", "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.GET, "/usuario", "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN", "MECANICO")
                         .requestMatchers(HttpMethod.PUT, "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/usuario/*").hasAnyRole("ADMIN", "SUPERADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/usuario/*/ativar").hasAnyRole("ADMIN", "SUPERADMIN")

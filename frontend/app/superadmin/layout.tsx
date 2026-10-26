@@ -1,5 +1,9 @@
-import { AdminShell } from '@/components/admin-shell'
+import { SuperAdminShell } from '@/components/superadmin-shell';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminShell>{children}</AdminShell>
+export default function SuperAdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <SuperAdminShell>{children}</SuperAdminShell>;
 }

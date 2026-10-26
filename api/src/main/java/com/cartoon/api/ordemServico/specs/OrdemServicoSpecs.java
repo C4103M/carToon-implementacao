@@ -2,6 +2,7 @@ package com.cartoon.api.ordemServico.specs;
 
 import com.cartoon.api.ordemServico.dto.OrdemServicoFiltro;
 import com.cartoon.api.ordemServico.models.OrdemServico;
+import com.cartoon.api.ordemServico.models.StatusServico;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -14,16 +15,19 @@ public final class OrdemServicoSpecs {
     public static Specification<OrdemServico> montarFiltros(OrdemServicoFiltro filtro) {
         return (root, query, cb) -> {
             List<Predicate> condicoes = new ArrayList<>();
-            if (filtro.oficinaId() != null)
-                condicoes.add(cb.equal(root.get("oficina").get("id"), filtro.oficinaId()));
-            if (filtro.veiculoId() != null)
-                condicoes.add(cb.equal(root.get("veiculo").get("id"), filtro.veiculoId()));
-            if (filtro.placa() != null && !filtro.placa().isBlank())
-                condicoes.add(cb.equal(cb.upper(root.get("veiculo").get("placa")), filtro.placa().trim().toUpperCase()));
-            if (filtro.mecanicoId() != null)
-                condicoes.add(cb.equal(root.get("mecanico").get("id"), filtro.mecanicoId()));
-            if (filtro.statusServico() != null)
-                condicoes.add(cb.equal(root.get("statusServico"), filtro.statusServico()));
+            if (filtro != null) {
+                if (filtro.oficinaId() != null)
+                    condicoes.add(cb.equal(root.get("oficina").get("id"), filtro.oficinaId()));
+                if (filtro.veiculoId() != null)
+                    condicoes.add(cb.equal(root.get("veiculo").get("id"), filtro.veiculoId()));
+                if (filtro.placa() != null && !filtro.placa().isBlank())
+                    condicoes.add(cb.equal(cb.upper(root.get("veiculo").get("placa")), filtro.placa().trim().toUpperCase()));
+                if (filtro.mecanicoId() != null)
+                    condicoes.add(cb.equal(root.get("mecanico").get("id"), filtro.mecanicoId()));
+                StatusServico statusEfetivo = filtro.statusEfetivo();
+                if (statusEfetivo != null)
+                    condicoes.add(cb.equal(root.get("statusServico"), statusEfetivo));
+            }
             return cb.and(condicoes.toArray(new Predicate[0]));
         };
     }

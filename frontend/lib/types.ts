@@ -12,6 +12,8 @@ export type UserRole = Role | 'admin' | 'oficina' | string;
 // Status de Ordem de Serviço no backend
 export type StatusServico = 'PENDENTE' | 'ACEITO' | 'REJEITADO' | 'EM_ANDAMENTO' | 'FINALIZADO';
 
+export type Desconto = 'SEM_DESCONTO' | 'CINCO_PORCENTO' | 'DEZ_PORCENTO' | 'QUINZE_PORCENTO';
+
 /**
  * Usuário / Autenticação (GET /api/usuario/me, GET /api/usuario)
  */
@@ -28,20 +30,25 @@ export type UsuarioDTO = UsuarioResponse;
 export interface AdminRequest {
   nome: string;
   email: string;
-  senha?: string;
-  oficinaId?: number | null;
+  senha: string;
+  confirmarSenha: string;
+  oficinaId: number;
 }
 
 export interface MecanicoRequest {
   nome: string;
   email: string;
-  senha?: string;
+  senha: string;
+  confirmarSenha: string;
 }
 
 export interface AtualizarUsuarioRequest {
   nome: string;
   email: string;
+  role?: Role;
   senha?: string;
+  confirmarSenha?: string;
+  senhaAtual?: string;
 }
 
 /**
@@ -52,6 +59,10 @@ export interface OficinaResponse {
   nome: string;
   endereco: string;
   telefone: string;
+  email: string;
+  valorHora?: number;
+  taxaRisco?: number;
+  margemPeca?: number;
   ativo: boolean;
 }
 export type OficinaDTO = OficinaResponse;
@@ -60,6 +71,10 @@ export interface OficinaRequest {
   nome: string;
   endereco: string;
   telefone: string;
+  email: string;
+  valorHora?: number;
+  taxaRisco?: number;
+  margemPeca?: number;
   ativo?: boolean;
 }
 
@@ -136,6 +151,27 @@ export interface VeiculoAtualizacaoRequest {
 }
 
 /**
+ * FIPE - Tabela FIPE (GET /fipe/{tipo}/...)
+ */
+export type TipoVeiculoFipe = 'carros' | 'motos' | 'caminhoes' | string;
+
+export interface FipeItemDTO {
+  codigo: string;
+  nome: string;
+}
+
+export interface FipeValorDTO {
+  marca: string;
+  modelo: string;
+  anoModelo: number;
+  combustivel: string;
+  siglaCombustivel: string;
+  codigoFipe: string;
+  valorFipe: number;
+  mesReferencia: string;
+}
+
+/**
  * Catálogo - Peças (GET /api/pecas, POST /api/pecas)
  */
 export interface PecaResponse {
@@ -143,12 +179,13 @@ export interface PecaResponse {
   nome: string;
   fabricante?: string;
   valorBase: number;
+  oficinaId?: number;
 }
 export type PecaDTO = PecaResponse;
 
 export interface PecaRequest {
   nome: string;
-  fabricante?: string;
+  fabricante: string;
   valorBase: number;
 }
 
@@ -158,17 +195,20 @@ export interface PecaRequest {
 export interface ServicoResponse {
   id: number;
   nome: string;
-  valorBase: number;
+  tempo?: string; // "01:30"
+  quantidadeHoras?: number; // 1.5
   descricao?: string;
-  tempoEstimado?: string;
+  pesoServico?: number; // 0.0, 0.5 ou 1.0
+  oficinaId?: number;
 }
 export type ServicoDTO = ServicoResponse;
 
 export interface ServicoRequest {
   nome: string;
-  valorBase: number;
+  tempo: string; // "01:30" ou "1h30"
+  quantidadeHoras?: number;
   descricao?: string;
-  tempoEstimado?: string;
+  pesoServico?: number; // 0.0, 0.5 ou 1.0
 }
 
 /**
@@ -177,19 +217,31 @@ export interface ServicoRequest {
 export interface ItemPecaResponse {
   id: number;
   pecaId: number;
-  nomePeca: string;
+  pecaNome?: string;
+  nomePeca?: string;
+  fabricante?: string;
   quantidade: number;
+  valorBase?: number;
+  valorBruto?: number;
+  margem?: number;
   valorUnitario: number;
+  valorFinal?: number;
+  subtotalBruto?: number;
   subtotal: number;
 }
 
 export interface ItemServicoResponse {
   id: number;
   servicoId: number;
-  nomeServico: string;
+  servicoNome: string;
   quantidade: number;
   valorUnitario: number;
   subtotal: number;
+  tempo?: string;
+  quantidadeHoras?: number;
+  valorHoraBase?: number;
+  multiplicadorFipe?: number;
+  pesoServico?: number;
 }
 
 export interface OrdemServicoResponse {
@@ -202,21 +254,59 @@ export interface OrdemServicoResponse {
   descricao?: string | null;
   veiculoId: number;
   placa: string;
+  veiculoMarca?: string | null;
+  veiculoModelo?: string | null;
+  veiculoAno?: number | null;
+  veiculoValorFipe?: number | null;
+  clienteId?: number | null;
+  clienteNome?: string | null;
+  clienteCpf?: string | null;
   oficinaId: number;
+  oficinaNome?: string | null;
+  oficinaValorHora?: number | null;
+  oficinaTaxaRisco?: number | null;
+  oficinaMargemPeca?: number | null;
   mecanicoId?: number | null;
   mecanicoNome?: string | null;
   itensPeca: ItemPecaResponse[];
   itensServico: ItemServicoResponse[];
+  totalPecasBruto?: number;
+  totalPecas?: number;
+  totalServicos?: number;
+  desconto?: Desconto;
+  valorBruto?: number;
+  valorDesconto?: number;
   total: number;
 }
 
 export interface OrdemServicoResumo {
   id: number;
-  status: StatusServico;
-  dataOrcamento: string;
-  placaVeiculo: string;
-  nomeCliente: string;
-  total: number;
+  status?: StatusServico;
+  statusServico?: StatusServico;
+  dataOrcamento?: string;
+  dataInicio?: string;
+  dataFinalizacao?: string;
+  dataRejeicao?: string;
+  descricao?: string;
+  veiculoId?: number;
+  placa?: string;
+  placaVeiculo?: string;
+  veiculoMarca?: string;
+  veiculoModelo?: string;
+  clienteId?: number;
+  clienteNome?: string;
+  nomeCliente?: string;
+  mecanicoNome?: string;
+  oficinaNome?: string;
+  totalPecasBruto?: number;
+  totalPecas?: number;
+  totalServicos?: number;
+  valorBruto?: number;
+  desconto?: Desconto;
+  valorDesconto?: number;
+  total?: number;
+  valorTotal?: number;
+  itensPeca?: ItemPecaResponse[];
 }
 
 export interface ItemPecaRequest {
@@ -227,12 +317,25 @@ export interface ItemPecaRequest {
 export interface ItemServicoRequest {
   servicoId: number;
   quantidade: number;
+  pesoServico?: number;
 }
+
+export interface AtualizarItemServicoRequest {
+  valorUnitario?: number;
+  pesoServico?: number;
+}
+
+export const PESO_SERVICO_OPCOES = [
+  { valor: 0.0, label: '0,0 — Sem risco extra', descricao: 'óleo, alinhamento, bateria, lâmpada' },
+  { valor: 0.5, label: '0,5 — Risco moderado (Padrão)', descricao: 'freios, suspensão' },
+  { valor: 1.0, label: '1,0 — Risco alto', descricao: 'embreagem, correia dentada, motor, câmbio, parte elétrica' },
+] as const;
 
 export interface OrdemServicoRequest {
   veiculoId: number;
-  mecanicoId?: number | null;
+  mecanicoId: number;
   descricao?: string;
+  desconto?: Desconto;
 }
 
 /**
@@ -256,9 +359,10 @@ export type OficinaStatus = 'ativa' | 'suspensa' | 'pendente';
 export interface Oficina {
   id: string;
   nome: string;
-  email: string;
+  email?: string;
+  telefone?: string;
   endereco: string;
-  dataCadastro: string;
+  dataCadastro?: string;
   status: OficinaStatus;
 }
 
@@ -276,6 +380,7 @@ export interface Veiculo {
   modelo: string;
   montadora: string;
   ano: number;
+  codigoFipe?: string;
   /** Valor FIPE congelado no momento do cadastro */
   fipeValor: number;
   /** Data em que a FIPE foi consultada e congelada */

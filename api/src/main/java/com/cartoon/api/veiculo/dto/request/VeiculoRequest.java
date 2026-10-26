@@ -4,6 +4,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 
@@ -32,6 +33,7 @@ public record VeiculoRequest(
 
         String codigoFipe,
 
+        @Positive(message = "O valor FIPE deve ser maior que zero")
         BigDecimal valorFipe,
 
         String mesReferencia

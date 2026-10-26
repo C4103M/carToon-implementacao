@@ -1,30 +1,56 @@
 'use client'
 
-import { use, useState, useMemo } from 'react'
-import { useRouter, notFound } from 'next/navigation'
+import { use, useState, useMemo, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
-  FileText,
   User,
   Car,
   Calendar,
   CheckCircle2,
   XCircle,
   Play,
+  Flag,
   Trash2,
   Plus,
   Share2,
-  Copy,
   Info,
+  Wrench,
+  Package,
+  Clock,
+  Percent,
+  Receipt,
+  Sparkles,
+  Printer,
+  Pencil,
 } from 'lucide-react'
-import { useStore } from '@/lib/store'
-import type { OrcamentoStatus, Servico } from '@/lib/types'
-import { formatCurrency, formatDate } from '@/lib/format'
+import { ordemServicoService, catalogoService } from '@/lib/services'
+import { handleError, normalizeError } from '@/lib/error-handler'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertCircle } from 'lucide-react'
+import type {
+  OrdemServicoResponse,
+  StatusServico,
+  Desconto,
+  ServicoResponse,
+  PecaResponse,
+  ItemServicoResponse,
+  ItemPecaResponse,
+} from '@/lib/types'
+import { PESO_SERVICO_OPCOES } from '@/lib/types'
+import { formatCurrency, formatDate, formatCpf } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
 import { OrcamentoStatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Spinner } from '@/components/ui/spinner'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -34,6 +60,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import {
@@ -44,17 +71,46 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
+import {
+  NovoServicoDialog,
+  NovaPecaDialog,
+  EditarValorItemDialog,
+  type ItemEmEdicao,
+  ImpressaoOrcamentoDialog,
+  ConfirmarStatusDialog,
+  type AcaoStatus,
+} from '@/components/orcamentos'
+
+const DESCONTO_OPCOES: { value: Desconto; label: string; pct: number }[] = [
+  { value: 'SEM_DESCONTO', label: 'Sem Desconto (0%)', pct: 0 },
+  { value: 'CINCO_PORCENTO', label: '5% de Desconto', pct: 5 },
+  { value: 'DEZ_PORCENTO', label: '10% de Desconto', pct: 10 },
+  { value: 'QUINZE_PORCENTO', label: '15% de Desconto', pct: 15 },
+]
+
+
+
+function formatarTempoExibicao(tempo?: string, quantidadeHoras?: number): string {
+  if (tempo) {
+    const [hStr, mStr] = tempo.split(':')
+    const h = parseInt(hStr, 10)
+    const m = parseInt(mStr, 10)
+    if (!isNaN(h) && !isNaN(m)) {
+      if (h > 0 && m > 0) return `${h}h${String(m).padStart(2, '0')}`
+      if (h > 0) return `${h}h`
+      return `${m}min`
+    }
+  }
+  if (quantidadeHoras != null) {
+    const h = Math.floor(quantidadeHoras)
+    const m = Math.round((quantidadeHoras - h) * 60)
+    if (h > 0 && m > 0) return `${h}h${String(m).padStart(2, '0')}`
+    if (h > 0) return `${h}h`
+    return `${m}min`
+  }
+  return '-'
+}
 
 export default function OrcamentoDetalhePage({
   params,
@@ -62,481 +118,1329 @@ export default function OrcamentoDetalhePage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
-  const {
-    orcamentos,
-    clientes,
-    veiculos,
-    servicos,
-    pecas,
-    addOrcamentoItem,
-    removeOrcamentoItem,
-    setOrcamentoStatus,
-  } = useStore()
   const router = useRouter()
+  const osId = Number(id)
 
-  const orcamento = orcamentos.find((o) => o.id === id)
-  if (!orcamento) notFound()
+  const [os, setOs] = useState<OrdemServicoResponse | null>(null)
+  const [carregando, setCarregando] = useState(true)
 
-  const cliente = clientes.find((c) => c.id === orcamento.clienteId)
-  const veiculo = veiculos.find((v) => v.id === orcamento.veiculoId)
+  // --- Catálogo de Serviços e Peças ---
+  const [servicosCatalogo, setServicosCatalogo] = useState<ServicoResponse[]>([])
+  const [pecasCatalogo, setPecasCatalogo] = useState<PecaResponse[]>([])
 
-  // --- Estados do Formulário de Adicionar Item ---
+  // --- Adicionar Serviço na OS ---
+  const [abaAdicionar, setAbaAdicionar] = useState<'servico' | 'peca'>('servico')
   const [selecionadoServicoId, setSelecionadoServicoId] = useState('')
-  const [quantidade, setQuantidade] = useState('1')
-  const [erroItem, setErroItem] = useState<string | null>(null)
+  const [pesoServicoOS, setPesoServicoOS] = useState<number>(0.5)
+  const [qtdServico, setQtdServico] = useState('1')
+  const [adicionandoServico, setAdicionandoServico] = useState(false)
 
-  // --- Estado de Confirmação de Transição de Status ---
-  const [statusConfirmar, setStatusConfirmar] = useState<OrcamentoStatus | null>(null)
+  // --- Adicionar Peça na OS ---
+  const [selecionadoPecaId, setSelecionadoPecaId] = useState('')
+  const [qtdPeca, setQtdPeca] = useState('1')
+  const [adicionandoPeca, setAdicionandoPeca] = useState(false)
 
-  // --- Computados ---
-  const servicosAtivos = useMemo(() => {
-    return servicos.filter((s) => s.ativo)
-  }, [servicos])
+  // --- Diálogos e Modais ---
+  const [novoServicoModalAberto, setNovoServicoModalAberto] = useState(false)
+  const [novaPecaModalAberto, setNovaPecaModalAberto] = useState(false)
+  const [modalImpressaoAberto, setModalImpressaoAberto] = useState(false)
+  const [itemEmEdicao, setItemEmEdicao] = useState<ItemEmEdicao | null>(null)
+
+  // --- Desconto e Status ---
+  const [atualizandoDesconto, setAtualizandoDesconto] = useState(false)
+  const [acaoStatusConfirmar, setAcaoStatusConfirmar] = useState<AcaoStatus | null>(null)
+  const [executandoStatus, setExecutandoStatus] = useState(false)
+  const [erroAcao, setErroAcao] = useState<string | null>(null)
+
+  const carregarTudo = useCallback(async () => {
+    if (Number.isNaN(osId)) {
+      setCarregando(false)
+      return
+    }
+    setCarregando(true)
+    try {
+      const [dadosOs, pageServicos, pagePecas] = await Promise.all([
+        ordemServicoService.buscarPorId(osId),
+        catalogoService.listarServicos({ size: 200 }),
+        catalogoService.listarPecas({ size: 200 }),
+      ])
+      setOs(dadosOs)
+      setServicosCatalogo(pageServicos.content || [])
+      setPecasCatalogo(pagePecas.content || [])
+    } catch (err) {
+      console.error('Erro ao carregar Ordem de Serviço:', err)
+      toast.error('Não foi possível carregar os detalhes do orçamento.')
+    } finally {
+      setCarregando(false)
+    }
+  }, [osId])
+
+  useEffect(() => {
+    carregarTudo()
+  }, [carregarTudo])
+
+  // --- Computados Financeiros e de Previsão ---
+  const podeEditar = useMemo(() => {
+    if (!os) return false
+    return os.status !== 'FINALIZADO' && os.status !== 'REJEITADO'
+  }, [os])
 
   const servicoSelecionado = useMemo(() => {
-    return servicos.find((s) => s.id === selecionadoServicoId)
-  }, [servicos, selecionadoServicoId])
+    return servicosCatalogo.find((s) => String(s.id) === selecionadoServicoId)
+  }, [servicosCatalogo, selecionadoServicoId])
 
-  const precoUnitarioPrevisto = useMemo(() => {
-    if (!servicoSelecionado || !veiculo) return 0
-    return Math.round(servicoSelecionado.valorBase * veiculo.lambda * 100) / 100
-  }, [servicoSelecionado, veiculo])
+  const pecaSelecionada = useMemo(() => {
+    return pecasCatalogo.find((p) => String(p.id) === selecionadoPecaId)
+  }, [pecasCatalogo, selecionadoPecaId])
 
-  const totalGeral = useMemo(() => {
-    return orcamento.itens.reduce((sum, item) => sum + item.valorUnitario * item.quantidade, 0)
-  }, [orcamento.itens])
+  // Simulação transparente do preço unitário do serviço conforme CalculadoraOrcamento
+  const previaServico = useMemo(() => {
+    if (!servicoSelecionado || !os) return null
+    const horas = servicoSelecionado.quantidadeHoras ?? 0
+    const valorHora = Number(os.oficinaValorHora ?? 100)
+    const valorFipe = Number(os.veiculoValorFipe ?? 0)
+    const taxaRisco = Number(os.oficinaTaxaRisco ?? 0)
+    const peso = pesoServicoOS ?? servicoSelecionado.pesoServico ?? 0.5
 
-  const pecaMap = useMemo(() => new Map(pecas.map((p) => [p.id, p])), [pecas])
-  const servicoMap = useMemo(() => new Map(servicos.map((s) => [s.id, s])), [servicos])
+    const maoDeObraBase = horas * valorHora
+    const multiplicador = 1 + (valorFipe / 100000) * taxaRisco * peso
+    const valorUnitario = Math.round(maoDeObraBase * multiplicador * 100) / 100
+    const qtd = Math.max(1, parseInt(qtdServico, 10) || 1)
+    const subtotal = Math.round(valorUnitario * qtd * 100) / 100
 
-  // --- Handlers de Ações ---
-  const handleAdicionarItem = (e: React.FormEvent) => {
-    e.preventDefault()
-    setErroItem(null)
-
-    if (!selecionadoServicoId) {
-      setErroItem('Selecione um serviço.')
-      return
+    return {
+      horas,
+      valorHora,
+      peso,
+      maoDeObraBase,
+      multiplicador,
+      valorUnitario,
+      qtd,
+      subtotal,
     }
+  }, [servicoSelecionado, os, qtdServico, pesoServicoOS])
 
-    const qty = Number.parseInt(quantidade, 10)
-    if (Number.isNaN(qty) || qty <= 0) {
-      setErroItem('A quantidade deve ser um número maior que zero.')
-      return
-    }
+  const previaPeca = useMemo(() => {
+    if (!pecaSelecionada) return null
+    const margem = Number(os?.oficinaMargemPeca ?? 1)
+    const valorBase = Number(pecaSelecionada.valorBase ?? 0)
+    const valorUnitario = Math.round(valorBase * margem * 100) / 100
+    const qtd = Math.max(1, parseInt(qtdPeca, 10) || 1)
+    const subtotal = Math.round(valorUnitario * qtd * 100) / 100
+    return { valorBase, margem, valorUnitario, qtd, subtotal }
+  }, [pecaSelecionada, qtdPeca, os?.oficinaMargemPeca])
 
-    if (!servicoSelecionado || !veiculo) return
-
-    addOrcamentoItem(orcamento.id, servicoSelecionado, qty, veiculo.lambda)
-    toast.success('Item adicionado ao orçamento!')
-
-    // Limpa campos
-    setSelecionadoServicoId('')
-    setQuantidade('1')
-  }
-
-  const handleRemoverItem = (itemId: string) => {
-    removeOrcamentoItem(orcamento.id, itemId)
-    toast.success('Item removido do orçamento.')
-  }
-
-  const confirmarStatusChange = (status: OrcamentoStatus) => {
-    setStatusConfirmar(status)
-  }
-
-  const executarStatusChange = () => {
-    if (!statusConfirmar) return
-    setOrcamentoStatus(orcamento.id, statusConfirmar)
-
-    let msg = ''
-    if (statusConfirmar === 'aceito') msg = 'Orçamento marcado como ACEITO.'
-    if (statusConfirmar === 'rejeitado') msg = 'Orçamento marcado como REJEITADO.'
-    if (statusConfirmar === 'finalizado') msg = 'Orçamento finalizado com sucesso.'
-
-    toast.success(msg)
-    setStatusConfirmar(null)
-  }
-
-  const copiarResumoWhatsApp = () => {
-    if (!cliente || !veiculo) return
-
-    let itensTexto = ''
-    orcamento.itens.forEach((item, index) => {
-      const valorTotalItem = item.valorUnitario * item.quantidade
-      itensTexto += `\n*${index + 1}. ${item.servicoNome}*\n`
-      itensTexto += `   Qtd: ${item.quantidade} × ${formatCurrency(item.valorUnitario)} = *${formatCurrency(valorTotalItem)}*\n`
-
-      // Lista as peças vinculadas para transparência
-      const s = servicoMap.get(item.servicoId)
-      if (s && s.pecaIds.length > 0) {
-        const pecasNomes = s.pecaIds
-          .map((pid) => pecaMap.get(pid)?.nome)
-          .filter(Boolean)
-          .join(', ')
-        if (pecasNomes) {
-          itensTexto += `   _(Peças inclusas: ${pecasNomes})_\n`
-        }
+  const valoresResumo = useMemo(() => {
+    if (!os) {
+      return {
+        totalServicos: 0,
+        totalPecasBruto: 0,
+        totalPecas: 0,
+        valorBruto: 0,
+        valorDesconto: 0,
+        total: 0,
+        desconto: 'SEM_DESCONTO' as Desconto,
       }
+    }
+    const totalServicos =
+      os.totalServicos != null
+        ? Number(os.totalServicos)
+        : (os.itensServico || []).reduce((acc, i) => acc + Number(i.subtotal || 0), 0)
+
+    const totalPecas =
+      os.totalPecas != null
+        ? Number(os.totalPecas)
+        : (os.itensPeca || []).reduce((acc, i) => acc + Number(i.subtotal || 0), 0)
+
+    const totalPecasBruto =
+      os.totalPecasBruto != null
+        ? Number(os.totalPecasBruto)
+        : (os.itensPeca || []).reduce((acc, i) => {
+            const base = i.valorBase ?? i.valorBruto ?? i.valorUnitario
+            return acc + Number(base) * Number(i.quantidade || 1)
+          }, 0)
+
+    const valorBruto =
+      os.valorBruto != null ? Number(os.valorBruto) : totalServicos + totalPecas
+
+    const valorDesconto = os.valorDesconto != null ? Number(os.valorDesconto) : 0
+    const total = os.total != null ? Number(os.total) : valorBruto - valorDesconto
+    const desconto: Desconto = os.desconto || 'SEM_DESCONTO'
+
+    return {
+      totalServicos,
+      totalPecasBruto,
+      totalPecas,
+      valorBruto,
+      valorDesconto,
+      total,
+      desconto,
+    }
+  }, [os])
+
+  // --- Handlers: Adicionar / Remover Serviço ---
+  const handleAdicionarServico = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!os || !selecionadoServicoId) {
+      toast.error('Selecione um serviço para adicionar.')
+      return
+    }
+    const quantidade = parseInt(qtdServico, 10)
+    if (Number.isNaN(quantidade) || quantidade <= 0) {
+      toast.error('A quantidade deve ser maior que zero.')
+      return
+    }
+
+    setAdicionandoServico(true)
+    try {
+      const atualizada = await ordemServicoService.adicionarItemServico(os.id, {
+        servicoId: Number(selecionadoServicoId),
+        quantidade,
+        pesoServico: pesoServicoOS,
+      })
+      setOs(atualizada)
+      setSelecionadoServicoId('')
+      setPesoServicoOS(0.5)
+      setQtdServico('1')
+      toast.success('Serviço adicionado ao orçamento!')
+      setErroAcao(null)
+    } catch (err) {
+      const norm = handleError(err, { fallbackMessage: 'Erro ao adicionar serviço.' })
+      setErroAcao(norm.message)
+    } finally {
+      setAdicionandoServico(false)
+    }
+  }
+
+  const handleRemoverServico = async (itemId: number) => {
+    if (!os) return
+    try {
+      const atualizada = await ordemServicoService.removerItemServico(os.id, itemId)
+      setOs(atualizada)
+      toast.success('Serviço removido do orçamento.')
+      setErroAcao(null)
+    } catch (err) {
+      const norm = handleError(err, { fallbackMessage: 'Erro ao remover serviço.' })
+      setErroAcao(norm.message)
+    }
+  }
+
+  // --- Handlers: Adicionar / Remover Peça ---
+  const handleAdicionarPeca = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!os || !selecionadoPecaId) {
+      toast.error('Selecione uma peça para adicionar.')
+      return
+    }
+    const quantidade = parseInt(qtdPeca, 10)
+    if (Number.isNaN(quantidade) || quantidade <= 0) {
+      toast.error('A quantidade deve ser maior que zero.')
+      return
+    }
+
+    setAdicionandoPeca(true)
+    try {
+      const atualizada = await ordemServicoService.adicionarItemPeca(os.id, {
+        pecaId: Number(selecionadoPecaId),
+        quantidade,
+      })
+      setOs(atualizada)
+      setSelecionadoPecaId('')
+      setQtdPeca('1')
+      toast.success('Peça adicionada ao orçamento!')
+      setErroAcao(null)
+    } catch (err) {
+      const norm = handleError(err, { fallbackMessage: 'Erro ao adicionar peça.' })
+      setErroAcao(norm.message)
+    } finally {
+      setAdicionandoPeca(false)
+    }
+  }
+
+  const handleRemoverPeca = async (itemId: number) => {
+    if (!os) return
+    try {
+      const atualizada = await ordemServicoService.removerItemPeca(os.id, itemId)
+      setOs(atualizada)
+      toast.success('Peça removida do orçamento.')
+      setErroAcao(null)
+    } catch (err) {
+      const norm = handleError(err, { fallbackMessage: 'Erro ao remover peça.' })
+      setErroAcao(norm.message)
+    }
+  }
+
+  // --- Handlers de Diálogos ---
+  const handleAbrirModalEditarItem = (
+    tipo: 'servico' | 'peca',
+    item: ItemServicoResponse | ItemPecaResponse
+  ) => {
+    const nome =
+      tipo === 'servico'
+        ? (item as ItemServicoResponse).servicoNome || `Serviço #${item.id}`
+        : (item as ItemPecaResponse).pecaNome || (item as ItemPecaResponse).nomePeca || `Peça #${item.id}`
+    setItemEmEdicao({
+      id: item.id,
+      tipo,
+      nome,
+      quantidade: item.quantidade || 1,
+      valorUnitarioAtual: Number(item.valorUnitario || 0),
+      pesoServicoAtual: tipo === 'servico' ? Number((item as ItemServicoResponse).pesoServico ?? 0.5) : undefined,
     })
+  }
 
-    const statusTraduzido = {
-      pendente: 'PENDENTE DE DECISÃO',
-      aceito: 'ACEITO (EM EXECUÇÃO)',
-      rejeitado: 'REJEITADO',
-      finalizado: 'CONCLUÍDO',
-    }[orcamento.status]
+  const handleServicoCriado = (criado: ServicoResponse) => {
+    setServicosCatalogo((prev) => [criado, ...prev])
+    setSelecionadoServicoId(String(criado.id))
+    setAbaAdicionar('servico')
+  }
 
-    const texto = `🛠️ *ORÇAMENTO - OFICINAPRO* 🛠️
+  const handlePecaCriada = (criada: PecaResponse) => {
+    setPecasCatalogo((prev) => [criada, ...prev])
+    setSelecionadoPecaId(String(criada.id))
+    setAbaAdicionar('peca')
+  }
+
+  // --- Handler: Aplicar Desconto (Desconto.java) ---
+  const handleAlterarDesconto = async (novoDesconto: string | null) => {
+    if (!os || !novoDesconto) return
+    setAtualizandoDesconto(true)
+    try {
+      const atualizada = await ordemServicoService.aplicarDesconto(
+        os.id,
+        novoDesconto as Desconto,
+      )
+      setOs(atualizada)
+      toast.success('Desconto atualizado no orçamento!')
+      setErroAcao(null)
+    } catch (err) {
+      const norm = handleError(err, { fallbackMessage: 'Erro ao aplicar desconto.' })
+      setErroAcao(norm.message)
+    } finally {
+      setAtualizandoDesconto(false)
+    }
+  }
+
+  // --- Handler: Transição de Status (StatusServico.java) ---
+  const executarMudancaStatus = async () => {
+    if (!os || !acaoStatusConfirmar) return
+    setExecutandoStatus(true)
+    try {
+      let atualizada: OrdemServicoResponse
+      if (acaoStatusConfirmar === 'aceitar') {
+        atualizada = await ordemServicoService.aceitar(os.id)
+        toast.success('Orçamento marcado como ACEITO!')
+      } else if (acaoStatusConfirmar === 'iniciar') {
+        atualizada = await ordemServicoService.iniciar(os.id)
+        toast.success('Execução iniciada! Status atualizado para EM ANDAMENTO.')
+      } else if (acaoStatusConfirmar === 'finalizar') {
+        atualizada = await ordemServicoService.finalizar(os.id)
+        toast.success('Serviço FINALIZADO com sucesso!')
+      } else {
+        atualizada = await ordemServicoService.rejeitar(os.id)
+        toast.success('Orçamento marcado como REJEITADO.')
+      }
+      setOs(atualizada)
+      setAcaoStatusConfirmar(null)
+      setErroAcao(null)
+    } catch (err) {
+      const norm = handleError(err, { fallbackMessage: 'Erro ao atualizar status da OS.' })
+      setErroAcao(norm.message)
+    } finally {
+      setExecutandoStatus(false)
+    }
+  }
+
+  // --- Copiar Resumo Transparente para WhatsApp ---
+  const copiarResumoWhatsApp = () => {
+    if (!os) return
+
+    let servicosTexto = ''
+    if (os.itensServico && os.itensServico.length > 0) {
+      os.itensServico.forEach((s, i) => {
+        const tempoStr = formatarTempoExibicao(s.tempo, s.quantidadeHoras)
+        servicosTexto += `  ${i + 1}. ${s.servicoNome} (${tempoStr}) — ${s.quantidade}x ${formatCurrency(Number(s.valorUnitario))} = *${formatCurrency(Number(s.subtotal))}*\n`
+      })
+    } else {
+      servicosTexto = '  Nenhum serviço lançado.\n'
+    }
+
+    let pecasTexto = ''
+    if (os.itensPeca && os.itensPeca.length > 0) {
+      os.itensPeca.forEach((p, i) => {
+        const nome = p.pecaNome || p.nomePeca || 'Peça'
+        const fab = p.fabricante ? ` (${p.fabricante})` : ''
+        pecasTexto += `  ${i + 1}. ${nome}${fab} — ${p.quantidade}x ${formatCurrency(Number(p.valorUnitario))} = *${formatCurrency(Number(p.subtotal))}*\n`
+      })
+    } else {
+      pecasTexto = '  Nenhuma peça lançada.\n'
+    }
+
+    const descPct =
+      DESCONTO_OPCOES.find((d) => d.value === valoresResumo.desconto)?.pct ?? 0
+
+    const texto = `🛠️ *ORÇAMENTO #${os.id} - ${os.oficinaNome || 'OFICINA'}* 🛠️
 -----------------------------------
-*Status:* ${statusTraduzido}
-*Data:* ${formatDate(orcamento.data)}
-*Cliente:* ${cliente.nome}
-*Veículo:* ${veiculo.montadora} ${veiculo.modelo}
-*Placa:* ${veiculo.placa} (FIPE: ${formatCurrency(veiculo.fipeValor)})
+*Status:* ${os.status}
+*Data:* ${os.dataOrcamento ? formatDate(os.dataOrcamento) : '—'}
+*Cliente:* ${os.clienteNome || '—'}
+*Veículo:* ${os.veiculoMarca || ''} ${os.veiculoModelo || ''} · Placa: ${os.placa}
+*Descrição:* ${os.descricao || '—'}
 -----------------------------------
-*ITENS DO ORÇAMENTO:*
-${itensTexto}
+🔧 *MÃO DE OBRA (SERVIÇOS):*
+${servicosTexto}*Subtotal Mão de Obra:* ${formatCurrency(valoresResumo.totalServicos)}
+
+📦 *PEÇAS E COMPONENTES:*
+${pecasTexto}*Subtotal Peças:* ${formatCurrency(valoresResumo.totalPecas)}
 -----------------------------------
-*VALOR TOTAL:* *${formatCurrency(totalGeral)}*
------------------------------------
-Ficamos no aguardo da sua aprovação! Se tiver dúvidas, entre em contato.`
+*Valor Bruto:* ${formatCurrency(valoresResumo.valorBruto)}
+*Desconto (${descPct}%):* -${formatCurrency(valoresResumo.valorDesconto)}
+*VALOR TOTAL FINAL:* *${formatCurrency(valoresResumo.total)}*
+-----------------------------------`
 
     navigator.clipboard.writeText(texto)
-    toast.success('Resumo do orçamento copiado para a área de transferência!')
+    toast.success('Resumo detalhado copiado para a área de transferência!')
+  }
+
+  if (carregando) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
+        <Spinner className="size-8" />
+        <span className="text-sm">Carregando detalhes do orçamento...</span>
+      </div>
+    )
+  }
+
+  if (!os) {
+    return (
+      <div className="py-16 text-center flex flex-col items-center gap-4">
+        <p className="text-muted-foreground">Orçamento não encontrado.</p>
+        <Button variant="outline" onClick={() => router.push('/app/orcamentos')}>
+          Voltar para Orçamentos
+        </Button>
+      </div>
+    )
   }
 
   return (
-    <div>
+    <div className="flex flex-col gap-6 w-full min-w-0 max-w-full">
       <PageHeader
-        title={`Orçamento #${orcamento.id.toUpperCase().slice(-5)}`}
-        description="Visualize e edite os itens deste orçamento."
+        title={`Orçamento / OS #${os.id}`}
+        description={os.descricao || 'Detalhamento transparente de serviços, peças e valores.'}
         backHref="/app/orcamentos"
         backLabel="Todos os orçamentos"
-        actions={<OrcamentoStatusBadge status={orcamento.status} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <OrcamentoStatusBadge status={os.status} />
+            <Button variant="outline" size="sm" onClick={() => setModalImpressaoAberto(true)}>
+              <Printer className="size-4" data-icon="inline-start" />
+              Imprimir Orçamento
+            </Button>
+            <Button variant="outline" size="sm" onClick={copiarResumoWhatsApp}>
+              <Share2 data-icon="inline-start" />
+              Copiar p/ WhatsApp
+            </Button>
+          </div>
+        }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Painel do Cliente e Veículo */}
-        <div className="flex flex-col gap-6 lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Dados Básicos</CardTitle>
+      {/* Barra de Progresso do Fluxo de Status (StatusServico.java) */}
+      <Card className="w-full min-w-0 max-w-full overflow-hidden">
+        <CardContent className="py-4 w-full min-w-0">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between w-full min-w-0">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 xl:pb-0 w-full min-w-0">
+              {(
+                [
+                  { key: 'PENDENTE', label: '1. Pendente', date: os.dataOrcamento },
+                  { key: 'ACEITO', label: '2. Aceito', date: null },
+                  { key: 'EM_ANDAMENTO', label: '3. Em Andamento', date: os.dataInicio },
+                  { key: 'FINALIZADO', label: '4. Finalizado', date: os.dataFinalizacao },
+                ] as const
+              ).map((step, idx) => {
+                const ordemStatus: StatusServico[] = [
+                  'PENDENTE',
+                  'ACEITO',
+                  'EM_ANDAMENTO',
+                  'FINALIZADO',
+                ]
+                const idxAtual = ordemStatus.indexOf(os.status)
+                const isAtivo = os.status === step.key
+                const isConcluido = idxAtual > idx && os.status !== 'REJEITADO'
+
+                return (
+                  <div key={step.key} className="flex items-center gap-2 shrink-0">
+                    <div
+                      className={`flex flex-col rounded-lg border px-3 py-1.5 transition-colors whitespace-nowrap ${
+                        isAtivo
+                          ? 'border-primary bg-primary/15 text-primary font-semibold'
+                          : isConcluido
+                          ? 'border-success/40 bg-success/10 text-success'
+                          : 'border-border bg-muted/40 text-muted-foreground'
+                      }`}
+                    >
+                      <span>{step.label}</span>
+                      {step.date && (
+                        <span className="text-[10px] font-mono opacity-80">
+                          {formatDate(step.date)}
+                        </span>
+                      )}
+                    </div>
+                    {idx < 3 && <span className="text-muted-foreground">→</span>}
+                  </div>
+                )
+              })}
+
+              {os.status === 'REJEITADO' && (
+                <div className="flex flex-col rounded-lg border border-destructive/40 bg-destructive/15 px-3 py-1.5 text-destructive font-semibold shrink-0 whitespace-nowrap">
+                  <span>Orçamento Rejeitado</span>
+                  {os.dataRejeicao && (
+                    <span className="text-[10px] font-mono">
+                      {formatDate(os.dataRejeicao)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Botões de Ação de acordo com StatusServico.java */}
+            <div className="flex flex-wrap items-center gap-2">
+              {os.status === 'PENDENTE' && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => setAcaoStatusConfirmar('aceitar')}
+                    className="bg-success text-white hover:bg-success/90"
+                  >
+                    <CheckCircle2 data-icon="inline-start" />
+                    Aceitar Orçamento
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => setAcaoStatusConfirmar('rejeitar')}
+                  >
+                    <XCircle data-icon="inline-start" />
+                    Rejeitar
+                  </Button>
+                </>
+              )}
+
+              {os.status === 'ACEITO' && (
+                <>
+                  <Button
+                    size="sm"
+                    onClick={() => setAcaoStatusConfirmar('iniciar')}
+                  >
+                    <Play data-icon="inline-start" />
+                    Iniciar Execução (Em Andamento)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => setAcaoStatusConfirmar('rejeitar')}
+                  >
+                    <XCircle data-icon="inline-start" />
+                    Rejeitar
+                  </Button>
+                </>
+              )}
+
+              {os.status === 'EM_ANDAMENTO' && (
+                <Button
+                  size="sm"
+                  onClick={() => setAcaoStatusConfirmar('finalizar')}
+                  className="bg-info text-white hover:bg-info/90"
+                >
+                  <Flag data-icon="inline-start" />
+                  Finalizar Serviço
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 max-w-full">
+        {/* Coluna Esquerda: Dados do Cliente/Veículo + Resumo Financeiro Transparente */}
+        <div className="flex flex-col gap-6 lg:col-span-1 w-full min-w-0">
+          {/* Card: Resumo Financeiro Transparente e Desconto */}
+          <Card className="border-primary/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold flex items-center gap-2">
+                <Receipt className="size-4 text-primary" />
+                Transparência de Valores
+              </CardTitle>
+              <CardDescription>
+                Separação clara entre Mão de Obra, Peças e Desconto aplicado.
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              {cliente && (
-                <div>
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Cliente
+              <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-muted/30 p-3.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Wrench className="size-3.5 text-primary" />
+                    Mão de Obra ({os.itensServico?.length || 0}{' '}
+                    {(os.itensServico?.length || 0) === 1 ? 'serviço' : 'serviços'})
                   </span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <User className="size-4 text-muted-foreground" />
-                    <Link
-                      href={`/app/clientes/${cliente.id}`}
-                      className="font-medium text-sm text-primary hover:underline"
-                    >
-                      {cliente.nome}
-                    </Link>
-                  </div>
+                  <span className="font-mono font-semibold">
+                    {formatCurrency(valoresResumo.totalServicos)}
+                  </span>
                 </div>
-              )}
 
-              <Separator />
-
-              {veiculo && (
-                <div>
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Veículo
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Package className="size-3.5 text-info" />
+                    Peças ({os.itensPeca?.length || 0}{' '}
+                    {(os.itensPeca?.length || 0) === 1 ? 'item' : 'itens'})
                   </span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Car className="size-4 text-muted-foreground" />
-                    <Link
-                      href={`/app/veiculos/${veiculo.id}/historico`}
-                      className="font-medium text-sm text-primary hover:underline"
-                    >
-                      {veiculo.montadora} {veiculo.modelo}
-                    </Link>
-                  </div>
-                  <div className="mt-1.5 flex flex-col gap-1 text-xs text-muted-foreground font-mono">
-                    <span>Placa: {veiculo.placa}</span>
-                    <span>FIPE: {formatCurrency(veiculo.fipeValor)}</span>
-                    <span>Multiplicador (Lambda): {veiculo.lambda.toFixed(2)}x</span>
-                  </div>
-                  <div className="mt-3 flex items-center gap-1.5 rounded-md bg-muted/60 border border-border p-2 text-[10px] text-muted-foreground">
-                    <Info className="size-3.5 text-primary shrink-0" />
-                    <span>
-                      O valor FIPE e o multiplicador foram congelados no momento do cadastro
-                      deste veículo.
+                  <span className="font-mono font-semibold">
+                    {formatCurrency(valoresResumo.totalPecas)}
+                  </span>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center justify-between font-medium">
+                  <span>Valor Bruto (Peças + Mão de Obra)</span>
+                  <span className="font-mono">
+                    {formatCurrency(valoresResumo.valorBruto)}
+                  </span>
+                </div>
+
+                {valoresResumo.valorDesconto > 0 && (
+                  <div className="flex items-center justify-between text-success font-medium">
+                    <span className="flex items-center gap-1">
+                      <Percent className="size-3.5" />
+                      Desconto Aplicado
+                    </span>
+                    <span className="font-mono">
+                      - {formatCurrency(valoresResumo.valorDesconto)}
                     </span>
                   </div>
+                )}
+
+                <Separator />
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-base font-bold">Total Final</span>
+                  <span className="text-xl font-bold font-mono text-success">
+                    {formatCurrency(valoresResumo.total)}
+                  </span>
                 </div>
-              )}
+              </div>
+
+              {/* Seletor de Desconto (Desconto.java) */}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="select-desconto" className="text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                  <Percent className="size-3.5 text-primary" />
+                  Conceder Desconto no Orçamento
+                </Label>
+                <Select
+                  value={valoresResumo.desconto}
+                  onValueChange={handleAlterarDesconto}
+                  disabled={!podeEditar || atualizandoDesconto}
+                >
+                  <SelectTrigger id="select-desconto" className="w-full">
+                    <SelectValue placeholder="Selecione o desconto...">
+                      {DESCONTO_OPCOES.find((op) => op.value === valoresResumo.desconto)?.label ||
+                        'Selecione o desconto...'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {DESCONTO_OPCOES.map((op) => (
+                        <SelectItem key={op.value} value={op.value}>
+                          {op.label}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <span className="text-[11px] text-muted-foreground">
+                  O desconto incide sobre o valor bruto total (limite máximo de 15%).
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Card: Dados do Cliente, Veículo e Parâmetros da Oficina */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">
+                Dados do Veículo e Parâmetros
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4 text-sm">
+              <div>
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Cliente
+                </span>
+                <div className="flex items-center gap-2 mt-1">
+                  <User className="size-4 text-muted-foreground" />
+                  {os.clienteId ? (
+                    <Link
+                      href={`/app/clientes/${os.clienteId}`}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      {os.clienteNome || `Cliente #${os.clienteId}`}
+                    </Link>
+                  ) : (
+                    <span className="font-medium">{os.clienteNome || '—'}</span>
+                  )}
+                </div>
+                {os.clienteCpf && (
+                  <span className="text-xs text-muted-foreground font-mono">
+                    CPF: {formatCpf(os.clienteCpf)}
+                  </span>
+                )}
+              </div>
 
               <Separator />
 
               <div>
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Data de Criação
+                  Veículo
                 </span>
-                <div className="flex items-center gap-2 mt-1 text-sm">
-                  <Calendar className="size-4 text-muted-foreground" />
-                  <span>{formatDate(orcamento.data)}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <Car className="size-4 text-muted-foreground" />
+                  <span className="font-medium">
+                    {os.veiculoMarca || os.veiculoModelo
+                      ? `${os.veiculoMarca || ''} ${os.veiculoModelo || ''} ${
+                          os.veiculoAno ? `(${os.veiculoAno})` : ''
+                        }`.trim()
+                      : `Placa ${os.placa}`}
+                  </span>
+                </div>
+                <div className="mt-2 flex flex-col gap-1 text-xs text-muted-foreground font-mono bg-muted/40 p-2.5 rounded-md border">
+                  <div className="flex justify-between">
+                    <span>Placa:</span>
+                    <span className="font-semibold text-foreground">{os.placa}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Valor FIPE:</span>
+                    <span className="font-semibold text-success">
+                      {os.veiculoValorFipe != null
+                        ? formatCurrency(Number(os.veiculoValorFipe))
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Valor Hora da Oficina:</span>
+                    <span className="font-semibold text-foreground">
+                      {os.oficinaValorHora != null
+                        ? `${formatCurrency(Number(os.oficinaValorHora))}/h`
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Taxa de Risco da Oficina:</span>
+                    <span className="font-semibold text-foreground">
+                      {os.oficinaTaxaRisco != null ? Number(os.oficinaTaxaRisco) : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Margem sobre Peças:</span>
+                    <span className="font-semibold text-foreground">
+                      {os.oficinaMargemPeca != null ? `${Number(os.oficinaMargemPeca)}x` : '1x'}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-col gap-1 rounded-md bg-muted/60 border border-border p-2 text-[11px] text-muted-foreground">
+                  <div className="flex items-start gap-1.5">
+                    <Info className="size-3.5 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      Fórmula da mão de obra: <strong>Horas × Valor/Hora × [1 + (FIPE / 100.000) × Taxa Risco]</strong>.
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <Info className="size-3.5 text-primary shrink-0 mt-0.5" />
+                    <span>
+                      Fórmula das peças: <strong>Valor Base × Margem da Oficina</strong>.
+                    </span>
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Card de Controle de Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Status do Orçamento</CardTitle>
-              <CardDescription>
-                Altere o status conforme o andamento da negociação.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {orcamento.status === 'pendente' && (
-                <>
-                  <Button
-                    onClick={() => confirmarStatusChange('aceito')}
-                    className="w-full bg-success text-white hover:bg-success/95"
-                  >
-                    <CheckCircle2 data-icon="inline-start" />
-                    Aprovar (Marcar como Aceito)
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => confirmarStatusChange('rejeitado')}
-                    className="w-full"
-                  >
-                    <XCircle data-icon="inline-start" />
-                    Rejeitar Orçamento
-                  </Button>
-                </>
-              )}
+              <Separator />
 
-              {orcamento.status === 'aceito' && (
-                <Button
-                  onClick={() => confirmarStatusChange('finalizado')}
-                  className="w-full bg-info text-white hover:bg-info/95"
-                >
-                  <CheckCircle2 data-icon="inline-start" />
-                  Finalizar Serviço
-                </Button>
-              )}
-
-              {orcamento.status === 'rejeitado' && (
-                <div className="rounded-md bg-destructive/10 border border-destructive/30 p-3 text-center text-xs text-destructive font-medium">
-                  Este orçamento foi REJEITADO pelo cliente e está congelado.
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-muted-foreground uppercase">Responsável</span>
+                  <p className="font-medium text-sm mt-0.5">{os.mecanicoNome || '—'}</p>
                 </div>
-              )}
-
-              {orcamento.status === 'finalizado' && (
-                <div className="rounded-md bg-info/10 border border-info/30 p-3 text-center text-xs text-info font-medium">
-                  Este orçamento foi FINALIZADO e concluído.
+                <div>
+                  <span className="text-muted-foreground uppercase">Data Orçamento</span>
+                  <p className="font-medium text-sm mt-0.5 flex items-center gap-1">
+                    <Calendar className="size-3.5 text-muted-foreground" />
+                    {os.dataOrcamento ? formatDate(os.dataOrcamento) : '—'}
+                  </p>
                 </div>
-              )}
-
-              <Button
-                variant="outline"
-                onClick={copiarResumoWhatsApp}
-                className="w-full mt-2"
-              >
-                <Share2 data-icon="inline-start" />
-                Copiar para WhatsApp
-              </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Detalhamento dos Itens */}
-        <div className="flex flex-col gap-6 lg:col-span-2">
-          {/* Adicionar Novo Item se Pendente */}
-          {orcamento.status === 'pendente' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base font-semibold">Adicionar Item ao Orçamento</CardTitle>
-                <CardDescription>
-                  Selecione um serviço ativo do catálogo. O preço da mão de obra será
-                  multiplicado pelo lambda do veículo.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleAdicionarItem} className="flex flex-col gap-4">
-                  {erroItem && <div className="text-xs text-destructive">{erroItem}</div>}
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    <div className="flex flex-col gap-1.5 sm:col-span-2">
-                      <Label htmlFor="item-select">Serviço</Label>
-                      <Select
-                        value={selecionadoServicoId}
-                        onValueChange={(v) => {
-                          setSelecionadoServicoId(v ?? '')
-                          setErroItem(null)
-                        }}
-                      >
-                        <SelectTrigger id="item-select" className="w-full">
-                          <SelectValue placeholder="Selecione um serviço..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {servicosAtivos.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.nome} (Mão de Obra Base: {formatCurrency(s.valorBase)})
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5 sm:col-span-1">
-                      <Label htmlFor="item-qtd">Quantidade</Label>
-                      <Input
-                        id="item-qtd"
-                        type="number"
-                        min="1"
-                        value={quantidade}
-                        onChange={(e) => {
-                          setQuantidade(e.target.value)
-                          setErroItem(null)
-                        }}
-                        required
-                      />
-                    </div>
+        {/* Coluna Direita: Adicionar Serviço/Peça + Tabelas Separadas de Mão de Obra e Peças */}
+        <div className="flex flex-col gap-6 lg:col-span-2 w-full min-w-0">
+          {/* Painel para Adicionar Serviços (Mão de Obra) e Peças */}
+          {podeEditar && (
+            <Card className="w-full min-w-0 max-w-full overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-base font-semibold">
+                      Adicionar Itens ao Orçamento
+                    </CardTitle>
+                    <CardDescription>
+                      Inclua serviços (mão de obra) e peças utilizadas. Se o item não estiver na lista, cadastre-o na hora.
+                    </CardDescription>
                   </div>
+                </div>
+              </CardHeader>
+              <CardContent className="w-full min-w-0">
+                <Tabs
+                  value={abaAdicionar}
+                  onValueChange={(v) => setAbaAdicionar(v as 'servico' | 'peca')}
+                >
+                  <TabsList className="mb-4 flex flex-wrap h-auto gap-1">
+                    <TabsTrigger value="servico">
+                      <Wrench className="size-4" />
+                      Adicionar Serviço (Mão de Obra)
+                    </TabsTrigger>
+                    <TabsTrigger value="peca">
+                      <Package className="size-4" />
+                      Adicionar Peça
+                    </TabsTrigger>
+                  </TabsList>
 
-                  {/* Visualização de Prévia de Preço */}
-                  {servicoSelecionado && veiculo && (
-                    <div className="rounded-lg border border-border bg-muted/40 p-3.5 text-xs flex flex-col gap-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground font-medium">
-                          Mão de Obra Ajustada ({veiculo.lambda.toFixed(2)}x):
-                        </span>
-                        <span className="font-semibold font-mono text-sm">
-                          {formatCurrency(precoUnitarioPrevisto)}
-                        </span>
+                  {/* ABA: ADICIONAR SERVIÇO */}
+                  <TabsContent value="servico">
+                    <form onSubmit={handleAdicionarServico} className="flex flex-col gap-4">
+                      <div className="grid gap-4 sm:grid-cols-12 items-end">
+                        <div className="flex flex-col gap-1.5 sm:col-span-6">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="select-servico">Serviço do Catálogo</Label>
+                            <button
+                              type="button"
+                              onClick={() => setNovoServicoModalAberto(true)}
+                              className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
+                            >
+                              <Sparkles className="size-3" />
+                              Não está na lista? Cadastrar
+                            </button>
+                          </div>
+                          <Select
+                            value={selecionadoServicoId}
+                            onValueChange={(v) => {
+                              const val = v ?? ''
+                              setSelecionadoServicoId(val)
+                              const enc = servicosCatalogo.find((s) => String(s.id) === val)
+                              if (enc && enc.pesoServico != null) {
+                                setPesoServicoOS(Number(enc.pesoServico))
+                              } else {
+                                setPesoServicoOS(0.5)
+                              }
+                            }}
+                            disabled={adicionandoServico}
+                          >
+                            <SelectTrigger id="select-servico" className="w-full">
+                              <SelectValue placeholder="Selecione um serviço da oficina...">
+                                {servicoSelecionado
+                                  ? servicoSelecionado.nome
+                                  : 'Selecione um serviço da oficina...'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {servicosCatalogo.map((s) => (
+                                  <SelectItem key={s.id} value={String(s.id)}>
+                                    {s.nome} ({formatarTempoExibicao(s.tempo, s.quantidadeHoras)})
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 sm:col-span-4">
+                          <Label htmlFor="select-peso-servico">Nível de Risco (Peso)</Label>
+                          <Select
+                            value={String(pesoServicoOS)}
+                            onValueChange={(v) => setPesoServicoOS(Number(v))}
+                            disabled={adicionandoServico}
+                          >
+                            <SelectTrigger id="select-peso-servico" className="w-full">
+                              <SelectValue placeholder="Selecione o peso..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PESO_SERVICO_OPCOES.map((opcao) => (
+                                <SelectItem key={opcao.valor} value={String(opcao.valor)}>
+                                  <div className="flex flex-col text-left py-0.5">
+                                    <span className="font-medium text-foreground">{opcao.label}</span>
+                                    <span className="text-[10px] text-muted-foreground">{opcao.descricao}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 sm:col-span-2">
+                          <Label htmlFor="qtd-servico">Quantidade</Label>
+                          <Input
+                            id="qtd-servico"
+                            type="number"
+                            min="1"
+                            value={qtdServico}
+                            onChange={(e) => setQtdServico(e.target.value)}
+                            disabled={adicionandoServico}
+                            required
+                          />
+                        </div>
                       </div>
-                      {servicoSelecionado.pecaIds.length > 0 && (
-                        <div className="text-muted-foreground flex flex-col gap-1">
-                          <span className="font-medium text-[10px] uppercase">
-                            Peças embutidas neste serviço:
-                          </span>
-                          <div className="flex flex-wrap gap-1">
-                            {servicoSelecionado.pecaIds.map((pid) => {
-                              const p = pecaMap.get(pid)
-                              return p ? (
-                                <Badge
-                                  key={pid}
-                                  variant="secondary"
-                                  className="text-[9px] font-normal"
-                                >
-                                  {p.nome}
-                                </Badge>
-                              ) : null
-                            })}
+
+                      {/* Prévia Transparente do Cálculo da Mão de Obra */}
+                      {servicoSelecionado && previaServico && (
+                        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5 text-xs flex flex-col gap-2">
+                          <div className="font-semibold text-foreground flex items-center justify-between">
+                            <span>
+                              Simulação da Mão de Obra ({servicoSelecionado.nome}):
+                            </span>
+                            <Badge variant="outline" className="font-mono">
+                              <Clock className="size-3 mr-1" />
+                              {formatarTempoExibicao(
+                                servicoSelecionado.tempo,
+                                servicoSelecionado.quantidadeHoras,
+                              )}{' '}
+                              ({previaServico.horas.toFixed(2)}h)
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 font-mono">
+                            <div className="rounded bg-background/80 p-2 border">
+                              <span className="text-[10px] text-muted-foreground block">
+                                Base (Horas × Valor/h)
+                              </span>
+                              <span className="font-semibold">
+                                {formatCurrency(previaServico.maoDeObraBase)}
+                              </span>
+                            </div>
+                            <div className="rounded bg-background/80 p-2 border">
+                              <span className="text-[10px] text-muted-foreground block">
+                                Fator FIPE/Risco ({previaServico.peso}x peso)
+                              </span>
+                              <span className="font-semibold text-primary">
+                                {previaServico.multiplicador.toFixed(4)}x
+                              </span>
+                            </div>
+                            <div className="rounded bg-background/80 p-2 border">
+                              <span className="text-[10px] text-muted-foreground block">
+                                Unitário Calculado
+                              </span>
+                              <span className="font-semibold">
+                                {formatCurrency(previaServico.valorUnitario)}
+                              </span>
+                            </div>
+                            <div className="rounded bg-background/80 p-2 border">
+                              <span className="text-[10px] text-muted-foreground block">
+                                Subtotal ({previaServico.qtd}x)
+                              </span>
+                              <span className="font-bold text-success">
+                                {formatCurrency(previaServico.subtotal)}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
-                    </div>
-                  )}
 
-                  <div className="flex justify-end pt-2">
-                    <Button type="submit">
-                      <Plus data-icon="inline-start" />
-                      Adicionar Item
-                    </Button>
-                  </div>
-                </form>
+                      <div className="flex items-center justify-between pt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setNovoServicoModalAberto(true)}
+                        >
+                          <Plus data-icon="inline-start" />
+                          Novo Serviço no Catálogo
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={!selecionadoServicoId || adicionandoServico}
+                        >
+                          {adicionandoServico && <Spinner className="size-4 mr-2" />}
+                          <Plus data-icon="inline-start" />
+                          Adicionar Serviço ao Orçamento
+                        </Button>
+                      </div>
+                    </form>
+                  </TabsContent>
+
+                  {/* ABA: ADICIONAR PEÇA */}
+                  <TabsContent value="peca">
+                    <form onSubmit={handleAdicionarPeca} className="flex flex-col gap-4">
+                      <div className="grid gap-4 sm:grid-cols-4 items-end">
+                        <div className="flex flex-col gap-1.5 sm:col-span-3">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="select-peca">Peça do Catálogo</Label>
+                            <button
+                              type="button"
+                              onClick={() => setNovaPecaModalAberto(true)}
+                              className="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1"
+                            >
+                              <Sparkles className="size-3" />
+                              Não está na lista? Cadastrar nova peça
+                            </button>
+                          </div>
+                          <Select
+                            value={selecionadoPecaId}
+                            onValueChange={(v) => setSelecionadoPecaId(v ?? '')}
+                            disabled={adicionandoPeca}
+                          >
+                            <SelectTrigger id="select-peca" className="w-full">
+                              <SelectValue placeholder="Selecione uma peça da oficina...">
+                                {pecaSelecionada
+                                  ? pecaSelecionada.nome
+                                  : 'Selecione uma peça da oficina...'}
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {pecasCatalogo.map((p) => (
+                                  <SelectItem key={p.id} value={String(p.id)}>
+                                    {p.nome} {p.fabricante ? `· ${p.fabricante}` : ''} (
+                                    {formatCurrency(Number(p.valorBase))})
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 sm:col-span-1">
+                          <Label htmlFor="qtd-peca">Quantidade</Label>
+                          <Input
+                            id="qtd-peca"
+                            type="number"
+                            min="1"
+                            value={qtdPeca}
+                            onChange={(e) => setQtdPeca(e.target.value)}
+                            disabled={adicionandoPeca}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {pecaSelecionada && previaPeca && (
+                        <div className="rounded-lg border border-info/30 bg-info/5 p-3.5 text-xs flex items-center justify-between">
+                          <div>
+                            <span className="font-semibold text-foreground">
+                              {pecaSelecionada.nome}
+                            </span>
+                            {pecaSelecionada.fabricante && (
+                              <span className="text-muted-foreground ml-2">
+                                Fabricante: {pecaSelecionada.fabricante}
+                              </span>
+                            )}
+                            {previaPeca.margem !== 1 && (
+                              <div className="text-[11px] text-muted-foreground mt-0.5">
+                                Base: {formatCurrency(previaPeca.valorBase)} × Margem ({previaPeca.margem}x)
+                              </div>
+                            )}
+                          </div>
+                          <div className="font-mono text-sm">
+                            {previaPeca.qtd}x {formatCurrency(previaPeca.valorUnitario)} ={' '}
+                            <span className="font-bold text-success">
+                              {formatCurrency(previaPeca.subtotal)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setNovaPecaModalAberto(true)}
+                        >
+                          <Plus data-icon="inline-start" />
+                          Nova Peça no Catálogo
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={!selecionadoPecaId || adicionandoPeca}
+                        >
+                          {adicionandoPeca && <Spinner className="size-4 mr-2" />}
+                          <Plus data-icon="inline-start" />
+                          Adicionar Peça ao Orçamento
+                        </Button>
+                      </div>
+                    </form>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           )}
 
-          {/* Tabela de Itens Adicionados */}
-          <Card>
-            <CardHeader className="flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-semibold">Itens Adicionados</CardTitle>
-                <CardDescription>
-                  Resumo detalhado dos serviços e mão de obra contratada.
-                </CardDescription>
+          {/* Tabela 1: Mão de Obra (Serviços) */}
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex size-8 items-center justify-center rounded-md bg-primary/15 text-primary shrink-0">
+                  <Wrench className="size-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">
+                    1. Mão de Obra (Serviços)
+                  </CardTitle>
+                  <CardDescription>
+                    Valores calculados com base no tempo estimado, valor/hora da oficina e fator FIPE.
+                  </CardDescription>
+                </div>
               </div>
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                  Valor Total
+              <div className="text-left sm:text-right">
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground block">
+                  Subtotal Mão de Obra
                 </span>
-                <span className="text-xl font-bold font-mono text-success">
-                  {formatCurrency(totalGeral)}
+                <span className="text-lg font-bold font-mono text-primary">
+                  {formatCurrency(valoresResumo.totalServicos)}
                 </span>
               </div>
             </CardHeader>
-            <CardContent>
-              {orcamento.itens.length === 0 ? (
-                <div className="py-12 text-center text-muted-foreground text-sm border border-dashed rounded-lg border-border">
-                  Nenhum item adicionado a este orçamento. Adicione serviços acima.
+            <CardContent className="w-full min-w-0 p-3 sm:p-6">
+              {!os.itensServico || os.itensServico.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground text-sm border border-dashed rounded-lg">
+                  Nenhum serviço (mão de obra) adicionado a este orçamento.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
+                <div
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Tabela de Mão de Obra e Serviços"
+                  className="w-full max-w-full overflow-x-auto rounded-md border border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <Table className="w-full min-w-[660px] md:min-w-full text-sm">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Serviço / Peças Inclusas</TableHead>
-                        <TableHead className="text-right">Mão de Obra Base</TableHead>
-                        <TableHead className="text-right">Preço Unitário (c/ Lambda)</TableHead>
+                        <TableHead>Serviço</TableHead>
+                        <TableHead>Tempo</TableHead>
+                        <TableHead className="w-28 text-center">Risco (Peso)</TableHead>
+                        <TableHead className="text-right hidden sm:table-cell">
+                          Base (Horas × Valor/h)
+                        </TableHead>
+                        <TableHead className="text-right">Unitário (c/ FIPE)</TableHead>
                         <TableHead className="text-center w-16">Qtd</TableHead>
-                        <TableHead className="text-right">Total Item</TableHead>
-                        {orcamento.status === 'pendente' && <TableHead className="w-10"></TableHead>}
+                        <TableHead className="text-right">Subtotal</TableHead>
+                        {podeEditar && <TableHead className="w-10"></TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {orcamento.itens.map((item) => {
-                        const originalServico = servicoMap.get(item.servicoId)
-                        const totalItem = item.valorUnitario * item.quantidade
-
-                        return (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div className="flex flex-col gap-1">
-                                <span className="font-medium">{item.servicoNome}</span>
-                                {originalServico && originalServico.pecaIds.length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {originalServico.pecaIds.map((pid) => {
-                                      const p = pecaMap.get(pid)
-                                      return p ? (
-                                        <Badge
-                                          key={pid}
-                                          variant="secondary"
-                                          className="text-[9px] font-normal"
-                                        >
-                                          {p.nome}
-                                        </Badge>
-                                      ) : null
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-xs text-muted-foreground">
-                              {formatCurrency(item.valorBaseServico)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-sm">
-                              {formatCurrency(item.valorUnitario)}
-                            </TableCell>
-                            <TableCell className="text-center font-medium">
-                              {item.quantidade}
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-semibold text-foreground">
-                              {formatCurrency(totalItem)}
-                            </TableCell>
-                            {orcamento.status === 'pendente' && (
-                              <TableCell className="text-right">
+                      {os.itensServico.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">{item.servicoNome}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-mono text-xs gap-1">
+                              <Clock className="size-3 text-muted-foreground" />
+                              {formatarTempoExibicao(item.tempo, item.quantidadeHoras)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {Number(item.pesoServico ?? 0.5) === 0 ? (
+                              <Badge variant="outline" className="border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 text-[11px] whitespace-nowrap">
+                                0,0 — Sem risco
+                              </Badge>
+                            ) : Number(item.pesoServico ?? 0.5) === 1 ? (
+                              <Badge variant="outline" className="border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 text-[11px] whitespace-nowrap">
+                                1,0 — Alto
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="border-blue-500/30 text-blue-600 dark:text-blue-400 bg-blue-500/10 text-[11px] whitespace-nowrap">
+                                0,5 — Moderado
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-xs text-muted-foreground hidden sm:table-cell">
+                            {item.valorHoraBase != null
+                              ? formatCurrency(Number(item.valorHoraBase))
+                              : '—'}
+                            {item.multiplicadorFipe != null && (
+                              <span className="block text-[10px] text-primary">
+                                × {Number(item.multiplicadorFipe).toFixed(4)}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {formatCurrency(Number(item.valorUnitario))}
+                          </TableCell>
+                          <TableCell className="text-center font-medium">
+                            {item.quantidade}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-semibold">
+                            {formatCurrency(Number(item.subtotal))}
+                          </TableCell>
+                          {podeEditar && (
+                            <TableCell className="text-right whitespace-nowrap">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  onClick={() => handleAbrirModalEditarItem('servico', item)}
+                                  title="Alterar valor do serviço"
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   className="text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleRemoverItem(item.id)}
-                                  title="Remover item"
+                                  onClick={() => handleRemoverServico(item.id)}
+                                  title="Remover serviço"
                                 >
                                   <Trash2 className="size-3.5" />
                                 </Button>
+                              </div>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Tabela 2: Peças e Componentes */}
+          <Card className="w-full min-w-0 max-w-full overflow-hidden">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex size-8 items-center justify-center rounded-md bg-info/15 text-info shrink-0">
+                  <Package className="size-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-base font-semibold">
+                    2. Peças e Componentes
+                  </CardTitle>
+                  <CardDescription>
+                    Peças aplicadas na manutenção com discriminação de valor bruto e margem da oficina.
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-left sm:text-right">
+                <div>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground block">
+                    Custo Bruto
+                  </span>
+                  <span className="text-sm font-semibold font-mono text-muted-foreground">
+                    {formatCurrency(valoresResumo.totalPecasBruto)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground block">
+                    Subtotal Peças
+                  </span>
+                  <span className="text-lg font-bold font-mono text-info">
+                    {formatCurrency(valoresResumo.totalPecas)}
+                  </span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="w-full min-w-0 p-3 sm:p-6">
+              {!os.itensPeca || os.itensPeca.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground text-sm border border-dashed rounded-lg">
+                  Nenhuma peça adicionada a este orçamento.
+                </div>
+              ) : (
+                <div
+                  tabIndex={0}
+                  role="region"
+                  aria-label="Tabela de Peças Utilizadas"
+                  className="w-full max-w-full overflow-x-auto rounded-md border border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <Table className="w-full min-w-[660px] md:min-w-full text-sm">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Peça</TableHead>
+                        <TableHead>Fabricante</TableHead>
+                        <TableHead className="text-right">Valor Bruto (Base)</TableHead>
+                        <TableHead className="text-center">Margem</TableHead>
+                        <TableHead className="text-right">Valor Final (Unit.)</TableHead>
+                        <TableHead className="text-center w-16">Qtd</TableHead>
+                        <TableHead className="text-right">Subtotal</TableHead>
+                        {podeEditar && <TableHead className="w-10"></TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {os.itensPeca.map((item) => {
+                        const valorBruto = Number(item.valorBase ?? item.valorBruto ?? item.valorUnitario)
+                        const valorFinal = Number(item.valorFinal ?? item.valorUnitario)
+                        const margemFator =
+                          item.margem != null
+                            ? Number(item.margem)
+                            : valorBruto > 0
+                            ? valorFinal / valorBruto
+                            : 1.0
+                        const margemPercentual = Math.round((margemFator - 1) * 100)
+
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium">
+                              {item.pecaNome || item.nomePeca || `Peça #${item.pecaId}`}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">
+                              {item.fabricante || '—'}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                              {formatCurrency(valorBruto)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {margemFator > 1.0001 ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="font-mono text-xs font-semibold text-emerald-600 bg-emerald-500/10 border-emerald-500/20"
+                                >
+                                  +{margemPercentual}% ({margemFator.toFixed(2)}x)
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="font-mono text-xs text-muted-foreground"
+                                >
+                                  1.00x (0%)
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm font-semibold text-foreground">
+                              {formatCurrency(valorFinal)}
+                            </TableCell>
+                            <TableCell className="text-center font-medium">
+                              {item.quantidade}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-semibold">
+                              {formatCurrency(Number(item.subtotal))}
+                            </TableCell>
+                            {podeEditar && (
+                              <TableCell className="text-right whitespace-nowrap">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                    onClick={() => handleAbrirModalEditarItem('peca', item)}
+                                    title="Alterar valor da peça"
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleRemoverPeca(item.id)}
+                                    title="Remover peça"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             )}
                           </TableRow>
@@ -551,43 +1455,51 @@ Ficamos no aguardo da sua aprovação! Se tiver dúvidas, entre em contato.`
         </div>
       </div>
 
-      {/* AlertDialog para Confirmação de Alteração de Status */}
-      <AlertDialog
-        open={statusConfirmar !== null}
-        onOpenChange={(aberto) => !aberto && setStatusConfirmar(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Alterar status do orçamento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {statusConfirmar === 'aceito' && (
-                <span>
-                  O orçamento será marcado como <strong>ACEITO</strong>. O catálogo de itens
-                  ficará travado para novas alterações e não poderá ser editado.
-                </span>
-              )}
-              {statusConfirmar === 'rejeitado' && (
-                <span>
-                  O orçamento será marcado como <strong>REJEITADO</strong>. Esta ação é
-                  irreversível e travará o orçamento como somente-leitura.
-                </span>
-              )}
-              {statusConfirmar === 'finalizado' && (
-                <span>
-                  O serviço será finalizado e o orçamento será marcado como{' '}
-                  <strong>CONCLUÍDO</strong>.
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={executarStatusChange}>
-              Confirmar Alteração
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
+      {/* Dialog: Cadastrar Novo Serviço no Catálogo */}
+      <NovoServicoDialog
+        aberto={novoServicoModalAberto}
+        onOpenChange={setNovoServicoModalAberto}
+        onServicoCriado={handleServicoCriado}
+      />
+
+      {/* Dialog: Cadastrar Nova Peça no Catálogo */}
+      <NovaPecaDialog
+        aberto={novaPecaModalAberto}
+        onOpenChange={setNovaPecaModalAberto}
+        onPecaCriada={handlePecaCriada}
+      />
+
+      {/* Dialog: Visualização e Impressão do Orçamento (Folha A4) */}
+      {os && (
+        <ImpressaoOrcamentoDialog
+          aberto={modalImpressaoAberto}
+          onOpenChange={setModalImpressaoAberto}
+          os={os}
+          valoresResumo={valoresResumo}
+        />
+      )}
+
+      {/* Dialog: Alterar Valor Unitário de Item (Mão de Obra ou Peça) */}
+      {os && (
+        <EditarValorItemDialog
+          item={itemEmEdicao}
+          ordemId={os.id}
+          onClose={() => setItemEmEdicao(null)}
+          onSucesso={setOs}
+        />
+      )}
+
+
+
+
+      {/* AlertDialog: Confirmação de Mudança de Status */}
+      <ConfirmarStatusDialog
+        acao={acaoStatusConfirmar}
+        executando={executandoStatus}
+        onClose={() => setAcaoStatusConfirmar(null)}
+        onConfirmar={executarMudancaStatus}
+      />
     </div>
   )
 }

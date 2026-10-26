@@ -163,8 +163,8 @@ Os endpoints de listagem paginada (`/ordem-servico`, `/pecas`, `/servicos`, `/ve
 
 Ao refatorar e construir as páginas, os seguintes itens do código protótipo antigo em `@/lib/...` devem ser **completamente eliminados**:
 
-1. **`lambda` no Veículo e `fipeConsultadoEm`**: O `lambda` **não pertence ao veículo** (e sim à `Oficina`, configurado pelo `ADMIN` ou `SUPERADMIN`, com valor padrão `0.01`, ou seja, 1%). O valor unitário de serviço na Ordem de Serviço é calculado dinamicamente pelo backend como:
-   $$\text{valorUnitarioServico} = \text{valorBase} + (\lambda_{\text{oficina}} \times \text{valorFipe})$$
+1. **`lambda` no Veículo e `fipeConsultadoEm`**: O `lambda` (ou `taxaRisco`) **não pertence ao veículo** (e sim à `Oficina`, configurado pelo `ADMIN` ou `SUPERADMIN`, com valor padrão `0.05` ou 5%). O valor unitário de serviço na Ordem de Serviço é calculado dinamicamente pelo backend como:
+   $$\text{valorUnitarioServico} = \text{Horas} \times \text{ValorHora} \times \left(1 + \frac{\text{FIPE}}{100.000} \times \text{TaxaRisco} \times \text{PesoServico}\right)$$
 2. **Peças embutidas em Serviços (`pecaIds`)**: O catálogo de Serviços e o catálogo de Peças são totalmente independentes. Não existe lista de peças pré-fixadas dentro de um serviço.
 3. **Substituição de Veículo ("Swap")**: Não existe fluxo de "substituir veículo com preservação de histórico". Veículos são entidades independentes vinculadas ao cliente (`clienteId`) com status ativo/inativo.
 4. **Status de Oficina com 3 estados (`ativa`, `pendente`, `suspensa`)**: A oficina no backend possui apenas o campo booleano `ativo` (`true`/`false`). A aprovação/ativação e desativação usam `PATCH /oficina/{id}/ativar` e `PATCH /oficina/{id}/desativar`.
@@ -858,11 +858,19 @@ Ao refatorar e construir as páginas, os seguintes itens do código protótipo a
     ```
 
 - **Regras de Negócio e Comportamento de UI**:
-  1. **Regra de Cálculo de Serviço (`CalculadoraOrcamento` com `lambda` da Oficina)**:
-     - No backend, o preço unitário do serviço é calculado automaticamente usando o `lambda` configurado pela Oficina (padrão `0.01` = 1%):
-       $$\text{valorUnitario} = \text{valorBase} + (\lambda_{\text{oficina}} \times \text{valorFipeVeiculo})$$
-     - Exemplo (com $\lambda = 0{,}01$): Serviço com valor base de R\$ 150,00 em veículo com FIPE de R\$ 58.400,00 $\rightarrow 150 + (0{,}01 \times 58400) = \text{R\$}~734{,}00$.
-     - O `ADMIN` da oficina pode alterar o `lambda` da sua oficina em `PUT /oficina/{id}` (tela/modal "Minha Oficina"). Orçamentos antigos mantêm o `valorUnitario` congelado no momento em que o item foi adicionado.
+  1. **Regra de Cálculo de Serviço (`CalculadoraOrcamento` com `taxaRisco` da Oficina e `pesoServico`)**:
+     - No backend, o preço unitário do serviço é calculado automaticamente pela fórmula:
+       $$\text{valorUnitario} = \text{Horas} \times \text{ValorHora} \times \left(1 + \frac{\text{FIPE}}{100.000} \times \text{TaxaRisco} \times \text{PesoServico}\right)$$
+     - **Níveis de Peso do Serviço (`pesoServico`)**:
+       - `0.0`: Sem risco extra (óleo, alinhamento, bateria, lâmpada) — não incide sobrepreço da FIPE.
+       - `0.5`: Risco moderado (freios, suspensão) — padrão para novos serviços.
+       - `1.0`: Risco alto (embreagem, correia dentada, motor, câmbio, elétrica complexa).
+     - **Flexibilidade**: O peso padrão vem cadastrado no catálogo de serviços (`Servico.pesoServico`), mas pode ser customizado por item na própria Ordem de Serviço (`ItemServico.pesoServico`).
+     - Exemplo: 1.5 horas com Valor/Hora R\$ 100,00, FIPE R\$ 100.000,00 e Taxa de Risco da oficina 0.05 (5%):
+       - Com peso `0.0`: $1{,}5 \times 100 \times (1 + 1 \times 0{,}05 \times 0) = \text{R\$}~150{,}00$.
+       - Com peso `0.5`: $1{,}5 \times 100 \times (1 + 1 \times 0{,}05 \times 0{,}5) = \text{R\$}~153{,}75$.
+       - Com peso `1.0`: $1{,}5 \times 100 \times (1 + 1 \times 0{,}05 \times 1{,}0) = \text{R\$}~157{,}50$.
+     - O `ADMIN` da oficina pode alterar a `taxaRisco` da sua oficina em `PUT /oficina/{id}`. Orçamentos antigos mantêm o `valorUnitario` e o `pesoServico` congelados no item.
      - Se o veículo não possuir FIPE (`valorFipe == null`), a API lança `400 Bad Request` com:
        `"Veículo sem valor FIPE cadastrado: não é possível calcular o serviço."`
        A UI deve exibir alerta informando a necessidade de atualizar o valor FIPE no cadastro do veículo.

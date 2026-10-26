@@ -24,6 +24,9 @@ public class GlobalExceptionHandler {
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             erros.put(fieldError.getField(), fieldError.getDefaultMessage());
         }
+        for (org.springframework.validation.ObjectError globalError : ex.getBindingResult().getGlobalErrors()) {
+            erros.putIfAbsent("confirmarSenha", globalError.getDefaultMessage());
+        }
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now());
@@ -52,6 +55,26 @@ public class GlobalExceptionHandler {
         body.put("error", "Conflict");
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, Object>> handleOptimisticLock(org.springframework.dao.OptimisticLockingFailureException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", "Conflict");
+        body.put("message", "A ordem de serviço foi modificada concorrentemente por outro processo. Recarregue os dados e tente novamente.");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     @ExceptionHandler({RegraDeNegocioException.class, TipoVeiculoInvalidoException.class})
@@ -95,6 +118,7 @@ public class GlobalExceptionHandler {
         body.put("status", HttpStatus.BAD_REQUEST.value());
         body.put("error", "Bad Request");
         body.put("message", "O corpo da requisição está ausente ou mal formatado.");
+        body.put("detalhe", "Verifique a sintaxe JSON e os tipos dos campos enviados.");
         return ResponseEntity.badRequest().body(body);
     }
 
@@ -107,6 +131,8 @@ public class GlobalExceptionHandler {
             mensagem = "Já existe uma oficina com esse nome.";
         } else if (causa.contains("uk_oficina_telefone")) {
             mensagem = "Já existe uma oficina com esse telefone.";
+        } else if (causa.contains("uk_oficina_email")) {
+            mensagem = "Já existe uma oficina com esse e-mail.";
         } else if (causa.contains("uk_usuario_email")) {
             mensagem = "Já existe um usuário com esse e-mail.";
         }

@@ -20,18 +20,13 @@ import type {
   Servico,
   SessionUser,
   Veiculo,
+  VeiculoResponse,
 } from './types'
-import {
-
-  seedClientes,
-  seedOficinas,
-  seedOrcamentos,
-  seedPecas,
-  seedServicos,
-  seedVeiculos,
-} from './mock-data'
-import type { FipeResult } from './fipe'
+import { computeLambda, type FipeResult } from './fipe'
 import { authService } from './services/auth.service'
+import { clientesService } from './services/clientes.service'
+import { veiculosService } from './services/veiculos.service'
+import { api, type Page } from './api'
 
 function uid(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`
@@ -46,10 +41,19 @@ interface StoreValue {
 
   // oficinas (admin)
   oficinas: Oficina[]
+  setOficinas: React.Dispatch<React.SetStateAction<Oficina[]>>
+  addOficina: (data: {
+    nome: string
+    endereco: string
+    telefone?: string
+    email?: string
+    status?: OficinaStatus
+  }) => Oficina
   setOficinaStatus: (id: string, status: OficinaStatus) => void
 
   // clientes
   clientes: Cliente[]
+  refreshClientesEVeiculos: () => Promise<void>
   addCliente: (data: Omit<Cliente, 'id'>) => Cliente
   updateCliente: (id: string, data: Partial<Omit<Cliente, 'id'>>) => void
 
@@ -90,19 +94,63 @@ const StoreContext = createContext<StoreValue | null>(null)
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null)
-  const [oficinas, setOficinas] = useState<Oficina[]>(seedOficinas)
-  const [clientes, setClientes] = useState<Cliente[]>(seedClientes)
-  const [veiculos, setVeiculos] = useState<Veiculo[]>(seedVeiculos)
-  const [servicos, setServicos] = useState<Servico[]>(seedServicos)
-  const [pecas, setPecas] = useState<Peca[]>(seedPecas)
-  const [orcamentos, setOrcamentos] = useState<Orcamento[]>(seedOrcamentos)
+  const [oficinas, setOficinas] = useState<Oficina[]>([])
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [veiculos, setVeiculos] = useState<Veiculo[]>([])
+  const [servicos, setServicos] = useState<Servico[]>([])
+  const [pecas, setPecas] = useState<Peca[]>([])
+  const [orcamentos, setOrcamentos] = useState<Orcamento[]>([])
+
+  const refreshClientesEVeiculos = useCb(async () => {
+    try {
+      const [listaClientes, pageVeiculos] = await Promise.all([
+        clientesService.listar(),
+        api.get<Page<VeiculoResponse>>('/veiculos', { params: { size: 200 } }),
+      ])
+
+      if (Array.isArray(listaClientes)) {
+        setClientes(
+          listaClientes.map((c) => ({
+            id: String(c.id),
+            nome: c.nome,
+            cpf: c.cpf,
+            endereco: c.endereco || '',
+          })),
+        )
+      }
+
+      if (pageVeiculos?.content && Array.isArray(pageVeiculos.content)) {
+        setVeiculos(
+          pageVeiculos.content.map((v) => {
+            const valorFipe = Number(v.valorFipe ?? 50000)
+            return {
+              id: String(v.id),
+              clienteId: String(v.clienteId),
+              placa: v.placa,
+              modelo: v.modelo,
+              montadora: v.marca,
+              ano: v.anoModelo,
+              codigoFipe: v.codigoFipe,
+              fipeValor: valorFipe,
+              lambda: computeLambda(valorFipe),
+              fipeConsultadoEm: new Date().toISOString().slice(0, 10),
+              ativo: v.ativo ?? true,
+            }
+          }),
+        )
+      }
+    } catch {
+      // Se não autenticado ou API indisponível, mantém estado atual
+    }
+  }, [])
 
   // Sincroniza sessão ativa a partir do cookie HttpOnly com o backend
   useEffect(() => {
-    let isMounted = true;
-    authService.getCurrentUser()
+    let isMounted = true
+    authService
+      .getCurrentUser()
       .then((authUser) => {
-        if (!isMounted || !authUser) return;
+        if (!isMounted || !authUser) return
         setUser({
           id: authUser.id,
           nome: authUser.nome,
@@ -110,16 +158,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           role: authUser.role,
           ativo: authUser.ativo,
           oficinaId: authUser.oficinaId ?? undefined,
-        });
+        })
+        refreshClientesEVeiculos()
       })
       .catch(() => {
         // Sem sessão ativa no cookie, mantém user como null
-      });
+      })
 
     return () => {
-      isMounted = false;
-    };
-  }, []);
+      isMounted = false
+    }
+  }, [refreshClientesEVeiculos])
 
   const logout = useCb(async () => {
     setUser(null)
@@ -134,19 +183,57 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setOficinas((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
   }, [])
 
+  const addOficina = useCb<StoreValue['addOficina']>((data) => {
+    const oficina: Oficina = {
+      id: uid('ofi'),
+      nome: data.nome,
+      endereco: data.endereco,
+      telefone: data.telefone || '',
+      email: data.email || '',
+      dataCadastro: new Date().toISOString().slice(0, 10),
+      status: data.status || 'ativa',
+    }
+    setOficinas((prev) => [oficina, ...prev])
+    return oficina
+  }, [])
+
   const addCliente = useCb<StoreValue['addCliente']>((data) => {
-    const cliente: Cliente = { id: uid('cli'), ...data }
+    const tempId = uid('cli')
+    const cliente: Cliente = { id: tempId, ...data }
     setClientes((prev) => [cliente, ...prev])
+    clientesService
+      .criar({
+        nome: data.nome,
+        cpf: data.cpf.replace(/\D/g, ''),
+        endereco: data.endereco,
+      })
+      .then((salvo) => {
+        setClientes((prev) =>
+          prev.map((c) => (c.id === tempId ? { ...c, id: String(salvo.id) } : c)),
+        )
+      })
+      .catch(() => {})
     return cliente
   }, [])
 
   const updateCliente = useCb<StoreValue['updateCliente']>((id, data) => {
     setClientes((prev) => prev.map((c) => (c.id === id ? { ...c, ...data } : c)))
+    const numId = Number(id)
+    if (!Number.isNaN(numId) && data.nome && data.cpf && data.endereco) {
+      clientesService
+        .atualizar(numId, {
+          nome: data.nome,
+          cpf: data.cpf.replace(/\D/g, ''),
+          endereco: data.endereco,
+        })
+        .catch(() => {})
+    }
   }, [])
 
   const addVeiculo = useCb<StoreValue['addVeiculo']>((data, fipe) => {
+    const tempId = uid('vei')
     const veiculo: Veiculo = {
-      id: uid('vei'),
+      id: tempId,
       ...data,
       fipeValor: fipe.valor,
       lambda: fipe.lambda,
@@ -154,12 +241,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ativo: true,
     }
     setVeiculos((prev) => [veiculo, ...prev])
+    const numClienteId = Number(data.clienteId)
+    if (!Number.isNaN(numClienteId)) {
+      veiculosService
+        .criar({
+          clienteId: numClienteId,
+          placa: data.placa,
+          marca: data.montadora,
+          modelo: data.modelo,
+          anoModelo: data.ano,
+          codigoFipe: data.codigoFipe,
+          valorFipe: fipe.valor,
+        })
+        .then((salvo) => {
+          setVeiculos((prev) =>
+            prev.map((v) => (v.id === tempId ? { ...v, id: String(salvo.id) } : v)),
+          )
+        })
+        .catch(() => {})
+    }
     return veiculo
   }, [])
 
   const trocarVeiculo = useCb<StoreValue['trocarVeiculo']>((veiculoAntigoId, data, fipe) => {
+    const tempId = uid('vei')
     const novoVeiculo: Veiculo = {
-      id: uid('vei'),
+      id: tempId,
       ...data,
       fipeValor: fipe.valor,
       lambda: fipe.lambda,
@@ -167,8 +274,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ativo: true,
     }
     setVeiculos((prev) =>
-      prev.map((v) => (v.id === veiculoAntigoId ? { ...v, ativo: false, substituidoPorId: novoVeiculo.id } : v)).concat(novoVeiculo),
+      prev
+        .map((v) =>
+          v.id === veiculoAntigoId
+            ? { ...v, ativo: false, substituidoPorId: novoVeiculo.id }
+            : v,
+        )
+        .concat(novoVeiculo),
     )
+    const numAntigoId = Number(veiculoAntigoId)
+    if (!Number.isNaN(numAntigoId)) {
+      veiculosService.inativar(numAntigoId).catch(() => {})
+    }
+    const numClienteId = Number(data.clienteId)
+    if (!Number.isNaN(numClienteId)) {
+      veiculosService
+        .criar({
+          clienteId: numClienteId,
+          placa: data.placa,
+          marca: data.montadora,
+          modelo: data.modelo,
+          anoModelo: data.ano,
+          codigoFipe: data.codigoFipe,
+          valorFipe: fipe.valor,
+        })
+        .then((salvo) => {
+          setVeiculos((prev) =>
+            prev.map((v) => (v.id === tempId ? { ...v, id: String(salvo.id) } : v)),
+          )
+        })
+        .catch(() => {})
+    }
     return novoVeiculo
   }, [])
 
@@ -252,8 +388,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setUser,
       logout,
       oficinas,
+      setOficinas,
+      addOficina,
       setOficinaStatus,
       clientes,
+      refreshClientesEVeiculos,
       addCliente,
       updateCliente,
       veiculos,
@@ -276,8 +415,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setUser,
       logout,
       oficinas,
+      setOficinas,
+      addOficina,
       setOficinaStatus,
       clientes,
+      refreshClientesEVeiculos,
       addCliente,
       updateCliente,
       veiculos,

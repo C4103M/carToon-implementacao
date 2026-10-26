@@ -13,6 +13,7 @@ public class LoginAttemptService {
 
     public static final int MAX_TENTATIVAS = 5;
     public static final Duration TEMPO_BLOQUEIO = Duration.ofMinutes(15);
+    public static final int MAX_ENTRIES = 10_000;
 
     private final Clock clock;
     private final ConcurrentHashMap<String, TentativaInfo> tentativas = new ConcurrentHashMap<>();
@@ -50,6 +51,7 @@ public class LoginAttemptService {
         if (email == null || email.isBlank()) {
             return;
         }
+        evictIfCapacityExceeded();
         String chave = normalizar(email);
         tentativas.compute(chave, (k, info) -> {
             Instant agora = Instant.now(clock);
@@ -65,6 +67,24 @@ public class LoginAttemptService {
             }
             return info;
         });
+    }
+
+    private void evictIfCapacityExceeded() {
+        if (tentativas.size() >= MAX_ENTRIES) {
+            Instant agora = Instant.now(clock);
+            tentativas.entrySet().removeIf(entry -> {
+                Instant ate = entry.getValue().bloqueadoAte;
+                return ate == null || agora.isAfter(ate);
+            });
+            if (tentativas.size() >= MAX_ENTRIES) {
+                var it = tentativas.keySet().iterator();
+                int toRemove = MAX_ENTRIES / 4;
+                while (it.hasNext() && toRemove-- > 0) {
+                    it.next();
+                    it.remove();
+                }
+            }
+        }
     }
 
     public void registrarSucesso(String email) {

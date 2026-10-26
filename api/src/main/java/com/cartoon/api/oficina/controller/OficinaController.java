@@ -1,6 +1,6 @@
 package com.cartoon.api.oficina.controller;
 
-
+import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.oficina.dto.request.OficinaRequest;
 import com.cartoon.api.oficina.dto.response.OficinaResponse;
 import com.cartoon.api.oficina.service.OficinaService;
@@ -8,10 +8,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.util.List;
-import com.cartoon.api.auth.UsuarioAutenticado;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/oficina")
@@ -27,13 +27,15 @@ public class OficinaController {
     }
 
     @GetMapping
-    public List<OficinaResponse> listar(){
-        return service.listar();
+    public List<OficinaResponse> listar(@RequestParam(required = false) Boolean ativo,
+                                        @AuthenticationPrincipal UsuarioAutenticado solicitante){
+        return service.listar(ativo, solicitante);
     }
 
     @GetMapping("/{id}")
-    public OficinaResponse buscarPorId(@PathVariable Integer id){
-        return service.buscarPorId(id);
+    public OficinaResponse buscarPorId(@PathVariable Integer id,
+                                       @AuthenticationPrincipal UsuarioAutenticado solicitante){
+        return service.buscarPorId(id, solicitante);
     }
 
     @PutMapping("/{id}")

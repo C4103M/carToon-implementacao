@@ -5,7 +5,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -64,11 +63,12 @@ class ItemServicoTest {
     }
 
     @Test
-    @DisplayName("ItemServico - Deve atribuir e recuperar campos monetários como BigDecimal")
+    @DisplayName("ItemServico - Deve atribuir e recuperar campos monetários como BigDecimal e quantidadeHoras")
     void deveAtribuirERecuperarCamposComoBigDecimal() {
         Servico servico = new Servico();
         servico.setId(1);
         servico.setNome("Alinhamento");
+        servico.setQuantidadeHoras(1.5);
 
         ItemServico item = new ItemServico();
         item.setId(10);
@@ -76,13 +76,23 @@ class ItemServicoTest {
         item.setQuantidade(2);
         item.setValorUnitario(new BigDecimal("120.50"));
         item.setSubtotal(new BigDecimal("241.00"));
-        item.setTempo(LocalTime.of(1, 30));
+        item.setQuantidadeHoras(1.5);
+        item.setPesoServico(new BigDecimal("0.5"));
 
         assertEquals(10, item.getId());
         assertEquals(servico, item.getServico());
         assertEquals(2, item.getQuantidade());
         assertThat(item.getValorUnitario()).isEqualByComparingTo(new BigDecimal("120.50"));
         assertThat(item.getSubtotal()).isEqualByComparingTo(new BigDecimal("241.00"));
-        assertEquals(LocalTime.of(1, 30), item.getTempo());
+        assertEquals(1.5, item.getQuantidadeHoras());
+        assertThat(item.getPesoServico()).isEqualByComparingTo(new BigDecimal("0.5"));
+    }
+
+    @Test
+    @DisplayName("ItemServico - Deve atribuir peso padrão 0.5 quando setado com nulo")
+    void deveAtribuirPesoPadraoQuandoNulo() {
+        ItemServico item = new ItemServico();
+        item.setPesoServico(null);
+        assertThat(item.getPesoServico()).isEqualByComparingTo(new BigDecimal("0.5"));
     }
 }

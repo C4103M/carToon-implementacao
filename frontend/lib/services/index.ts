@@ -5,3 +5,4 @@ export * from './clientes.service';
 export * from './veiculos.service';
 export * from './catalogo.service';
 export * from './ordem-servico.service';
+export * from './fipe.service';
