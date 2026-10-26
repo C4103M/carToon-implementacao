@@ -100,7 +100,7 @@ class OficinaServiceTest {
         when(oficinaRepository.findAll()).thenReturn(List.of(oficina));
         when(mapper.toResponse(oficina)).thenReturn(response);
 
-        List<OficinaResponse> resultado = service.listar();
+        List<OficinaResponse> resultado = service.listar(null, superAdmin);
 
         assertThat(resultado).hasSize(1);
         verify(oficinaRepository).findAll();
@@ -111,7 +111,7 @@ class OficinaServiceTest {
         when(oficinaRepository.findAllByAtivo(true)).thenReturn(List.of(oficina));
         when(mapper.toResponse(oficina)).thenReturn(response);
 
-        List<OficinaResponse> resultado = service.listar(true);
+        List<OficinaResponse> resultado = service.listar(true, superAdmin);
 
         assertThat(resultado).hasSize(1);
         verify(oficinaRepository).findAllByAtivo(true);
@@ -122,7 +122,7 @@ class OficinaServiceTest {
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
         when(mapper.toResponse(oficina)).thenReturn(response);
 
-        OficinaResponse resultado = service.buscarPorId(1);
+        OficinaResponse resultado = service.buscarPorId(1, superAdmin);
 
         assertThat(resultado.nome()).isEqualTo("Oficina Centro");
         assertThat(resultado.email()).isEqualTo("centro@oficina.com");
@@ -132,7 +132,7 @@ class OficinaServiceTest {
     void buscarPorId_quandoNaoExiste_deveLancarExcecao() {
         when(oficinaRepository.findById(999)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.buscarPorId(999))
+        assertThatThrownBy(() -> service.buscarPorId(999, superAdmin))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
     }
 
@@ -237,5 +237,36 @@ class OficinaServiceTest {
         service.ativar(1);
 
         assertThat(oficina.getAtivo()).isTrue();
+    }
+
+    @Test
+    void buscarPorId_usuarioOutraOficina_deveLancarAccessDenied() {
+        Oficina outraOficina = new Oficina();
+        outraOficina.setId(2);
+
+        Usuario usuario = new Usuario();
+        usuario.setId(2);
+        usuario.setOficina(outraOficina);
+
+        when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
+        when(usuarioService.buscarEntidade(2)).thenReturn(usuario);
+
+        assertThatThrownBy(() -> service.buscarPorId(1, admin))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void listar_usuarioOficina_deveRetornarApenasSuaOficina() {
+        Usuario usuario = new Usuario();
+        usuario.setId(2);
+        usuario.setOficina(oficina);
+
+        when(usuarioService.buscarEntidade(2)).thenReturn(usuario);
+        when(mapper.toResponse(oficina)).thenReturn(response);
+
+        List<OficinaResponse> lista = service.listar(null, admin);
+
+        assertThat(lista).containsExactly(response);
+        verify(oficinaRepository, never()).findAll();
     }
 }

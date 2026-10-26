@@ -9,4 +9,8 @@ public interface ServicoRepository extends JpaRepository<Servico, Integer> {
     Page<Servico> findByNomeContainingIgnoreCase(String nome, Pageable pageable);
     Page<Servico> findByOficinaId(Integer oficinaId, Pageable pageable);
     Page<Servico> findByOficinaIdAndNomeContainingIgnoreCase(Integer oficinaId, String nome, Pageable pageable);
+    Page<Servico> findByAtivoTrue(Pageable pageable);
+    Page<Servico> findByNomeContainingIgnoreCaseAndAtivoTrue(String nome, Pageable pageable);
+    Page<Servico> findByOficinaIdAndAtivoTrue(Integer oficinaId, Pageable pageable);
+    Page<Servico> findByOficinaIdAndNomeContainingIgnoreCaseAndAtivoTrue(Integer oficinaId, String nome, Pageable pageable);
 }

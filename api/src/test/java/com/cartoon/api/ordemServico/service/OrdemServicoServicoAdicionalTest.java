@@ -42,6 +42,7 @@ class OrdemServicoServicoAdicionalTest {
     @Mock private OficinaService oficinaService;
     @Mock private PecaService pecaService;
     @Mock private ServicoService servicoService;
+    @Mock private com.cartoon.api.seguranca.TenantGuard tenantGuard;
     @Spy private CalculadoraOrcamento calculadora = new CalculadoraOrcamento();
 
     @InjectMocks
@@ -51,9 +52,11 @@ class OrdemServicoServicoAdicionalTest {
     private Veiculo veiculo;
     private Oficina oficina;
     private Servico servico;
+    private com.cartoon.api.auth.UsuarioAutenticado solicitante;
 
     @BeforeEach
     void setUp() {
+        solicitante = new com.cartoon.api.auth.UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
         veiculo = new Veiculo();
         veiculo.setValorFipe(new BigDecimal("50000"));
 
@@ -76,11 +79,11 @@ class OrdemServicoServicoAdicionalTest {
     }
 
     @Test
-    @DisplayName("adicionarServico - Deve calcular valor unitário com fórmula de horas, valorHora, FIPE e taxa de risco")
+    @DisplayName("adicionarServico - Deve calcular valor unitÃ¡rio com fÃ³rmula de horas, valorHora, FIPE e taxa de risco")
     void adicionarServico_DeveAplicarFormulaComFipeETaxaRisco() {
         prepararBusca();
 
-        OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1));
+        OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1), solicitante);
 
         ItemServicoResponse item = resposta.itensServico().get(0);
         assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.valorUnitario()));
@@ -88,11 +91,11 @@ class OrdemServicoServicoAdicionalTest {
     }
 
     @Test
-    @DisplayName("adicionarServico - Quantidade deve multiplicar valor unitário calculado")
+    @DisplayName("adicionarServico - Quantidade deve multiplicar valor unitÃ¡rio calculado")
     void adicionarServico_QuantidadeDeveMultiplicarValorComAdicional() {
         prepararBusca();
 
-        OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 2));
+        OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 2), solicitante);
 
         ItemServicoResponse item = resposta.itensServico().get(0);
         assertEquals(0, BigDecimal.valueOf(157.50).compareTo(item.valorUnitario()));
@@ -100,24 +103,24 @@ class OrdemServicoServicoAdicionalTest {
     }
 
     @Test
-    @DisplayName("adicionarServico - Veículo mais caro deve gerar serviço mais caro")
+    @DisplayName("adicionarServico - VeÃ­culo mais caro deve gerar serviÃ§o mais caro")
     void adicionarServico_VeiculoMaisCaroDeveCustarMais() {
         veiculo.setValorFipe(new BigDecimal("300000"));
         prepararBusca();
 
-        OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1));
+        OrdemServicoResponse resposta = service.adicionarServico(1, new ItemServicoRequest(1, 1), solicitante);
 
         assertEquals(0, BigDecimal.valueOf(195.00).compareTo(resposta.itensServico().get(0).valorUnitario()));
     }
 
     @Test
-    @DisplayName("adicionarServico - Deve recusar quando o veículo não tem valor FIPE")
+    @DisplayName("adicionarServico - Deve recusar quando o veÃ­culo nÃ£o tem valor FIPE")
     void adicionarServico_SemFipe_DeveLancarRegraDeNegocio() {
         veiculo.setValorFipe(null);
         prepararBusca();
 
         assertThrows(RegraDeNegocioException.class,
-                () -> service.adicionarServico(1, new ItemServicoRequest(1, 1)));
+                () -> service.adicionarServico(1, new ItemServicoRequest(1, 1), solicitante));
         assertTrue(ordem.getItensServico().isEmpty());
     }
 
@@ -125,9 +128,9 @@ class OrdemServicoServicoAdicionalTest {
     @DisplayName("adicionarServico - Não deve alterar ordem finalizada")
     void adicionarServico_OrdemFinalizada_DeveLancarConflito() {
         ordem.setStatusServico(StatusServico.FINALIZADO);
-        prepararBusca();
+        when(ordemServicoRepository.findById(1)).thenReturn(Optional.of(ordem));
 
         assertThrows(ConflitoException.class,
-                () -> service.adicionarServico(1, new ItemServicoRequest(1, 1)));
+                () -> service.adicionarServico(1, new ItemServicoRequest(1, 1), solicitante));
     }
 }

@@ -289,14 +289,16 @@ public class DadosIniciais implements ApplicationRunner {
 
     private Usuario criarOuAtualizarUsuario(String nome, String email, String senha, Role role, Oficina oficina) {
         String emailNorm = email.trim().toLowerCase();
-        Usuario usuario = usuarioRepository.findByEmailIgnoreCase(emailNorm).orElseGet(Usuario::new);
-        usuario.setNome(nome);
-        usuario.setEmail(emailNorm);
-        usuario.setSenha(passwordEncoder.encode(senha));
-        usuario.setRole(role);
-        usuario.setOficina(oficina);
-        usuario.setAtivo(true);
-        return usuarioRepository.save(usuario);
+        return usuarioRepository.findByEmailIgnoreCase(emailNorm).orElseGet(() -> {
+            Usuario usuario = new Usuario();
+            usuario.setNome(nome);
+            usuario.setEmail(emailNorm);
+            usuario.setSenha(passwordEncoder.encode(senha));
+            usuario.setRole(role);
+            usuario.setOficina(oficina);
+            usuario.setAtivo(true);
+            return usuarioRepository.save(usuario);
+        });
     }
 
     private Peca criarPecaSeNaoExistir(String nome, String fabricante, BigDecimal valorBase, Oficina oficina) {

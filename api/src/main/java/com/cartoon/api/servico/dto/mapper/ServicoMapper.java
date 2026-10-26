@@ -30,7 +30,8 @@ public final class ServicoMapper {
                 servico.getQuantidadeHoras(),
                 servico.getDescricao(),
                 peso,
-                servico.getOficina() != null ? servico.getOficina().getId() : null
+                servico.getOficina() != null ? servico.getOficina().getId() : null,
+                servico.getAtivo()
         );
     }
 

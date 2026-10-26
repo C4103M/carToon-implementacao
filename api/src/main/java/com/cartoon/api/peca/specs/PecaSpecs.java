@@ -19,6 +19,7 @@ public final class PecaSpecs {
     public static Specification<Peca> montarFiltros(PecaFiltro filtro, Integer oficinaId) {
         return (root, query, cb) -> {
             List<Predicate> condicoes = new ArrayList<>();
+            condicoes.add(cb.isTrue(root.get("ativo")));
 
             if (oficinaId != null) {
                 condicoes.add(cb.equal(root.get("oficina").get("id"), oficinaId));

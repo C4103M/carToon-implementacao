@@ -27,13 +27,15 @@ public class OficinaController {
     }
 
     @GetMapping
-    public List<OficinaResponse> listar(@RequestParam(required = false) Boolean ativo){
-        return service.listar(ativo);
+    public List<OficinaResponse> listar(@RequestParam(required = false) Boolean ativo,
+                                        @AuthenticationPrincipal UsuarioAutenticado solicitante){
+        return service.listar(ativo, solicitante);
     }
 
     @GetMapping("/{id}")
-    public OficinaResponse buscarPorId(@PathVariable Integer id){
-        return service.buscarPorId(id);
+    public OficinaResponse buscarPorId(@PathVariable Integer id,
+                                       @AuthenticationPrincipal UsuarioAutenticado solicitante){
+        return service.buscarPorId(id, solicitante);
     }
 
     @PutMapping("/{id}")

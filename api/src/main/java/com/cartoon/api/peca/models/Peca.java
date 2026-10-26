@@ -28,6 +28,9 @@ public class Peca {
     @Column(name = "valor_base", nullable = false)
     BigDecimal valorBase;
 
+    @Column(nullable = false)
+    Boolean ativo = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "oficina_id", nullable = false)
     Oficina oficina;
@@ -37,5 +40,6 @@ public class Peca {
         this.nome = nome;
         this.fabricante = fabricante;
         this.valorBase = valorBase;
+        this.ativo = true;
     }
 }

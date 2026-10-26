@@ -2,6 +2,7 @@ package com.cartoon.api.cliente.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import org.hibernate.validator.constraints.br.CPF;
 import lombok.Data;
 
 @Data
@@ -12,6 +13,7 @@ public class ClienteRequest {
 
     @NotBlank(message = "O CPF é obrigatório")
     @Pattern(regexp = "\\d{11}", message = "O CPF deve ter 11 dígitos, apenas números")
+    @CPF(message = "CPF inválido")
     private String cpf;
 
     private String telefone;

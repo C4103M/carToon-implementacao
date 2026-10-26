@@ -326,7 +326,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findById(5)).thenReturn(Optional.of(mecanico));
 
         UsuarioResponse resposta = service.atualizarMeusDados(
-                new AtualizarUsuarioRequest("Meu Novo Nome", "meu@teste.com", null, null), autenticadoMecanico);
+                new AtualizarUsuarioRequest("Meu Novo Nome", mecanico.getEmail(), null, null), autenticadoMecanico);
 
         assertThat(mecanico.getNome()).isEqualTo("Meu Novo Nome");
         assertThat(resposta.role()).isEqualTo(Role.MECANICO);

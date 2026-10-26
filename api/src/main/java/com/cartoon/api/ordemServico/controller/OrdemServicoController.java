@@ -38,8 +38,11 @@ public class OrdemServicoController {
     }
 
     @GetMapping("/{id}")
-    public OrdemServicoResponse buscar(@PathVariable Integer id) {
-        return ordemServicoService.buscar(id);
+    public OrdemServicoResponse buscar(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.buscar(id, solicitante);
     }
 
     @GetMapping
@@ -52,94 +55,128 @@ public class OrdemServicoController {
     }
 
     @RequestMapping(value = "/{id}/aceitar", method = {RequestMethod.POST, RequestMethod.PATCH})
-    public OrdemServicoResponse aceitar(@PathVariable Integer id) {
-        return ordemServicoService.aceitar(id);
+    public OrdemServicoResponse aceitar(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.aceitar(id, solicitante);
     }
 
     @RequestMapping(value = "/{id}/iniciar", method = {RequestMethod.POST, RequestMethod.PATCH})
-    public OrdemServicoResponse iniciar(@PathVariable Integer id) {
-        return ordemServicoService.iniciar(id);
+    public OrdemServicoResponse iniciar(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.iniciar(id, solicitante);
     }
 
     @RequestMapping(value = "/{id}/finalizar", method = {RequestMethod.POST, RequestMethod.PATCH})
-    public OrdemServicoResponse finalizar(@PathVariable Integer id) {
-        return ordemServicoService.finalizar(id);
+    public OrdemServicoResponse finalizar(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.finalizar(id, solicitante);
     }
 
     @RequestMapping(value = "/{id}/rejeitar", method = {RequestMethod.POST, RequestMethod.PATCH})
-    public OrdemServicoResponse rejeitar(@PathVariable Integer id) {
-        return ordemServicoService.rejeitar(id);
+    public OrdemServicoResponse rejeitar(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.rejeitar(id, solicitante);
     }
 
     @PostMapping("/{id}/itens-peca")
     public OrdemServicoResponse adicionarPeca(
             @PathVariable Integer id,
-            @Valid @RequestBody ItemPecaRequest request
+            @Valid @RequestBody ItemPecaRequest request,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
     ) {
-        return ordemServicoService.adicionarPeca(id, request);
+        return ordemServicoService.adicionarPeca(id, request, solicitante);
     }
 
     @DeleteMapping("/{id}/itens-peca/{itemId}")
-    public OrdemServicoResponse removerPeca(@PathVariable Integer id, @PathVariable Integer itemId) {
-        return ordemServicoService.removerPeca(id, itemId);
+    public OrdemServicoResponse removerPeca(
+            @PathVariable Integer id,
+            @PathVariable Integer itemId,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.removerPeca(id, itemId, solicitante);
     }
 
     @PostMapping("/{id}/itens-servico")
     public OrdemServicoResponse adicionarServico(
             @PathVariable Integer id,
-            @Valid @RequestBody ItemServicoRequest request
+            @Valid @RequestBody ItemServicoRequest request,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
     ) {
-        return ordemServicoService.adicionarServico(id, request);
+        return ordemServicoService.adicionarServico(id, request, solicitante);
     }
 
     @DeleteMapping("/{id}/itens-servico/{itemId}")
-    public OrdemServicoResponse removerServico(@PathVariable Integer id, @PathVariable Integer itemId) {
-        return ordemServicoService.removerServico(id, itemId);
+    public OrdemServicoResponse removerServico(
+            @PathVariable Integer id,
+            @PathVariable Integer itemId,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.removerServico(id, itemId, solicitante);
     }
 
     @PutMapping("/{id}/itens-servico/{itemId}")
     public OrdemServicoResponse atualizarValorItemServico(
             @PathVariable Integer id,
             @PathVariable Integer itemId,
-            @Valid @RequestBody AtualizarItemValorRequest request
+            @Valid @RequestBody AtualizarItemValorRequest request,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
     ) {
-        return ordemServicoService.atualizarItemServico(id, itemId, request);
+        return ordemServicoService.atualizarItemServico(id, itemId, request, solicitante);
     }
 
     @PatchMapping("/{id}/itens-servico/{itemId}")
     public OrdemServicoResponse patchValorItemServico(
             @PathVariable Integer id,
             @PathVariable Integer itemId,
-            @Valid @RequestBody AtualizarItemValorRequest request
+            @Valid @RequestBody AtualizarItemValorRequest request,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
     ) {
-        return ordemServicoService.atualizarItemServico(id, itemId, request);
+        return ordemServicoService.atualizarItemServico(id, itemId, request, solicitante);
     }
 
     @PutMapping("/{id}/itens-peca/{itemId}")
     public OrdemServicoResponse atualizarValorItemPeca(
             @PathVariable Integer id,
             @PathVariable Integer itemId,
-            @Valid @RequestBody AtualizarItemValorRequest request
+            @Valid @RequestBody AtualizarItemValorRequest request,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
     ) {
-        return ordemServicoService.atualizarValorItemPeca(id, itemId, request.valorUnitario());
+        return ordemServicoService.atualizarValorItemPeca(id, itemId, request.valorUnitario(), solicitante);
     }
 
     @PatchMapping("/{id}/itens-peca/{itemId}")
     public OrdemServicoResponse patchValorItemPeca(
             @PathVariable Integer id,
             @PathVariable Integer itemId,
-            @Valid @RequestBody AtualizarItemValorRequest request
+            @Valid @RequestBody AtualizarItemValorRequest request,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
     ) {
-        return ordemServicoService.atualizarValorItemPeca(id, itemId, request.valorUnitario());
+        return ordemServicoService.atualizarValorItemPeca(id, itemId, request.valorUnitario(), solicitante);
     }
 
     @PatchMapping("/{id}/desconto")
-    public OrdemServicoResponse aplicarDesconto(@PathVariable Integer id, @Valid @RequestBody DescontoRequest request) {
-        return ordemServicoService.aplicarDesconto(id, request);
+    public OrdemServicoResponse aplicarDesconto(
+            @PathVariable Integer id,
+            @Valid @RequestBody DescontoRequest request,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.aplicarDesconto(id, request, solicitante);
     }
 
     @PutMapping("/{id}/desconto")
-    public OrdemServicoResponse atualizarDesconto(@PathVariable Integer id, @Valid @RequestBody DescontoRequest request) {
-        return ordemServicoService.aplicarDesconto(id, request);
+    public OrdemServicoResponse atualizarDesconto(
+            @PathVariable Integer id,
+            @Valid @RequestBody DescontoRequest request,
+            @AuthenticationPrincipal UsuarioAutenticado solicitante
+    ) {
+        return ordemServicoService.aplicarDesconto(id, request, solicitante);
     }
 }

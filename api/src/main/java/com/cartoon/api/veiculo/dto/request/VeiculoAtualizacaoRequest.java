@@ -2,6 +2,7 @@ package com.cartoon.api.veiculo.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 
@@ -14,7 +15,10 @@ public record VeiculoAtualizacaoRequest(
 
         String combustivel,
         String codigoFipe,
+
+        @Positive(message = "O valor FIPE deve ser maior que zero")
         BigDecimal valorFipe,
+
         String mesReferencia,
 
         @Pattern(

@@ -32,4 +32,12 @@ class TempoDeserializerTest {
         assertNull(TempoDeserializer.parseTempo(null));
         assertNull(TempoDeserializer.parseTempo("   "));
     }
+
+    @Test
+    @DisplayName("Deve lançar exceção quando a duração ultrapassar 23:59")
+    void deveLancarExcecaoQuandoDuracaoUltrapassarLimite() {
+        assertThrows(IllegalArgumentException.class, () -> TempoDeserializer.parseTempo("30h"));
+        assertThrows(IllegalArgumentException.class, () -> TempoDeserializer.parseTempo("25:00"));
+        assertThrows(IllegalArgumentException.class, () -> TempoDeserializer.parseTempo("24h00"));
+    }
 }

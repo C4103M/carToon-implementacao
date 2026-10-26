@@ -26,6 +26,9 @@ public class OrdemServico {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
+    @Version
+    Long versao;
+
     @Column(name = "descricao", nullable = false)
     String descricao;
 

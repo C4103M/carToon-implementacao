@@ -10,6 +10,8 @@ import com.cartoon.api.compartilhado.exceptions.ClienteInativoException;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.model.Oficina;
+import com.cartoon.api.ordemServico.models.StatusServico;
+import com.cartoon.api.ordemServico.repository.OrdemServicoRepository;
 import com.cartoon.api.usuario.model.Usuario;
 import com.cartoon.api.usuario.service.UsuarioService;
 import jakarta.transaction.Transactional;
@@ -23,17 +25,18 @@ import java.util.stream.Collectors;
 @Service
 @AllArgsConstructor
 public class ClienteService {
+    private static final List<StatusServico> STATUS_EM_ABERTO = List.of(
+            StatusServico.PENDENTE, StatusServico.ACEITO, StatusServico.EM_ANDAMENTO
+    );
+
     private final ClienteRepository clienteRepository;
     private final ClienteMapper clienteMapper;
     private final UsuarioService usuarioService;
+    private final OrdemServicoRepository ordemServicoRepository;
 
     public Cliente buscarEntidade(Integer id) {
         return clienteRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", id));
-    }
-
-    public ClienteResponse buscarPorId(Integer id) {
-        return buscarPorId(id, null);
     }
 
     public ClienteResponse buscarPorId(Integer id, UsuarioAutenticado solicitante) {
@@ -42,13 +45,9 @@ public class ClienteService {
         return clienteMapper.toResponse(cliente);
     }
 
-    public List<ClienteResponse> listarTodos() {
-        return listarTodos(null);
-    }
-
     public List<ClienteResponse> listarTodos(UsuarioAutenticado solicitante) {
         List<Cliente> clientes;
-        if (solicitante == null || "SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
+        if (solicitante == null || solicitante.isSuperAdmin()) {
             clientes = clienteRepository.findAllByAtivoTrue();
         } else {
             Oficina oficina = obterOficinaDoSolicitante(solicitante);
@@ -59,13 +58,9 @@ public class ClienteService {
                 .collect(Collectors.toList());
     }
 
-    public List<ClienteResponse> listarInativos() {
-        return listarInativos(null);
-    }
-
     public List<ClienteResponse> listarInativos(UsuarioAutenticado solicitante) {
         List<Cliente> clientes;
-        if (solicitante == null || "SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
+        if (solicitante == null || solicitante.isSuperAdmin()) {
             clientes = clienteRepository.findAllByAtivoFalse();
         } else {
             Oficina oficina = obterOficinaDoSolicitante(solicitante);
@@ -76,12 +71,8 @@ public class ClienteService {
                 .collect(Collectors.toList());
     }
 
-    public List<ClienteResponse> listar(Boolean ativo) {
-        return listar(ativo, null);
-    }
-
     public List<ClienteResponse> listar(Boolean ativo, UsuarioAutenticado solicitante) {
-        if (solicitante == null || "SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
+        if (solicitante == null || solicitante.isSuperAdmin()) {
             if (ativo == null) {
                 return clienteRepository.findAll().stream()
                         .map(clienteMapper::toResponse)
@@ -108,32 +99,37 @@ public class ClienteService {
                 .collect(Collectors.toList());
     }
 
-    public ClienteResponse salvar(ClienteRequest request) {
-        return salvar(request, null);
-    }
-
     public ClienteResponse salvar(ClienteRequest request, UsuarioAutenticado solicitante) {
-        if (clienteRepository.existsByCpf(request.getCpf())) {
-            throw new ConflitoException("Cliente já cadastrado com este CPF.");
+        Integer oficinaId = null;
+        if (solicitante != null && !solicitante.isSuperAdmin()) {
+            Oficina oficina = obterOficinaDoSolicitante(solicitante);
+            oficinaId = oficina.getId();
+            request.setOficinaId(oficinaId);
+        } else if (request.getOficinaId() != null) {
+            oficinaId = request.getOficinaId();
+        } else if (solicitante != null && solicitante.id() != null) {
+            try {
+                Usuario usuario = usuarioService.buscarEntidade(solicitante.id().intValue());
+                if (usuario != null && usuario.getOficina() != null) {
+                    oficinaId = usuario.getOficina().getId();
+                    request.setOficinaId(oficinaId);
+                }
+            } catch (Exception ignored) {}
         }
 
-        if (solicitante != null && !"SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
-            Oficina oficina = obterOficinaDoSolicitante(solicitante);
-            request.setOficinaId(oficina.getId());
-        } else if (request.getOficinaId() == null && solicitante != null && solicitante.id() != null) {
-            Usuario usuario = usuarioService.buscarEntidade(solicitante.id().intValue());
-            if (usuario.getOficina() != null) {
-                request.setOficinaId(usuario.getOficina().getId());
+        if (oficinaId != null) {
+            if (clienteRepository.existsByOficinaIdAndCpf(oficinaId, request.getCpf())) {
+                throw new ConflitoException("Cliente já cadastrado com este CPF.");
+            }
+        } else {
+            if (clienteRepository.existsByCpf(request.getCpf())) {
+                throw new ConflitoException("Cliente já cadastrado com este CPF.");
             }
         }
 
         Cliente cliente = clienteMapper.toEntity(request);
         cliente = clienteRepository.save(cliente);
         return clienteMapper.toResponse(cliente);
-    }
-
-    public ClienteResponse atualizar(Integer id, ClienteRequest request) {
-        return atualizar(id, request, null);
     }
 
     public ClienteResponse atualizar(Integer id, ClienteRequest request, UsuarioAutenticado solicitante) {
@@ -144,11 +140,18 @@ public class ClienteService {
             throw new ClienteInativoException(id);
         }
 
-        if (!cliente.getCpf().equals(request.getCpf()) && clienteRepository.existsByCpf(request.getCpf())) {
-            throw new ConflitoException("Cliente já cadastrado com este CPF.");
+        Integer oficinaId = cliente.getOficina() != null ? cliente.getOficina().getId() : null;
+        if (!cliente.getCpf().equals(request.getCpf())) {
+            if (oficinaId != null) {
+                if (clienteRepository.existsByOficinaIdAndCpfAndIdNot(oficinaId, request.getCpf(), id)) {
+                    throw new ConflitoException("Cliente já cadastrado com este CPF.");
+                }
+            } else if (clienteRepository.existsByCpf(request.getCpf())) {
+                throw new ConflitoException("Cliente já cadastrado com este CPF.");
+            }
         }
 
-        if (solicitante != null && !"SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
+        if (solicitante != null && !solicitante.isSuperAdmin()) {
             Oficina oficina = obterOficinaDoSolicitante(solicitante);
             request.setOficinaId(oficina.getId());
         } else if (request.getOficinaId() == null) {
@@ -168,21 +171,19 @@ public class ClienteService {
     }
 
     @Transactional
-    public void inativar(Integer id) {
-        inativar(id, null);
-    }
-
-    @Transactional
     public void inativar(Integer id, UsuarioAutenticado solicitante) {
         Cliente cliente = buscarEntidade(id);
         validarAcessoOficina(cliente, solicitante);
-        cliente.setAtivo(false);
-        clienteRepository.save(cliente);
-    }
 
-    @Transactional
-    public void ativar(Integer id) {
-        ativar(id, null);
+        if (ordemServicoRepository != null && ordemServicoRepository.existsByVeiculoClienteIdAndStatusServicoIn(id, STATUS_EM_ABERTO)) {
+            throw new ConflitoException("Não é possível inativar: o cliente possui ordens de serviço pendentes ou em andamento.");
+        }
+
+        cliente.setAtivo(false);
+        if (cliente.getVeiculos() != null) {
+            cliente.getVeiculos().forEach(v -> v.setAtivo(false));
+        }
+        clienteRepository.save(cliente);
     }
 
     @Transactional
@@ -206,7 +207,7 @@ public class ClienteService {
     }
 
     private void validarAcessoOficina(Cliente cliente, UsuarioAutenticado solicitante) {
-        if (solicitante == null || "SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
+        if (solicitante == null || solicitante.isSuperAdmin()) {
             return;
         }
         Oficina oficinaSolicitante = obterOficinaDoSolicitante(solicitante);

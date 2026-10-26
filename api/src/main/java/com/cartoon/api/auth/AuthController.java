@@ -1,8 +1,8 @@
 package com.cartoon.api.auth;
 
-
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -15,9 +15,19 @@ import java.time.Duration;
 
 @RestController
 @RequestMapping("/auth")
-@AllArgsConstructor
 public class AuthController {
     private final AuthService authService;
+    private final boolean cookieSecure;
+
+    public AuthController(AuthService authService,
+                          @Value("${app.security.cookie-secure:false}") boolean cookieSecure) {
+        this.authService = authService;
+        this.cookieSecure = cookieSecure;
+    }
+
+    public AuthController(AuthService authService) {
+        this(authService, false);
+    }
 
     @PostMapping(path = "/login")
     public ResponseEntity<Void> login(@Valid @RequestBody LoginDTO loginDTO) {
@@ -25,7 +35,7 @@ public class AuthController {
 
         ResponseCookie cookie = ResponseCookie.from("jwt", token)
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(Duration.ofHours(1))
@@ -40,7 +50,7 @@ public class AuthController {
     public ResponseEntity<Void> logout() {
         ResponseCookie apagar = ResponseCookie.from("jwt", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(cookieSecure)
                 .sameSite("Lax")
                 .path("/")
                 .maxAge(0)
@@ -50,10 +60,4 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, apagar.toString())
                 .build();
     }
-
-//
-//    @PostMapping(path = "/cadastrar")
-//    public ResponseEntity<Usuario> cadastrar(@RequestBody CadastroDTO cadastroDTO) {
-//
-//    }
 }

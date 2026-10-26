@@ -3,6 +3,7 @@ package com.cartoon.api.usuario.service;
 import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
+import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.repository.OficinaRepository;
 import com.cartoon.api.ordemServico.models.StatusServico;
@@ -113,12 +114,27 @@ public class UsuarioService {
             }
             usuarioAlvo.setRole(request.role());
         }
+        if (usuarioAlvo.getId().equals(usuarioLogado.getId())) {
+            validarSenhaAtualSeNecessario(usuarioAlvo, request);
+        }
         return aplicarAtualizacao(usuarioAlvo, request);
     }
 
     @Transactional
     public UsuarioResponse atualizarMeusDados(AtualizarUsuarioRequest request, UsuarioAutenticado autenticado) {
-        return aplicarAtualizacao(buscarUsuarioLogado(autenticado), request);
+        Usuario usuarioLogado = buscarUsuarioLogado(autenticado);
+        validarSenhaAtualSeNecessario(usuarioLogado, request);
+        return aplicarAtualizacao(usuarioLogado, request);
+    }
+
+    private void validarSenhaAtualSeNecessario(Usuario usuario, AtualizarUsuarioRequest request) {
+        boolean alterandoSenha = request.senha() != null && !request.senha().isBlank();
+        boolean alterandoEmail = request.email() != null && !usuario.getEmail().equalsIgnoreCase(request.email().trim());
+        if (alterandoSenha || alterandoEmail) {
+            if (request.senhaAtual() == null || !passwordEncoder.matches(request.senhaAtual(), usuario.getSenha())) {
+                throw new RegraDeNegocioException("A senha atual é obrigatória e deve estar correta para alterar e-mail ou senha.");
+            }
+        }
     }
 
     @Transactional
@@ -141,6 +157,9 @@ public class UsuarioService {
         Usuario usuarioAlvo = buscarEntidade(id);
         Usuario usuarioLogado = buscarUsuarioLogado(autenticado);
         exigirPermissaoParaGerenciar(usuarioAlvo, usuarioLogado);
+        if (usuarioAlvo.getOficina() != null && !Boolean.TRUE.equals(usuarioAlvo.getOficina().getAtivo())) {
+            throw new ConflitoException("Não é possível reativar usuário de uma oficina inativa.");
+        }
         usuarioAlvo.setAtivo(true);
     }
 

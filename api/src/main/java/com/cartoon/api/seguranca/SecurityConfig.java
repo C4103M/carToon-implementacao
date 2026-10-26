@@ -65,7 +65,11 @@ public class SecurityConfig {
                         .requestMatchers("/fipe/**").authenticated()
 
                         .requestMatchers("/clientes/**").hasAnyRole("MECANICO", "ADMIN")
-                        .requestMatchers("/veiculos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.GET, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO", "SUPERADMIN")
+                        .requestMatchers(HttpMethod.POST, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.PUT, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.PATCH, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO")
+                        .requestMatchers(HttpMethod.DELETE, "/veiculos/**").hasAnyRole("ADMIN", "MECANICO")
 
                         .requestMatchers(HttpMethod.POST, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")
                         .requestMatchers(HttpMethod.PUT, "/ordem-servico/**").hasAnyRole("ADMIN", "MECANICO")

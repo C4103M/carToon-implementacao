@@ -59,9 +59,11 @@ class HistoricoVeiculoServiceTest {
     private Usuario mecanico;
     private OrdemServico ordemRecente;
     private OrdemServico ordemAntiga;
+    private com.cartoon.api.auth.UsuarioAutenticado solicitante;
 
     @BeforeEach
     void setUp() {
+        solicitante = new com.cartoon.api.auth.UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
         Cliente cliente = new Cliente();
         cliente.setId(1);
         cliente.setNome("João da Silva");
@@ -146,7 +148,7 @@ class HistoricoVeiculoServiceTest {
         when(ordemServicoRepository.findByVeiculoPlacaIgnoreCaseOrderByDataOrcamentoDescIdDesc("XYZ-9876"))
                 .thenReturn(List.of(ordemRecente, ordemAntiga));
 
-        List<OrdemServicoResumo> ordens = ordemServicoService.buscarHistoricoPorPlaca("XYZ-9876");
+        List<OrdemServicoResumo> ordens = ordemServicoService.buscarHistoricoPorPlaca("XYZ-9876", solicitante);
 
         assertThat(ordens).hasSize(2);
         assertThat(ordens.get(0).id()).isEqualTo(10);
@@ -164,7 +166,7 @@ class HistoricoVeiculoServiceTest {
     void deveBuscarDetalhesDaOrdemPorId() {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemRecente));
 
-        OrdemServicoResponse response = ordemServicoService.buscar(10);
+        OrdemServicoResponse response = ordemServicoService.buscar(10, solicitante);
 
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(10);
@@ -179,7 +181,7 @@ class HistoricoVeiculoServiceTest {
     void deveLancarExcecaoQuandoOrdemNaoEncontrada() {
         when(ordemServicoRepository.findById(99)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> ordemServicoService.buscar(99))
+        assertThatThrownBy(() -> ordemServicoService.buscar(99, solicitante))
                 .isInstanceOf(RecursoNaoEncontradoException.class)
                 .hasMessage("Ordem de servico não encontrado(a): 99");
     }
@@ -193,7 +195,7 @@ class HistoricoVeiculoServiceTest {
         when(ordemServicoRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
         OrdemServicoFiltro filtro = new OrdemServicoFiltro(null, null, "XYZ-9876", null, null);
-        Page<OrdemServicoResumo> resultado = ordemServicoService.listar(filtro, pageable);
+        Page<OrdemServicoResumo> resultado = ordemServicoService.listar(filtro, pageable, solicitante);
 
         assertThat(resultado).isNotNull();
         assertThat(resultado.getTotalElements()).isEqualTo(1);

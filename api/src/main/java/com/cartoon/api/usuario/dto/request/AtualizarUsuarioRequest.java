@@ -21,10 +21,16 @@ public record AtualizarUsuarioRequest(
         @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres")
         String senha,
 
-        String confirmarSenha
+        String confirmarSenha,
+
+        String senhaAtual
 ) implements PossuiConfirmacaoSenha {
 
     public AtualizarUsuarioRequest(String nome, String email, String senha, String confirmarSenha) {
-        this(nome, email, null, senha, confirmarSenha);
+        this(nome, email, null, senha, confirmarSenha, null);
+    }
+
+    public AtualizarUsuarioRequest(String nome, String email, Role role, String senha, String confirmarSenha) {
+        this(nome, email, role, senha, confirmarSenha, null);
     }
 }

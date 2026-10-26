@@ -30,6 +30,9 @@ public class Servico {
     @Column(name = "peso_servico", precision = 3, scale = 1)
     BigDecimal pesoServicoPadrao = new BigDecimal("0.5");
 
+    @Column(nullable = false)
+    Boolean ativo = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "oficina_id", nullable = false)
     Oficina oficina;

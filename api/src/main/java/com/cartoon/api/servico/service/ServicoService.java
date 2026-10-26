@@ -58,10 +58,10 @@ public class ServicoService {
         }
         Oficina oficina = obterOficinaDoSolicitante(solicitante);
         if (nome != null && !nome.isBlank()) {
-            return servicoRepository.findByOficinaIdAndNomeContainingIgnoreCase(oficina.getId(), nome.trim(), pageable)
+            return servicoRepository.findByOficinaIdAndNomeContainingIgnoreCaseAndAtivoTrue(oficina.getId(), nome.trim(), pageable)
                     .map(ServicoMapper::paraServicoResponse);
         }
-        return servicoRepository.findByOficinaId(oficina.getId(), pageable)
+        return servicoRepository.findByOficinaIdAndAtivoTrue(oficina.getId(), pageable)
                 .map(ServicoMapper::paraServicoResponse);
     }
 
@@ -102,16 +102,11 @@ public class ServicoService {
     }
 
     @Transactional
-    public void deletar(Integer id) {
-        Servico servico = buscarEntidade(id);
-        servicoRepository.delete(servico);
-    }
-
-    @Transactional
     public void deletar(Integer id, UsuarioAutenticado solicitante) {
         Servico servico = buscarEntidade(id);
         validarAcessoOficina(servico, solicitante);
-        servicoRepository.delete(servico);
+        servico.setAtivo(false);
+        servicoRepository.save(servico);
     }
 
     private Oficina obterOficinaDoSolicitante(UsuarioAutenticado solicitante) {
@@ -124,7 +119,7 @@ public class ServicoService {
     }
 
     private void validarAcessoOficina(Servico servico, UsuarioAutenticado solicitante) {
-        if (solicitante == null || "SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
+        if (solicitante == null || solicitante.isSuperAdmin()) {
             return;
         }
         Oficina oficinaSolicitante = obterOficinaDoSolicitante(solicitante);

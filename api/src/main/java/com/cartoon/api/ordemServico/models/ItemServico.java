@@ -34,8 +34,8 @@ public class ItemServico {
     @Column(name = "tempo")
     LocalTime tempo;
 
-    @Column(name = "peso_servico", precision = 3, scale = 1)
-    BigDecimal pesoServico = new BigDecimal("0.5");
+    @Column(name = "peso_servico", precision = 5, scale = 2)
+    BigDecimal pesoServico = new BigDecimal("0.50");
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "ordem_servico_id", nullable = false)

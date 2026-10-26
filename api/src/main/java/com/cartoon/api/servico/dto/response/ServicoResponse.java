@@ -13,8 +13,12 @@ public record ServicoResponse(
         Double quantidadeHoras,
         String descricao,
         BigDecimal pesoServico,
-        Integer oficinaId
+        Integer oficinaId,
+        Boolean ativo
 ) {
+    public ServicoResponse(Integer id, String nome, LocalTime tempo, Double quantidadeHoras, String descricao, BigDecimal pesoServico, Integer oficinaId) {
+        this(id, nome, tempo, quantidadeHoras, descricao, pesoServico, oficinaId, true);
+    }
     public ServicoResponse(Integer id, String nome, LocalTime tempo, String descricao) {
         this(id, nome, tempo, tempo != null ? tempo.getHour() + (tempo.getMinute() / 60.0) + (tempo.getSecond() / 3600.0) : null, descricao, new BigDecimal("0.5"), null);
     }

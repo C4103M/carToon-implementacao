@@ -82,7 +82,7 @@ class AuthServiceTest {
         assertEquals("Email ou senha incorreto", exception.getMessage());
         verify(usuarioRepository).findByEmailIgnoreCase(dto.email());
         verify(loginAttemptService).registrarFalha(dto.email());
-        verifyNoInteractions(passwordEncoder);
+        verify(passwordEncoder).matches(eq(dto.password()), anyString());
         verifyNoInteractions(jwtService);
     }
 

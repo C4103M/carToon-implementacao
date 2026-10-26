@@ -125,6 +125,25 @@ class ServicoServiceTest {
     }
 
     @Test
+    @DisplayName("Deve permitir acesso de SUPERADMIN (ROLE_SUPERADMIN) a serviço mesmo sem oficina")
+    void devePermitirAcessoSuperAdminMesmoSemOficina() {
+        Oficina oficina = new Oficina();
+        oficina.setId(20);
+
+        Servico servico = new Servico(1, "Troca de Óleo", 1.0, "Troca completa");
+        servico.setOficina(oficina);
+
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
+
+        when(servicoRepository.findById(1)).thenReturn(Optional.of(servico));
+
+        ServicoResponse response = servicoService.buscar(1, solicitante);
+
+        assertNotNull(response);
+        assertEquals(1, response.id());
+    }
+
+    @Test
     @DisplayName("Deve lançar exceção ao buscar serviço inexistente")
     void deveLancarExcecaoAoBuscarServicoInexistente() {
         when(servicoRepository.findById(99)).thenReturn(Optional.empty());
@@ -187,14 +206,16 @@ class ServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Deve deletar um serviço com sucesso")
+    @DisplayName("Deve deletar um serviço com sucesso (soft delete)")
     void deveDeletarServicoComSucesso() {
         Servico servico = new Servico(1, "Troca de Óleo", 1.0, "Troca completa");
         when(servicoRepository.findById(1)).thenReturn(Optional.of(servico));
-        doNothing().when(servicoRepository).delete(servico);
+        when(servicoRepository.save(any(Servico.class))).thenReturn(servico);
 
-        assertDoesNotThrow(() -> servicoService.deletar(1));
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
+        assertDoesNotThrow(() -> servicoService.deletar(1, solicitante));
         verify(servicoRepository, times(1)).findById(1);
-        verify(servicoRepository, times(1)).delete(servico);
+        verify(servicoRepository, times(1)).save(servico);
+        assertFalse(servico.getAtivo());
     }
 }

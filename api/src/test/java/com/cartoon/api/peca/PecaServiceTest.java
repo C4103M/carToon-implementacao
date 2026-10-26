@@ -112,6 +112,25 @@ class PecaServiceTest {
     }
 
     @Test
+    @DisplayName("Deve permitir acesso de SUPERADMIN (ROLE_SUPERADMIN) a peça mesmo sem oficina")
+    void devePermitirAcessoSuperAdminMesmoSemOficina() {
+        Oficina oficina = new Oficina();
+        oficina.setId(20);
+
+        Peca peca = new Peca(1, "Filtro de Óleo", "Bosch", new BigDecimal("50.00"));
+        peca.setOficina(oficina);
+
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
+
+        when(pecaRepository.findById(1)).thenReturn(Optional.of(peca));
+
+        PecaResponse response = pecaService.buscar(1, solicitante);
+
+        assertNotNull(response);
+        assertEquals(1, response.id());
+    }
+
+    @Test
     @DisplayName("Deve buscar uma peça por ID com sucesso")
     void deveBuscarPecaPorIdComSucesso() {
         Peca peca = new Peca(1, "Filtro de Óleo", "Bosch", new BigDecimal("50.00"));
@@ -187,14 +206,16 @@ class PecaServiceTest {
     }
 
     @Test
-    @DisplayName("Deve deletar uma peça com sucesso")
+    @DisplayName("Deve deletar uma peça com sucesso (soft delete)")
     void deveDeletarPecaComSucesso() {
         Peca peca = new Peca(1, "Filtro de Óleo", "Bosch", new BigDecimal("50.00"));
         when(pecaRepository.findById(1)).thenReturn(Optional.of(peca));
-        doNothing().when(pecaRepository).delete(peca);
+        when(pecaRepository.save(any(Peca.class))).thenReturn(peca);
 
-        assertDoesNotThrow(() -> pecaService.deletar(1));
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
+        assertDoesNotThrow(() -> pecaService.deletar(1, solicitante));
         verify(pecaRepository, times(1)).findById(1);
-        verify(pecaRepository, times(1)).delete(peca);
+        verify(pecaRepository, times(1)).save(peca);
+        assertFalse(peca.getAtivo());
     }
 }

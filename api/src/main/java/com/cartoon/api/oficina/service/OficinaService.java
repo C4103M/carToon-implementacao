@@ -33,6 +33,16 @@ public class OficinaService {
     private final OrdemServicoRepository ordemServicoRepository;
     private final OficinaMapper mapper;
     private final UsuarioService usuarioService;
+    private final com.cartoon.api.usuario.repository.UsuarioRepository usuarioRepository;
+
+    public OficinaService(
+            OficinaRepository oficinaRepository,
+            OrdemServicoRepository ordemServicoRepository,
+            OficinaMapper mapper,
+            UsuarioService usuarioService
+    ) {
+        this(oficinaRepository, ordemServicoRepository, mapper, usuarioService, null);
+    }
 
     @Transactional
     public OficinaResponse criar(OficinaRequest request) {
@@ -41,12 +51,19 @@ public class OficinaService {
     }
 
     @Transactional(readOnly = true)
-    public List<OficinaResponse> listar() {
-        return listar(null);
-    }
+    public List<OficinaResponse> listar(Boolean ativo, UsuarioAutenticado solicitante) {
+        if (solicitante != null && !solicitante.isSuperAdmin()) {
+            Usuario usuario = usuarioService.buscarEntidade(solicitante.id().intValue());
+            Oficina oficinaUsuario = usuario.getOficina();
+            if (oficinaUsuario == null) {
+                return List.of();
+            }
+            if (ativo != null && !ativo.equals(oficinaUsuario.getAtivo())) {
+                return List.of();
+            }
+            return List.of(mapper.toResponse(oficinaUsuario));
+        }
 
-    @Transactional(readOnly = true)
-    public List<OficinaResponse> listar(Boolean ativo) {
         List<Oficina> oficinas = (ativo == null)
                 ? oficinaRepository.findAll()
                 : oficinaRepository.findAllByAtivo(ativo);
@@ -54,8 +71,16 @@ public class OficinaService {
     }
 
     @Transactional(readOnly = true)
-    public OficinaResponse buscarPorId(Integer id) {
-        return mapper.toResponse(buscarEntidade(id));
+    public OficinaResponse buscarPorId(Integer id, UsuarioAutenticado solicitante) {
+        Oficina oficina = buscarEntidade(id);
+        if (solicitante != null && !solicitante.isSuperAdmin()) {
+            Usuario usuario = usuarioService.buscarEntidade(solicitante.id().intValue());
+            Oficina oficinaUsuario = usuario.getOficina();
+            if (oficinaUsuario == null || !oficinaUsuario.getId().equals(id)) {
+                throw new AccessDeniedException("Você só pode visualizar os dados da oficina à qual pertence.");
+            }
+        }
+        return mapper.toResponse(oficina);
     }
 
     @Transactional
@@ -71,7 +96,7 @@ public class OficinaService {
     }
 
     private void validarPermissaoDeEdicao(Oficina oficina, UsuarioAutenticado solicitante) {
-        if ("ROLE_SUPERADMIN".equals(solicitante.role())) {
+        if (solicitante == null || solicitante.isSuperAdmin()) {
             return;
         }
         Usuario usuario = usuarioService.buscarEntidade(solicitante.id().intValue());
@@ -89,6 +114,9 @@ public class OficinaService {
                     "Não é possível desativar: a oficina possui ordens de serviço em aberto.");
         }
         oficina.setAtivo(false);
+        if (usuarioRepository != null) {
+            usuarioRepository.findAllByOficinaId(id).forEach(u -> u.setAtivo(false));
+        }
     }
 
     @Transactional

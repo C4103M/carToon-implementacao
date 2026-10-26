@@ -13,6 +13,12 @@ public interface ClienteRepository extends JpaRepository<Cliente, Integer> {
 
     boolean existsByCpf(String cpf);
 
+    boolean existsByOficinaIdAndCpf(Integer oficinaId, String cpf);
+
+    boolean existsByOficinaIdAndCpfAndIdNot(Integer oficinaId, String cpf, Integer id);
+
+    Optional<Cliente> findByOficinaIdAndCpf(Integer oficinaId, String cpf);
+
     List<Cliente> findAllByAtivoTrue();
 
     List<Cliente> findAllByAtivoFalse();

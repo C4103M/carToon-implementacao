@@ -48,6 +48,7 @@ export interface AtualizarUsuarioRequest {
   role?: Role;
   senha?: string;
   confirmarSenha?: string;
+  senhaAtual?: string;
 }
 
 /**

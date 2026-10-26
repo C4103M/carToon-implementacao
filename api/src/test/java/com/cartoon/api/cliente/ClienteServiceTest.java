@@ -11,6 +11,7 @@ import com.cartoon.api.compartilhado.exceptions.ClienteInativoException;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
 import com.cartoon.api.oficina.model.Oficina;
+import com.cartoon.api.ordemServico.repository.OrdemServicoRepository;
 import com.cartoon.api.usuario.model.Usuario;
 import com.cartoon.api.usuario.service.UsuarioService;
 import org.junit.jupiter.api.DisplayName;
@@ -40,8 +41,13 @@ class ClienteServiceTest {
     @Mock
     private UsuarioService usuarioService;
 
+    @Mock
+    private OrdemServicoRepository ordemServicoRepository;
+
     @InjectMocks
     private ClienteService clienteService;
+
+    private final UsuarioAutenticado superAdmin = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
 
     @Test
     @DisplayName("Deve salvar cliente com sucesso quando CPF não existir")
@@ -57,7 +63,7 @@ class ClienteServiceTest {
         when(clienteRepository.save(cliente)).thenReturn(cliente);
         when(clienteMapper.toResponse(cliente)).thenReturn(responseEsperada);
 
-        ClienteResponse response = clienteService.salvar(request);
+        ClienteResponse response = clienteService.salvar(request, superAdmin);
 
         assertNotNull(response);
         verify(clienteRepository).save(cliente);
@@ -71,7 +77,7 @@ class ClienteServiceTest {
 
         when(clienteRepository.existsByCpf(request.getCpf())).thenReturn(true);
 
-        assertThrows(ConflitoException.class, () -> clienteService.salvar(request));
+        assertThrows(ConflitoException.class, () -> clienteService.salvar(request, superAdmin));
         verify(clienteRepository, never()).save(any());
     }
 
@@ -84,7 +90,7 @@ class ClienteServiceTest {
         when(clienteRepository.findAllByAtivoTrue()).thenReturn(List.of(cliente));
         when(clienteMapper.toResponse(cliente)).thenReturn(resposta);
 
-        List<ClienteResponse> resultado = clienteService.listarTodos();
+        List<ClienteResponse> resultado = clienteService.listarTodos(superAdmin);
 
         assertEquals(1, resultado.size());
         verify(clienteRepository).findAllByAtivoTrue();
@@ -125,7 +131,7 @@ class ClienteServiceTest {
         when(clienteRepository.findAllByAtivoFalse()).thenReturn(List.of(cliente));
         when(clienteMapper.toResponse(cliente)).thenReturn(resposta);
 
-        List<ClienteResponse> resultado = clienteService.listarInativos();
+        List<ClienteResponse> resultado = clienteService.listarInativos(superAdmin);
 
         assertEquals(1, resultado.size());
         verify(clienteRepository).findAllByAtivoFalse();
@@ -186,7 +192,7 @@ class ClienteServiceTest {
 
         when(clienteRepository.findById(id)).thenReturn(Optional.of(cliente));
 
-        clienteService.inativar(id);
+        clienteService.inativar(id, superAdmin);
 
         assertFalse(cliente.isAtivo());
         verify(clienteRepository).save(cliente);
@@ -200,7 +206,7 @@ class ClienteServiceTest {
 
         when(clienteRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThrows(RecursoNaoEncontradoException.class, () -> clienteService.inativar(id));
+        assertThrows(RecursoNaoEncontradoException.class, () -> clienteService.inativar(id, superAdmin));
 
         verify(clienteRepository, never()).save(any());
         verify(clienteRepository, never()).delete(any());
@@ -216,7 +222,7 @@ class ClienteServiceTest {
 
         when(clienteRepository.findById(id)).thenReturn(Optional.of(cliente));
 
-        clienteService.ativar(id);
+        clienteService.ativar(id, superAdmin);
 
         assertTrue(cliente.isAtivo());
         verify(clienteRepository).save(cliente);
@@ -227,7 +233,7 @@ class ClienteServiceTest {
     void ativar_ComIdInexistente_LancaExcecao() {
         when(clienteRepository.findById(99)).thenReturn(Optional.empty());
 
-        assertThrows(RecursoNaoEncontradoException.class, () -> clienteService.ativar(99));
+        assertThrows(RecursoNaoEncontradoException.class, () -> clienteService.ativar(99, superAdmin));
 
         verify(clienteRepository, never()).save(any());
     }
@@ -243,7 +249,7 @@ class ClienteServiceTest {
         when(clienteRepository.findById(id)).thenReturn(Optional.of(cliente));
 
         assertThrows(ClienteInativoException.class,
-                () -> clienteService.atualizar(id, new ClienteRequest()));
+                () -> clienteService.atualizar(id, new ClienteRequest(), superAdmin));
 
         verify(clienteRepository, never()).save(any());
         verifyNoInteractions(clienteMapper);

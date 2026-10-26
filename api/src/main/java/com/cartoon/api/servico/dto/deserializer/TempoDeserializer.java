@@ -49,7 +49,10 @@ public class TempoDeserializer extends JsonDeserializer<LocalTime> {
         if (mHoraMin.matches()) {
             int h = Integer.parseInt(mHoraMin.group(1));
             int m = mHoraMin.group(2) != null ? Integer.parseInt(mHoraMin.group(2)) : 0;
-            return LocalTime.of(Math.min(h, 23), Math.min(m, 59));
+            if (h > 23 || m > 59) {
+                throw new IllegalArgumentException("Duração do serviço excede o limite máximo permitido de 23:59: " + text);
+            }
+            return LocalTime.of(h, m);
         }
 
         // 3. Se for formato de minutos apenas: 30m, 45min, 90minutos
@@ -58,7 +61,10 @@ public class TempoDeserializer extends JsonDeserializer<LocalTime> {
             int totalMin = Integer.parseInt(mMin.group(1));
             int h = totalMin / 60;
             int m = totalMin % 60;
-            return LocalTime.of(Math.min(h, 23), Math.min(m, 59));
+            if (h > 23) {
+                throw new IllegalArgumentException("Duração do serviço excede o limite máximo permitido de 23:59: " + text);
+            }
+            return LocalTime.of(h, m);
         }
 
         // 4. Se for formato HH:mm ou H:mm ou HH:mm:ss
@@ -67,7 +73,10 @@ public class TempoDeserializer extends JsonDeserializer<LocalTime> {
             int h = Integer.parseInt(parts[0].trim());
             int m = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 0;
             int s = parts.length > 2 ? Integer.parseInt(parts[2].trim()) : 0;
-            return LocalTime.of(Math.min(h, 23), Math.min(m, 59), Math.min(s, 59));
+            if (h > 23 || m > 59 || s > 59) {
+                throw new IllegalArgumentException("Duração do serviço excede o limite máximo permitido de 23:59: " + text);
+            }
+            return LocalTime.of(h, m, s);
         }
 
         // 5. Se for apenas um número em string (ex: "1.5" ou "2" ou "1,5")
@@ -79,7 +88,10 @@ public class TempoDeserializer extends JsonDeserializer<LocalTime> {
                 horas += minutos / 60;
                 minutos = minutos % 60;
             }
-            return LocalTime.of(Math.min(horas, 23), Math.min(minutos, 59));
+            if (horas > 23) {
+                throw new IllegalArgumentException("Duração do serviço excede o limite máximo permitido de 23:59: " + text);
+            }
+            return LocalTime.of(horas, minutos);
         } catch (NumberFormatException ignored) {
         }
 

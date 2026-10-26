@@ -102,16 +102,11 @@ public class PecaService {
     }
 
     @Transactional
-    public void deletar(Integer id) {
-        Peca peca = buscarEntidade(id);
-        pecaRepository.delete(peca);
-    }
-
-    @Transactional
     public void deletar(Integer id, UsuarioAutenticado solicitante) {
         Peca peca = buscarEntidade(id);
         validarAcessoOficina(peca, solicitante);
-        pecaRepository.delete(peca);
+        peca.setAtivo(false);
+        pecaRepository.save(peca);
     }
 
     private Oficina obterOficinaDoSolicitante(UsuarioAutenticado solicitante) {
@@ -124,7 +119,7 @@ public class PecaService {
     }
 
     private void validarAcessoOficina(Peca peca, UsuarioAutenticado solicitante) {
-        if (solicitante == null || "SUPERADMIN".equalsIgnoreCase(solicitante.role())) {
+        if (solicitante == null || solicitante.isSuperAdmin()) {
             return;
         }
         Oficina oficinaSolicitante = obterOficinaDoSolicitante(solicitante);

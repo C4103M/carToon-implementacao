@@ -29,13 +29,13 @@ class AuthControllerTest {
     @Mock
     private AuthService authService;
 
-    @InjectMocks
     private AuthController authController;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
+        authController = new AuthController(authService, false);
         mockMvc = MockMvcBuilders.standaloneSetup(authController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();

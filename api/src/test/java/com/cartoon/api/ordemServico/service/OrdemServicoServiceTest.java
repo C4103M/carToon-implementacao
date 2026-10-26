@@ -72,6 +72,9 @@ class OrdemServicoServiceTest {
     @Mock
     private ServicoService servicoService;
 
+    @Mock
+    private com.cartoon.api.seguranca.TenantGuard tenantGuard;
+
     @Spy
     private CalculadoraOrcamento calculadora = new CalculadoraOrcamento();
 
@@ -82,28 +85,41 @@ class OrdemServicoServiceTest {
     private Oficina oficina;
     private Usuario mecanico;
     private OrdemServico ordemServico;
+    private UsuarioAutenticado solicitante;
 
     @BeforeEach
     void setUp() {
-        veiculo = new Veiculo();
-        veiculo.setId(1);
-        veiculo.setPlaca("ABC-1234");
+        solicitante = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
 
         oficina = new Oficina();
         oficina.setId(1);
         oficina.setNome("Oficina Central");
         oficina.setValorHora(new BigDecimal("100.00"));
         oficina.setTaxaRisco(new BigDecimal("0.10"));
+        oficina.setAtivo(true);
+
+        com.cartoon.api.cliente.model.Cliente cliente = new com.cartoon.api.cliente.model.Cliente();
+        cliente.setId(1);
+        cliente.setNome("Cliente Teste");
+        cliente.setAtivo(true);
+        cliente.setOficina(oficina);
+
+        veiculo = new Veiculo();
+        veiculo.setId(1);
+        veiculo.setPlaca("ABC-1234");
+        veiculo.setAtivo(true);
+        veiculo.setCliente(cliente);
 
         mecanico = new Usuario();
         mecanico.setId(1);
         mecanico.setNome("Carlos Mecanico");
         mecanico.setRole(Role.MECANICO);
         mecanico.setOficina(oficina);
+        mecanico.setAtivo(true);
 
         ordemServico = new OrdemServico();
         ordemServico.setId(10);
-        ordemServico.setDescricao("Troca de óleo");
+        ordemServico.setDescricao("Troca de Ã³leo");
         ordemServico.setStatusServico(StatusServico.PENDENTE);
         ordemServico.setVeiculo(veiculo);
         ordemServico.setOficina(oficina);
@@ -113,9 +129,9 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Salvar - Deve criar e retornar nova Ordem de Serviço com data de inicio como agora")
+    @DisplayName("Salvar - Deve criar e retornar nova Ordem de ServiÃ§o com data de inicio como agora")
     void salvar_ComDadosValidos_DeveSalvarERetornarResponse() {
-        OrdemServicoRequest request = new OrdemServicoRequest(1, 1, "Troca de óleo");
+        OrdemServicoRequest request = new OrdemServicoRequest(1, 1, "Troca de Ã³leo");
 
         when(veiculoService.buscarEntidade(1)).thenReturn(veiculo);
         UsuarioAutenticado solicitante = new UsuarioAutenticado(1L, "carlos@cartoon.com", "MECANICO");
@@ -130,7 +146,7 @@ class OrdemServicoServiceTest {
 
         assertNotNull(response);
         assertEquals(10, response.id());
-        assertEquals("Troca de óleo", response.descricao());
+        assertEquals("Troca de Ã³leo", response.descricao());
         assertEquals(StatusServico.PENDENTE, response.status());
         assertEquals("ABC-1234", response.placa());
         assertEquals("Carlos Mecanico", response.mecanicoNome());
@@ -144,7 +160,7 @@ class OrdemServicoServiceTest {
     void buscar_QuandoExiste_DeveRetornarResponse() {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        OrdemServicoResponse response = ordemServicoService.buscar(10);
+        OrdemServicoResponse response = ordemServicoService.buscar(10, solicitante);
 
         assertNotNull(response);
         assertEquals(10, response.id());
@@ -153,15 +169,15 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Buscar - Deve lançar RecursoNaoEncontradoException quando OS não for encontrada")
+    @DisplayName("Buscar - Deve lanÃ§ar RecursoNaoEncontradoException quando OS nÃ£o for encontrada")
     void buscar_QuandoNaoExiste_DeveLancarExcecao() {
         when(ordemServicoRepository.findById(99)).thenReturn(Optional.empty());
 
-        assertThrows(RecursoNaoEncontradoException.class, () -> ordemServicoService.buscar(99));
+        assertThrows(RecursoNaoEncontradoException.class, () -> ordemServicoService.buscar(99, solicitante));
     }
 
     @Test
-    @DisplayName("Listar - Deve retornar página de resumos de OrdemServico")
+    @DisplayName("Listar - Deve retornar pÃ¡gina de resumos de OrdemServico")
     void listar_DeveRetornarPaginaDeResumos() {
         OrdemServicoFiltro filtro = new OrdemServicoFiltro(1, 1, 1, StatusServico.PENDENTE);
         Pageable pageable = PageRequest.of(0, 10);
@@ -169,7 +185,7 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
-        Page<OrdemServicoResumo> resultado = ordemServicoService.listar(filtro, pageable);
+        Page<OrdemServicoResumo> resultado = ordemServicoService.listar(filtro, pageable, solicitante);
 
         assertNotNull(resultado);
         assertEquals(1, resultado.getTotalElements());
@@ -183,7 +199,7 @@ class OrdemServicoServiceTest {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(ordemServicoRepository.save(ordemServico)).thenReturn(ordemServico);
 
-        OrdemServicoResponse response = ordemServicoService.aceitar(10);
+        OrdemServicoResponse response = ordemServicoService.aceitar(10, solicitante);
 
         assertEquals(StatusServico.ACEITO, response.status());
         assertEquals(StatusServico.ACEITO, ordemServico.getStatusServico());
@@ -193,10 +209,11 @@ class OrdemServicoServiceTest {
     @Test
     @DisplayName("Iniciar - Deve atualizar status para EM_ANDAMENTO")
     void iniciar_DeveAtualizarStatusParaEmAndamento() {
+        ordemServico.setStatusServico(StatusServico.ACEITO);
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(ordemServicoRepository.save(ordemServico)).thenReturn(ordemServico);
 
-        OrdemServicoResponse response = ordemServicoService.iniciar(10);
+        OrdemServicoResponse response = ordemServicoService.iniciar(10, solicitante);
 
         assertEquals(StatusServico.EM_ANDAMENTO, response.status());
         assertEquals(LocalDate.now(), response.dataInicio());
@@ -207,10 +224,16 @@ class OrdemServicoServiceTest {
     @Test
     @DisplayName("Finalizar - Deve atualizar status para FINALIZADO")
     void finalizar_DeveAtualizarStatusParaFinalizado() {
+        ordemServico.setStatusServico(StatusServico.EM_ANDAMENTO);
+        ItemPeca itemPeca = new ItemPeca();
+        itemPeca.setId(1);
+        itemPeca.setSubtotal(BigDecimal.TEN);
+        ordemServico.adicionarItemPeca(itemPeca);
+
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(ordemServicoRepository.save(ordemServico)).thenReturn(ordemServico);
 
-        OrdemServicoResponse response = ordemServicoService.finalizar(10);
+        OrdemServicoResponse response = ordemServicoService.finalizar(10, solicitante);
 
         assertEquals(StatusServico.FINALIZADO, response.status());
         assertEquals(LocalDate.now(), response.dataFinalizacao());
@@ -224,7 +247,7 @@ class OrdemServicoServiceTest {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(ordemServicoRepository.save(ordemServico)).thenReturn(ordemServico);
 
-        OrdemServicoResponse response = ordemServicoService.rejeitar(10);
+        OrdemServicoResponse response = ordemServicoService.rejeitar(10, solicitante);
 
         assertEquals(StatusServico.REJEITADO, response.status());
         assertEquals(LocalDate.now(), response.dataRejeicao());
@@ -233,7 +256,7 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Adicionar Peça - Deve aplicar margemPeca da oficina (ex: 10% em peça de 100 sai a 110)")
+    @DisplayName("Adicionar PeÃ§a - Deve aplicar margemPeca da oficina (ex: 10% em peÃ§a de 100 sai a 110)")
     void adicionarPeca_ComMargemPeca_DeveAplicarMargemSobreValorBase() {
         oficina.setMargemPeca(new BigDecimal("1.10"));
         ItemPecaRequest request = new ItemPecaRequest(5, 1);
@@ -245,7 +268,7 @@ class OrdemServicoServiceTest {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(pecaService.buscarEntidade(5)).thenReturn(peca);
 
-        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, request);
+        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, request, solicitante);
 
         assertNotNull(response);
         assertEquals(1, ordemServico.getItensPeca().size());
@@ -260,17 +283,17 @@ class OrdemServicoServiceTest {
         ItemPecaRequest request = new ItemPecaRequest(5, 2);
         Peca peca = new Peca();
         peca.setId(5);
-        peca.setNome("Filtro de Óleo");
+        peca.setNome("Filtro de Ã“leo");
         peca.setValorBase(BigDecimal.valueOf(50.0));
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(pecaService.buscarEntidade(5)).thenReturn(peca);
 
-        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, request);
+        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, request, solicitante);
 
         assertNotNull(response);
         assertEquals(1, ordemServico.getItensPeca().size());
-        assertEquals("Filtro de Óleo", ordemServico.getItensPeca().get(0).getPeca().getNome());
+        assertEquals("Filtro de Ã“leo", ordemServico.getItensPeca().get(0).getPeca().getNome());
         assertEquals(0, BigDecimal.valueOf(100.0).compareTo(response.total()));
         assertEquals(0, BigDecimal.valueOf(100.0).compareTo(ordemServico.getTotal()));
     }
@@ -282,17 +305,16 @@ class OrdemServicoServiceTest {
         ItemPecaRequest request = new ItemPecaRequest(5, 2);
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
-        when(pecaService.buscarEntidade(5)).thenReturn(new Peca());
 
-        assertThrows(ConflitoException.class, () -> ordemServicoService.adicionarPeca(10, request));
+        assertThrows(ConflitoException.class, () -> ordemServicoService.adicionarPeca(10, request, solicitante));
     }
 
     @Test
-    @DisplayName("Remover Peça - Deve remover peça existente de ordem não finalizada")
+    @DisplayName("Remover PeÃ§a - Deve remover peÃ§a existente de ordem nÃ£o finalizada")
     void removerPeca_QuandoExiste_DeveRemoverPeca() {
         Peca peca = new Peca();
         peca.setId(5);
-        peca.setNome("Filtro de Óleo");
+        peca.setNome("Filtro de Ã“leo");
         peca.setValorBase(BigDecimal.valueOf(50.0));
 
         ItemPeca item = new ItemPeca();
@@ -305,7 +327,7 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        OrdemServicoResponse response = ordemServicoService.removerPeca(10, 100);
+        OrdemServicoResponse response = ordemServicoService.removerPeca(10, 100, solicitante);
 
         assertNotNull(response);
         assertTrue(ordemServico.getItensPeca().isEmpty());
@@ -314,11 +336,11 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Remover Peça - Deve atualizar total quando ainda restam itens na ordem")
+    @DisplayName("Remover PeÃ§a - Deve atualizar total quando ainda restam itens na ordem")
     void removerPeca_QuandoAindaRestamItens_DeveRecalcularTotal() {
         Peca peca1 = new Peca();
         peca1.setId(1);
-        peca1.setNome("Filtro de Óleo");
+        peca1.setNome("Filtro de Ã“leo");
         peca1.setValorBase(BigDecimal.valueOf(50.0));
 
         ItemPeca item1 = new ItemPeca();
@@ -347,7 +369,7 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        OrdemServicoResponse response = ordemServicoService.removerPeca(10, 101);
+        OrdemServicoResponse response = ordemServicoService.removerPeca(10, 101, solicitante);
 
         assertNotNull(response);
         assertEquals(1, ordemServico.getItensPeca().size());
@@ -388,11 +410,11 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Adicionar Peça - Deve acumular valor total quando a ordem já possui outras peças")
+    @DisplayName("Adicionar PeÃ§a - Deve acumular valor total quando a ordem jÃ¡ possui outras peÃ§as")
     void adicionarPeca_QuandoJaPossuiPecas_DeveAcumularValorTotal() {
         Peca pecaExistente = new Peca();
         pecaExistente.setId(1);
-        pecaExistente.setNome("Óleo");
+        pecaExistente.setNome("Ã“leo");
         pecaExistente.setValorBase(BigDecimal.valueOf(40.0));
 
         ItemPeca itemExistente = new ItemPeca();
@@ -407,13 +429,13 @@ class OrdemServicoServiceTest {
         ItemPecaRequest novaPecaRequest = new ItemPecaRequest(2, 2);
         Peca novaPeca = new Peca();
         novaPeca.setId(2);
-        novaPeca.setNome("Vela de Ignição");
+        novaPeca.setNome("Vela de IgniÃ§Ã£o");
         novaPeca.setValorBase(BigDecimal.valueOf(30.0));
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(pecaService.buscarEntidade(2)).thenReturn(novaPeca);
 
-        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, novaPecaRequest);
+        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, novaPecaRequest, solicitante);
 
         assertNotNull(response);
         assertEquals(2, ordemServico.getItensPeca().size());
@@ -423,7 +445,7 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Adicionar Peça - Deve somar peça nova ao total quando a ordem já possui itens de serviço")
+    @DisplayName("Adicionar PeÃ§a - Deve somar peÃ§a nova ao total quando a ordem jÃ¡ possui itens de serviÃ§o")
     void adicionarPeca_QuandoJaPossuiServicos_DeveSomarPecaAosServicos() {
         ItemServico itemServico = new ItemServico();
         itemServico.setId(1);
@@ -442,16 +464,16 @@ class OrdemServicoServiceTest {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(pecaService.buscarEntidade(5)).thenReturn(peca);
 
-        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, request);
+        OrdemServicoResponse response = ordemServicoService.adicionarPeca(10, request, solicitante);
 
         assertNotNull(response);
-        // 120.0 (serviço) + 80.0 (peça) = 200.0
+        // 120.0 (serviÃ§o) + 80.0 (peÃ§a) = 200.0
         assertEquals(0, BigDecimal.valueOf(200.0).compareTo(response.total()));
         assertEquals(0, BigDecimal.valueOf(200.0).compareTo(ordemServico.getTotal()));
     }
 
     @Test
-    @DisplayName("Remover Peça - Deve manter valor dos serviços quando restar apenas itens de serviço na ordem")
+    @DisplayName("Remover PeÃ§a - Deve manter valor dos serviÃ§os quando restar apenas itens de serviÃ§o na ordem")
     void removerPeca_QuandoRestarApenasServicos_TotalDeveSerApenasServicos() {
         Peca peca = new Peca();
         peca.setId(1);
@@ -478,18 +500,18 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        OrdemServicoResponse response = ordemServicoService.removerPeca(10, 100);
+        OrdemServicoResponse response = ordemServicoService.removerPeca(10, 100, solicitante);
 
         assertNotNull(response);
         assertTrue(ordemServico.getItensPeca().isEmpty());
         assertEquals(1, ordemServico.getItensServico().size());
-        // Deve restar apenas os 150.0 do serviço
+        // Deve restar apenas os 150.0 do serviÃ§o
         assertEquals(0, BigDecimal.valueOf(150.0).compareTo(response.total()));
         assertEquals(0, BigDecimal.valueOf(150.0).compareTo(ordemServico.getTotal()));
     }
 
     @Test
-    @DisplayName("Recalcular Total - Deve manter precisão correta com valores decimais fracionados")
+    @DisplayName("Recalcular Total - Deve manter precisÃ£o correta com valores decimais fracionados")
     void recalcularTotal_ComValoresDecimaisFracionados_DeveManterPrecisao() {
         ItemPeca itemPeca = new ItemPeca();
         itemPeca.setId(1);
@@ -551,7 +573,7 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        OrdemServicoResponse response = ordemServicoService.buscar(10);
+        OrdemServicoResponse response = ordemServicoService.buscar(10, solicitante);
 
         assertNotNull(response);
         assertEquals(0, BigDecimal.valueOf(1000.0).compareTo(response.total()));
@@ -578,7 +600,7 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
-        Page<OrdemServicoResumo> resultado = ordemServicoService.listar(filtro, pageable);
+        Page<OrdemServicoResumo> resultado = ordemServicoService.listar(filtro, pageable, solicitante);
 
         assertNotNull(resultado);
         assertEquals(1, resultado.getContent().size());
@@ -586,35 +608,35 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Remover Peça - Deve lançar RecursoNaoEncontradoException quando item de peça não existir")
+    @DisplayName("Remover PeÃ§a - Deve lanÃ§ar RecursoNaoEncontradoException quando item de peÃ§a nÃ£o existir")
     void removerPeca_QuandoItemNaoExiste_DeveLancarExcecao() {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        assertThrows(RecursoNaoEncontradoException.class, () -> ordemServicoService.removerPeca(10, 999));
+        assertThrows(RecursoNaoEncontradoException.class, () -> ordemServicoService.removerPeca(10, 999, solicitante));
     }
 
     @Test
-    @DisplayName("Excluir - Deve excluir ordem quando não estiver finalizada")
+    @DisplayName("Excluir - Deve excluir ordem quando nÃ£o estiver finalizada")
     void excluir_QuandoNaoFinalizada_DeveExcluir() throws Exception {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        ordemServicoService.excluir(10);
+        ordemServicoService.excluir(10, solicitante);
 
         verify(ordemServicoRepository).delete(ordemServico);
     }
 
     @Test
-    @DisplayName("Excluir - Deve lançar ConflitoException ao tentar excluir ordem finalizada")
+    @DisplayName("Excluir - Deve lanÃ§ar ConflitoException ao tentar excluir ordem finalizada")
     void excluir_QuandoFinalizada_DeveLancarExcecao() {
         ordemServico.setStatusServico(StatusServico.FINALIZADO);
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        assertThrows(ConflitoException.class, () -> ordemServicoService.excluir(10));
+        assertThrows(ConflitoException.class, () -> ordemServicoService.excluir(10, solicitante));
         verify(ordemServicoRepository, never()).delete(any(OrdemServico.class));
     }
 
     @Test
-    @DisplayName("Adicionar Serviço - Deve adicionar serviço em ordem não finalizada com 1% do valor FIPE")
+    @DisplayName("Adicionar ServiÃ§o - Deve adicionar serviÃ§o em ordem nÃ£o finalizada com 1% do valor FIPE")
     void adicionarServico_QuandoOrdemNaoFinalizada_DeveAdicionarServico() {
         veiculo.setValorFipe(new BigDecimal("50000"));
         ItemServicoRequest request = new ItemServicoRequest(3, 1);
@@ -626,7 +648,7 @@ class OrdemServicoServiceTest {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
         when(servicoService.buscarEntidade(3)).thenReturn(servico);
 
-        OrdemServicoResponse response = ordemServicoService.adicionarServico(10, request);
+        OrdemServicoResponse response = ordemServicoService.adicionarServico(10, request, solicitante);
 
         assertNotNull(response);
         assertEquals(1, ordemServico.getItensServico().size());
@@ -644,13 +666,12 @@ class OrdemServicoServiceTest {
         ItemServicoRequest request = new ItemServicoRequest(3, 1);
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
-        when(servicoService.buscarEntidade(3)).thenReturn(new Servico());
 
-        assertThrows(ConflitoException.class, () -> ordemServicoService.adicionarServico(10, request));
+        assertThrows(ConflitoException.class, () -> ordemServicoService.adicionarServico(10, request, solicitante));
     }
 
     @Test
-    @DisplayName("Remover Serviço - Deve remover serviço existente de ordem não finalizada")
+    @DisplayName("Remover ServiÃ§o - Deve remover serviÃ§o existente de ordem nÃ£o finalizada")
     void removerServico_QuandoExiste_DeveRemoverServico() {
         Servico servico = new Servico();
         servico.setId(3);
@@ -666,22 +687,22 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        OrdemServicoResponse response = ordemServicoService.removerServico(10, 200);
+        OrdemServicoResponse response = ordemServicoService.removerServico(10, 200, solicitante);
 
         assertNotNull(response);
         assertTrue(ordemServico.getItensServico().isEmpty());
     }
 
     @Test
-    @DisplayName("Remover Serviço - Deve lançar RecursoNaoEncontradoException quando item de serviço não existir")
+    @DisplayName("Remover ServiÃ§o - Deve lanÃ§ar RecursoNaoEncontradoException quando item de serviÃ§o nÃ£o existir")
     void removerServico_QuandoItemNaoExiste_DeveLancarExcecao() {
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        assertThrows(RecursoNaoEncontradoException.class, () -> ordemServicoService.removerServico(10, 999));
+        assertThrows(RecursoNaoEncontradoException.class, () -> ordemServicoService.removerServico(10, 999, solicitante));
     }
 
     @Test
-    @DisplayName("Aplicar Desconto - Deve abater percentual da soma total da ordem de serviço")
+    @DisplayName("Aplicar Desconto - Deve abater percentual da soma total da ordem de serviÃ§o")
     void aplicarDesconto_DeveAbaterPercentualDoTotal() {
         Peca pecaNova = new Peca();
         pecaNova.setId(1);
@@ -702,7 +723,7 @@ class OrdemServicoServiceTest {
         when(ordemServicoRepository.save(any(OrdemServico.class))).thenAnswer(inv -> inv.getArgument(0));
 
         DescontoRequest request = new DescontoRequest(Desconto.DEZ_PORCENTO);
-        OrdemServicoResponse response = ordemServicoService.aplicarDesconto(10, request);
+        OrdemServicoResponse response = ordemServicoService.aplicarDesconto(10, request, solicitante);
 
         assertNotNull(response);
         assertEquals(Desconto.DEZ_PORCENTO, response.desconto());
@@ -712,21 +733,21 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Aplicar Desconto - Deve lançar ConflitoException quando ordem estiver finalizada")
+    @DisplayName("Aplicar Desconto - Deve lanÃ§ar ConflitoException quando ordem estiver finalizada")
     void aplicarDesconto_QuandoOrdemFinalizada_DeveLancarExcecao() {
         ordemServico.setStatusServico(StatusServico.FINALIZADO);
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
         DescontoRequest request = new DescontoRequest(Desconto.QUINZE_PORCENTO);
-        assertThrows(ConflitoException.class, () -> ordemServicoService.aplicarDesconto(10, request));
+        assertThrows(ConflitoException.class, () -> ordemServicoService.aplicarDesconto(10, request, solicitante));
     }
 
     @Test
-    @DisplayName("Atualizar Valor Item Serviço - Mecânico/Admin pode alterar valor proposto do serviço e recalcular totais")
+    @DisplayName("Atualizar Valor Item ServiÃ§o - MecÃ¢nico/Admin pode alterar valor proposto do serviÃ§o e recalcular totais")
     void atualizarValorItemServico_DeveAtualizarValorUnitarioESubtotalETotal() {
         Servico servico = new Servico();
         servico.setId(1);
-        servico.setNome("Troca de Óleo");
+        servico.setNome("Troca de Ã“leo");
 
         ItemServico item = new ItemServico();
         item.setId(50);
@@ -739,7 +760,7 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        OrdemServicoResponse response = ordemServicoService.atualizarValorItemServico(10, 50, new BigDecimal("120.00"));
+        OrdemServicoResponse response = ordemServicoService.atualizarValorItemServico(10, 50, new BigDecimal("120.00"), solicitante);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("120.00"), item.getValorUnitario());
@@ -748,13 +769,13 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Atualizar Peso Item Serviço - Deve atualizar peso e recalcular valor unitário automaticamente pela fórmula")
+    @DisplayName("Atualizar Peso Item ServiÃ§o - Deve atualizar peso e recalcular valor unitÃ¡rio automaticamente pela fÃ³rmula")
     void atualizarItemServico_ComNovoPeso_DeveRecalcularValorUnitarioPelaFormula() {
         veiculo.setValorFipe(new BigDecimal("50000.00")); // Fipe = 50.000 -> fator = 0.5
         // oficina taxaRisco = 0.10, valorHora = 100.00
         Servico servico = new Servico();
         servico.setId(1);
-        servico.setNome("Manutenção de Freios");
+        servico.setNome("ManutenÃ§Ã£o de Freios");
         servico.setQuantidadeHoras(2.0); // 2h -> Base = 200.00
 
         ItemServico item = new ItemServico();
@@ -773,7 +794,7 @@ class OrdemServicoServiceTest {
 
         // Atualiza para peso 0.0 (sem risco extra): valor esperado 200.00
         AtualizarItemValorRequest requestSemRisco = new AtualizarItemValorRequest(null, BigDecimal.ZERO);
-        OrdemServicoResponse response = ordemServicoService.atualizarItemServico(10, 51, requestSemRisco);
+        OrdemServicoResponse response = ordemServicoService.atualizarItemServico(10, 51, requestSemRisco, solicitante);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("200.00"), item.getValorUnitario());
@@ -782,7 +803,7 @@ class OrdemServicoServiceTest {
 
         // Atualiza para peso 1.0 (alto risco): 200 * (1 + 0.5 * 0.10 * 1.0) = 200 * 1.05 = 210.00
         AtualizarItemValorRequest requestAltoRisco = new AtualizarItemValorRequest(null, BigDecimal.ONE);
-        response = ordemServicoService.atualizarItemServico(10, 51, requestAltoRisco);
+        response = ordemServicoService.atualizarItemServico(10, 51, requestAltoRisco, solicitante);
 
         assertEquals(new BigDecimal("210.00"), item.getValorUnitario());
         assertEquals(new BigDecimal("210.00"), item.getSubtotal());
@@ -790,7 +811,7 @@ class OrdemServicoServiceTest {
     }
 
     @Test
-    @DisplayName("Atualizar Valor Item Peça - Mecânico/Admin pode alterar valor da peça e recalcular subtotal e totais")
+    @DisplayName("Atualizar Valor Item PeÃ§a - MecÃ¢nico/Admin pode alterar valor da peÃ§a e recalcular subtotal e totais")
     void atualizarValorItemPeca_DeveAtualizarValorUnitarioESubtotalETotal() {
         Peca peca = new Peca();
         peca.setId(5);
@@ -810,7 +831,7 @@ class OrdemServicoServiceTest {
 
         when(ordemServicoRepository.findById(10)).thenReturn(Optional.of(ordemServico));
 
-        OrdemServicoResponse response = ordemServicoService.atualizarValorItemPeca(10, 60, new BigDecimal("130.00"));
+        OrdemServicoResponse response = ordemServicoService.atualizarValorItemPeca(10, 60, new BigDecimal("130.00"), solicitante);
 
         assertNotNull(response);
         assertEquals(new BigDecimal("130.00"), item.getValorUnitario());

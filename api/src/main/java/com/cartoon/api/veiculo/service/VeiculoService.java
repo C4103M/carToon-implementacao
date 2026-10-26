@@ -1,5 +1,6 @@
 package com.cartoon.api.veiculo.service;
 
+import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.cliente.model.Cliente;
 import com.cartoon.api.cliente.service.ClienteService;
 import com.cartoon.api.compartilhado.exceptions.ClienteInativoException;
@@ -10,10 +11,14 @@ import com.cartoon.api.fipe.dto.FipeItemDTO;
 import com.cartoon.api.fipe.dto.FipeValorDTO;
 import com.cartoon.api.fipe.dto.TipoVeiculo;
 import com.cartoon.api.fipe.service.FipeService;
+import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
 import com.cartoon.api.ordemServico.mapper.OrdemServicoMapper;
 import com.cartoon.api.ordemServico.models.OrdemServico;
+import com.cartoon.api.ordemServico.models.StatusServico;
+import com.cartoon.api.ordemServico.repository.OrdemServicoRepository;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
+import com.cartoon.api.seguranca.TenantGuard;
 import com.cartoon.api.veiculo.dto.mapper.VeiculoMapper;
 import com.cartoon.api.veiculo.dto.request.VeiculoAtualizacaoRequest;
 import com.cartoon.api.veiculo.dto.request.VeiculoFiltro;
@@ -23,11 +28,13 @@ import com.cartoon.api.veiculo.dto.response.VeiculoResponse;
 import com.cartoon.api.veiculo.model.Veiculo;
 import com.cartoon.api.veiculo.repository.VeiculoRepository;
 import com.cartoon.api.veiculo.specs.VeiculoSpecs;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,28 +48,53 @@ public class VeiculoService {
             "^([A-Za-z]{3}-?[0-9]{4}|[A-Za-z]{3}-?[0-9][A-Za-z][0-9]{2})$"
     );
 
+    private static final List<StatusServico> STATUS_EM_ABERTO = List.of(
+            StatusServico.PENDENTE, StatusServico.ACEITO, StatusServico.EM_ANDAMENTO
+    );
+
     private final VeiculoRepository veiculoRepository;
     private final ClienteService clienteService;
     private final OrdemServicoService ordemServicoService;
     private final FipeService fipeService;
+    private final TenantGuard tenantGuard;
+    private final OrdemServicoRepository ordemServicoRepository;
 
     public VeiculoService(
             VeiculoRepository veiculoRepository,
             ClienteService clienteService,
             @Lazy OrdemServicoService ordemServicoService,
-            @Lazy FipeService fipeService
+            @Lazy FipeService fipeService,
+            TenantGuard tenantGuard,
+            @Lazy @Autowired(required = false) OrdemServicoRepository ordemServicoRepository
     ) {
         this.veiculoRepository = veiculoRepository;
         this.clienteService = clienteService;
         this.ordemServicoService = ordemServicoService;
         this.fipeService = fipeService;
+        this.tenantGuard = tenantGuard;
+        this.ordemServicoRepository = ordemServicoRepository;
+    }
+
+    public VeiculoService(
+            VeiculoRepository veiculoRepository,
+            ClienteService clienteService,
+            OrdemServicoService ordemServicoService,
+            FipeService fipeService,
+            TenantGuard tenantGuard
+    ) {
+        this(veiculoRepository, clienteService, ordemServicoService, fipeService, tenantGuard, null);
     }
 
     @Transactional
-    public VeiculoResponse cadastrar(VeiculoRequest request) {
+    public VeiculoResponse cadastrar(VeiculoRequest request, UsuarioAutenticado solicitante) {
         Cliente cliente = clienteService.buscarEntidade(request.clienteId());
         if (!cliente.isAtivo()) {
             throw new ClienteInativoException();
+        }
+
+        if (solicitante != null && !solicitante.isSuperAdmin() && tenantGuard != null) {
+            tenantGuard.validarAcessoOficina(cliente.getOficina(), solicitante,
+                    "Você não pode cadastrar veículos para clientes de outra oficina.");
         }
 
         if (request.placa() == null || !PADRAO_PLACA.matcher(request.placa().trim()).matches()) {
@@ -70,7 +102,13 @@ public class VeiculoService {
         }
 
         String placaNormalizada = normalizarPlaca(request.placa());
-        if (veiculoRepository.existsByPlacaIgnoreCase(placaNormalizada)) {
+        boolean placaExiste;
+        if (cliente.getOficina() != null && cliente.getOficina().getId() != null) {
+            placaExiste = veiculoRepository.existsByClienteOficinaIdAndPlacaIgnoreCase(cliente.getOficina().getId(), placaNormalizada);
+        } else {
+            placaExiste = veiculoRepository.existsByPlacaIgnoreCase(placaNormalizada);
+        }
+        if (placaExiste) {
             throw new ConflitoException("Já existe um veículo cadastrado com esta placa no sistema.");
         }
 
@@ -82,14 +120,19 @@ public class VeiculoService {
     }
 
     @Transactional
-    public VeiculoResponse atualizar(Integer id, VeiculoAtualizacaoRequest request) {
+    public VeiculoResponse atualizar(Integer id, VeiculoAtualizacaoRequest request, UsuarioAutenticado solicitante) {
         Veiculo veiculo = buscarEntidade(id);
+        validarAcessoOficina(veiculo, solicitante);
 
         Cliente novoCliente = null;
         if (request.clienteId() != null && !request.clienteId().equals(veiculo.getCliente().getId())) {
             novoCliente = clienteService.buscarEntidade(request.clienteId());
             if (!novoCliente.isAtivo()) {
                 throw new ClienteInativoException();
+            }
+            if (solicitante != null && !solicitante.isSuperAdmin() && tenantGuard != null) {
+                tenantGuard.validarAcessoOficina(novoCliente.getOficina(), solicitante,
+                        "Você não pode transferir o veículo para um cliente de outra oficina.");
             }
         }
 
@@ -98,9 +141,21 @@ public class VeiculoService {
                 throw new PlacaInvalidaException();
             }
             String placaNormalizada = normalizarPlaca(request.placa());
-            if (veiculoRepository.existsByPlacaIgnoreCaseAndIdNot(placaNormalizada, id)) {
+            Cliente clienteEfetivo = novoCliente != null ? novoCliente : veiculo.getCliente();
+            Integer oficinaId = (clienteEfetivo != null && clienteEfetivo.getOficina() != null) ? clienteEfetivo.getOficina().getId() : null;
+            boolean placaExiste;
+            if (oficinaId != null) {
+                placaExiste = veiculoRepository.existsByClienteOficinaIdAndPlacaIgnoreCaseAndIdNot(oficinaId, placaNormalizada, id);
+            } else {
+                placaExiste = veiculoRepository.existsByPlacaIgnoreCaseAndIdNot(placaNormalizada, id);
+            }
+            if (placaExiste) {
                 throw new ConflitoException("Já existe um veículo cadastrado com esta placa no sistema.");
             }
+        }
+
+        if (request.ativo() != null && !request.ativo().equals(veiculo.getAtivo()) && Boolean.FALSE.equals(request.ativo())) {
+            validarNaoPossuiOsAberta(id);
         }
 
         VeiculoMapper.atualizarDados(veiculo, request, novoCliente);
@@ -110,8 +165,9 @@ public class VeiculoService {
     }
 
     @Transactional
-    public VeiculoResponse atualizarValorFipe(Integer id) {
+    public VeiculoResponse atualizarValorFipe(Integer id, UsuarioAutenticado solicitante) {
         Veiculo veiculo = buscarEntidade(id);
+        validarAcessoOficina(veiculo, solicitante);
 
         if (fipeService != null && veiculo.getMarca() != null && veiculo.getModelo() != null && veiculo.getAnoModelo() != null) {
             try {
@@ -179,62 +235,89 @@ public class VeiculoService {
     }
 
     @Transactional(readOnly = true)
-    public VeiculoResponse buscarPorId(Integer id) {
+    public VeiculoResponse buscarPorId(Integer id, UsuarioAutenticado solicitante) {
         Veiculo veiculo = veiculoRepository.findComClienteById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Veículo", id));
+        validarAcessoOficina(veiculo, solicitante);
         return VeiculoMapper.paraVeiculoResponse(veiculo);
     }
 
     @Transactional(readOnly = true)
-    public VeiculoResponse buscarPorPlaca(String placa) {
+    public VeiculoResponse buscarPorPlaca(String placa, UsuarioAutenticado solicitante) {
         Veiculo veiculo = buscarEntidadePorPlaca(placa);
+        validarAcessoOficina(veiculo, solicitante);
         return VeiculoMapper.paraVeiculoResponse(veiculo);
     }
 
     @Transactional(readOnly = true)
-    public Page<VeiculoResponse> listar(VeiculoFiltro filtro, Pageable pageable) {
+    public Page<VeiculoResponse> listar(VeiculoFiltro filtro, Pageable pageable, UsuarioAutenticado solicitante) {
         Specification<Veiculo> spec = VeiculoSpecs.montarFiltros(filtro);
+        if (solicitante != null && !solicitante.isSuperAdmin() && tenantGuard != null) {
+            Oficina oficina = tenantGuard.obterOficinaDoSolicitante(solicitante);
+            spec = spec.and(VeiculoSpecs.porOficinaId(oficina.getId()));
+        }
         return veiculoRepository.findAll(spec, pageable).map(VeiculoMapper::paraVeiculoResponse);
     }
 
     @Transactional(readOnly = true)
-    public List<VeiculoResponse> listarPorCliente(Integer clienteId) {
-        clienteService.buscarEntidade(clienteId);
+    public List<VeiculoResponse> listarPorCliente(Integer clienteId, UsuarioAutenticado solicitante) {
+        Cliente cliente = clienteService.buscarEntidade(clienteId);
+        if (solicitante != null && !solicitante.isSuperAdmin() && tenantGuard != null) {
+            tenantGuard.validarAcessoOficina(cliente.getOficina(), solicitante,
+                    "Você não tem permissão para visualizar veículos de clientes de outra oficina.");
+        }
         return veiculoRepository.findByClienteId(clienteId).stream()
                 .map(VeiculoMapper::paraVeiculoResponse)
                 .toList();
     }
 
     @Transactional
-    public VeiculoResponse inativar(Integer id) {
+    public VeiculoResponse inativar(Integer id, UsuarioAutenticado solicitante) {
         Veiculo veiculo = buscarEntidade(id);
+        validarAcessoOficina(veiculo, solicitante);
+        validarNaoPossuiOsAberta(id);
         veiculo.setAtivo(false);
         veiculo = veiculoRepository.save(veiculo);
         return VeiculoMapper.paraVeiculoResponse(veiculo);
     }
 
+    private void validarNaoPossuiOsAberta(Integer veiculoId) {
+        if (ordemServicoRepository != null && ordemServicoRepository.existsByVeiculoIdAndStatusServicoIn(veiculoId, STATUS_EM_ABERTO)) {
+            throw new ConflitoException("Não é possível inativar: o veículo possui ordens de serviço pendentes ou em andamento.");
+        }
+    }
+
     @Transactional
-    public VeiculoResponse reativar(Integer id) {
+    public VeiculoResponse reativar(Integer id, UsuarioAutenticado solicitante) {
         Veiculo veiculo = buscarEntidade(id);
+        validarAcessoOficina(veiculo, solicitante);
         veiculo.setAtivo(true);
         veiculo = veiculoRepository.save(veiculo);
         return VeiculoMapper.paraVeiculoResponse(veiculo);
     }
 
     @Transactional(readOnly = true)
-    public HistoricoVeiculoResponse consultarHistorico(String placa) {
+    public HistoricoVeiculoResponse consultarHistorico(String placa, UsuarioAutenticado solicitante) {
         Veiculo veiculo = buscarEntidadePorPlaca(placa);
+        validarAcessoOficina(veiculo, solicitante);
 
         List<OrdemServicoResumo> ordens = null;
         if (ordemServicoService != null && veiculo.getId() != null) {
             try {
-                ordens = ordemServicoService.listarHistoricoPorVeiculoId(veiculo.getId());
+                ordens = ordemServicoService.listarHistoricoPorVeiculoId(veiculo.getId(), solicitante);
             } catch (Exception ignored) {
             }
         }
 
         if ((ordens == null || ordens.isEmpty()) && veiculo.getOrdensServicos() != null && !veiculo.getOrdensServicos().isEmpty()) {
             ordens = veiculo.getOrdensServicos().stream()
+                    .filter(os -> {
+                        if (solicitante == null || solicitante.isSuperAdmin() || tenantGuard == null) {
+                            return true;
+                        }
+                        Oficina oficinaSolicitante = tenantGuard.obterOficinaDoSolicitante(solicitante);
+                        return os.getOficina() != null && os.getOficina().getId().equals(oficinaSolicitante.getId());
+                    })
                     .sorted((a, b) -> {
                         if (a.getDataOrcamento() == null && b.getDataOrcamento() == null) return 0;
                         if (a.getDataOrcamento() == null) return 1;
@@ -258,12 +341,13 @@ public class VeiculoService {
     }
 
     @Transactional(readOnly = true)
-    public Page<OrdemServicoResumo> consultarHistoricoPaginado(String placa, Pageable pageable) {
+    public Page<OrdemServicoResumo> consultarHistoricoPaginado(String placa, Pageable pageable, UsuarioAutenticado solicitante) {
         Veiculo veiculo = buscarEntidadePorPlaca(placa);
+        validarAcessoOficina(veiculo, solicitante);
         if (ordemServicoService != null && veiculo.getId() != null) {
-            return ordemServicoService.listarHistoricoPorVeiculoIdPaginado(veiculo.getId(), pageable);
+            return ordemServicoService.listarHistoricoPorVeiculoIdPaginado(veiculo.getId(), pageable, solicitante);
         }
-        HistoricoVeiculoResponse historico = consultarHistorico(placa);
+        HistoricoVeiculoResponse historico = consultarHistorico(placa, solicitante);
         List<OrdemServicoResumo> ordens = historico.ordensServico();
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), ordens.size());
@@ -290,6 +374,16 @@ public class VeiculoService {
                     return veiculoRepository.findComClienteByPlacaIgnoreCase(variante);
                 })
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Veículo não encontrado."));
+    }
+
+    public void validarAcessoOficina(Veiculo veiculo, UsuarioAutenticado solicitante) {
+        if (solicitante == null || solicitante.isSuperAdmin() || tenantGuard == null) {
+            return;
+        }
+        if (veiculo.getCliente() != null && veiculo.getCliente().getOficina() != null) {
+            tenantGuard.validarAcessoOficina(veiculo.getCliente().getOficina(), solicitante,
+                    "Você não tem permissão para acessar ou alterar veículos de outra oficina.");
+        }
     }
 
     public static String normalizarPlaca(String placa) {
