@@ -34,24 +34,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-svh bg-background">
-      <header className="sticky top-0 z-30 border-b border-border bg-sidebar text-sidebar-foreground">
+      <header className="sticky top-0 z-30 border-b-2 border-border bg-sidebar text-sidebar-foreground">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8">
-          <div className="flex items-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+          <div className="flex items-center gap-3">
+            <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground border-2 border-sidebar-foreground shadow-ink-sm">
               <ShieldCheck className="size-5" />
             </div>
             <div className="flex flex-col leading-tight">
-              <span className="font-semibold">OficinaPro</span>
-              <span className="text-xs text-sidebar-foreground/60">
+              <span className="font-bold font-display text-base">OficinaPro</span>
+              <span className="text-xs text-sidebar-foreground/70 font-medium">
                 Painel administrativo
               </span>
             </div>
-            <Badge variant="secondary" className="ml-2 hidden sm:inline-flex">
+            <Badge variant="secondary" className="ml-2 hidden sm:inline-flex border-2 border-sidebar-border">
               Admin
             </Badge>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-sidebar-foreground/70 sm:inline">
+            <span className="hidden text-sm text-sidebar-foreground/70 sm:inline font-medium">
               {user.email}
             </span>
             <ThemeToggle />
@@ -59,7 +59,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-2 border-transparent hover:border-sidebar-border font-bold"
             >
               <LogOut data-icon="inline-start" />
               Sair

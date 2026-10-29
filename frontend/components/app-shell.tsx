@@ -51,20 +51,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-svh bg-background">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex items-center gap-2 border-b border-sidebar-border px-5 py-4">
-          <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-sidebar text-sidebar-foreground md:flex border-r-2 border-sidebar-border">
+        <div className="flex items-center gap-2 border-b-2 border-sidebar-border px-5 py-4">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground border-2 border-sidebar-foreground shadow-ink-sm">
             <Wrench className="size-5" />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="font-semibold">OficinaPro</span>
-            <span className="text-xs text-sidebar-foreground/60">
+            <span className="font-bold font-display text-base">OficinaPro</span>
+            <span className="text-xs text-sidebar-foreground/70 font-medium">
               Gestão da oficina
             </span>
           </div>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1.5 p-3">
           {nav.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -75,10 +75,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-bold font-display transition-all",
                   active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground border-2 border-sidebar-foreground shadow-ink-sm"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-2 border-transparent",
                 )}
               >
                 <Icon className="size-4" />
@@ -88,17 +88,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="border-t border-sidebar-border p-3">
-          <div className="flex items-center justify-between gap-3 rounded-md px-2 py-2">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <Avatar className="size-9 shrink-0">
-                <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-semibold">
+        <div className="border-t-2 border-sidebar-border p-3">
+          <div className="flex items-center justify-between gap-3 rounded-lg border-2 border-sidebar-border bg-sidebar-accent/50 p-2.5">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <Avatar className="size-9 shrink-0 border-2 border-sidebar-foreground">
+                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-bold font-display">
                   {user.nome.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex min-w-0 flex-1 flex-col leading-tight">
-                <span className="truncate text-sm font-medium">{user.nome}</span>
-                <span className="truncate text-xs text-sidebar-foreground/60">
+                <span className="truncate text-sm font-bold">{user.nome}</span>
+                <span className="truncate text-xs text-sidebar-foreground/70">
                   {user.email}
                 </span>
               </div>
@@ -107,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <Button
             variant="ghost"
-            className="mt-1 w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="mt-2 w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-2 border-transparent hover:border-sidebar-border font-bold"
             onClick={handleLogout}
           >
             <LogOut data-icon="inline-start" />
@@ -118,23 +118,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Barra superior mobile */}
       <div className="flex flex-1 flex-col md:pl-64">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
+        <header className="sticky top-0 z-30 flex items-center justify-between border-b-2 border-border bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground border-2 border-sidebar-foreground shadow-ink-sm">
               <Wrench className="size-4" />
             </div>
-            <span className="font-semibold">OficinaPro</span>
+            <span className="font-bold font-display">OficinaPro</span>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="border-2 border-transparent hover:border-sidebar-border">
               <LogOut data-icon="inline-start" />
               Sair
             </Button>
           </div>
         </header>
 
-        <nav className="flex gap-1 overflow-x-auto border-b border-border bg-card px-2 py-2 md:hidden">
+        <nav className="flex gap-1.5 overflow-x-auto border-b-2 border-border bg-card px-3 py-2 md:hidden">
           {nav.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -145,10 +145,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium",
+                  "flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-bold font-display transition-all",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent",
+                    ? "bg-primary text-primary-foreground border-2 border-border shadow-ink-sm"
+                    : "text-muted-foreground hover:bg-secondary border-2 border-transparent",
                 )}
               >
                 <Icon className="size-4" />
