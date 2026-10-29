@@ -29,6 +29,15 @@ export const metadata: Metadata = {
     description:
         'Sistema de gestão para oficinas mecânicas: orçamentos inteligentes, tabela FIPE, clientes, veículos e catálogo de serviços.',
     generator: 'v0.app',
+    icons: {
+        icon: [
+            { url: '/logo-cartoon.png', type: 'image/png' },
+            { url: '/icon.png', type: 'image/png' },
+            { url: '/favicon.ico', sizes: 'any' },
+        ],
+        shortcut: '/logo-cartoon.png',
+        apple: '/apple-icon.png',
+    },
 };
 
 export const viewport: Viewport = {
