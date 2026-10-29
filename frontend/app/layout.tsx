@@ -31,11 +31,10 @@ export const metadata: Metadata = {
     generator: 'v0.app',
     icons: {
         icon: [
-            { url: '/logo-cartoon.png', type: 'image/png' },
             { url: '/icon.png', type: 'image/png' },
-            { url: '/favicon.ico', sizes: 'any' },
+            { url: '/favicon.ico', sizes: '32x32' },
         ],
-        shortcut: '/logo-cartoon.png',
+        shortcut: '/icon.png',
         apple: '/apple-icon.png',
     },
 };
