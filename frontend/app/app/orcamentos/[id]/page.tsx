@@ -186,7 +186,7 @@ export default function OrcamentoDetalhePage({
       finalizado: 'CONCLUÍDO',
     }[orcamento.status]
 
-    const texto = `🛠️ *ORÇAMENTO - OFICINAPRO* 🛠️
+    const texto = `🚗 *ORÇAMENTO - CAR TOON* 🚗
 -----------------------------------
 *Status:* ${statusTraduzido}
 *Data:* ${formatDate(orcamento.data)}

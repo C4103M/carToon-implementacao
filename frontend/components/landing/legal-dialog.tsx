@@ -87,3 +87,4 @@ export const LegalDialog: React.FC<LegalDialogProps> = ({ mode, onClose }) => {
     </LandingDialog>
   );
 };
+

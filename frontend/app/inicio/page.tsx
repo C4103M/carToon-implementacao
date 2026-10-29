@@ -10,3 +10,4 @@ export const metadata: Metadata = {
 export default function InicioPage() {
     return <LandingView />;
 }
+

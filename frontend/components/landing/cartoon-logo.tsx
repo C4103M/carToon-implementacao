@@ -18,11 +18,18 @@ export const CartoonLogo: React.FC<CartoonLogoProps> = ({
   return (
     <span className={`inline-flex items-center select-none ${className}`.trim()}>
       <img
-        src="/logo-cartoon.png?v=2"
+        src="/logo-cartoon.png"
         alt="CAR TOON — Sistema de Gestão para Oficinas Mecânicas"
         decoding="async"
         draggable={false}
-        className={`${SIZE_CLASSES[size]} w-auto object-contain transition-transform duration-300 ease-spring group-hover:-rotate-2`}
+        className={`${SIZE_CLASSES[size]} w-auto object-contain transition-transform duration-300 ease-spring group-hover:-rotate-2 dark:hidden`}
+      />
+      <img
+        src="/logo-cartoon-dark.png"
+        alt="CAR TOON — Sistema de Gestão para Oficinas Mecânicas"
+        decoding="async"
+        draggable={false}
+        className={`${SIZE_CLASSES[size]} w-auto object-contain transition-transform duration-300 ease-spring group-hover:-rotate-2 hidden dark:inline-block`}
       />
     </span>
   );

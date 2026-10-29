@@ -39,3 +39,4 @@ export const FloatingWhatsApp: React.FC<FloatingWhatsAppProps> = ({
     </a>
   );
 };
+

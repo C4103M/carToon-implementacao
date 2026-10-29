@@ -428,3 +428,4 @@ export const SimulatorDialog: React.FC<SimulatorDialogProps> = ({
     </LandingDialog>
   );
 };
+

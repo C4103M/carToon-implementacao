@@ -4,20 +4,20 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border-2 border-border font-display text-sm font-bold whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border font-medium text-sm whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-ink hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_var(--shadow-ink-color)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_var(--shadow-ink-color)]",
+          "border-transparent bg-primary text-primary-foreground font-semibold shadow-ink-sm hover:-translate-y-0.5 hover:shadow-ink active:translate-y-0 active:shadow-none",
         outline:
-          "bg-card text-foreground shadow-ink-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:bg-secondary hover:shadow-ink active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_var(--shadow-ink-color)]",
+          "border-border/80 bg-card text-foreground font-medium shadow-xs hover:bg-secondary hover:text-foreground active:scale-[0.98]",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-ink-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-ink active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_var(--shadow-ink-color)]",
+          "border-transparent bg-secondary text-secondary-foreground font-medium hover:bg-secondary/80 active:scale-[0.98]",
         ghost:
-          "border-transparent hover:border-border hover:bg-secondary hover:text-foreground",
+          "border-transparent hover:bg-secondary hover:text-foreground font-medium",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-ink hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_0px_var(--shadow-ink-color)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[1px_1px_0px_0px_var(--shadow-ink-color)]",
+          "border-transparent bg-destructive text-destructive-foreground font-semibold shadow-ink-sm hover:-translate-y-0.5 hover:shadow-ink active:translate-y-0 active:shadow-none",
         link: "border-transparent text-primary underline-offset-4 hover:underline shadow-none",
       },
       size: {

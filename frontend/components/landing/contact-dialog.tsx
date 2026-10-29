@@ -294,3 +294,4 @@ export const ContactDialog: React.FC<ContactDialogProps> = ({ open, onClose }) =
     </LandingDialog>
   );
 };
+

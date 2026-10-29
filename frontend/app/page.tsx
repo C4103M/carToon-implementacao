@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Wrench, AlertCircle, ShieldCheck, Store } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Store } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
 import { ADMIN_EMAIL, seedOficinas } from '@/lib/mock-data';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { BrandLogo } from '@/components/brand-logo';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -61,16 +62,9 @@ export default function LoginPage() {
     return (
         <div className="flex min-h-svh flex-col md:flex-row bg-background">
             {/* Painel de marca */}
-            <div className="relative flex flex-col justify-between bg-sidebar p-8 text-sidebar-foreground md:w-1/2 md:p-12 border-b-2 md:border-b-0 md:border-r-2 border-sidebar-border">
+            <div className="relative flex flex-col justify-between bg-sidebar p-8 text-sidebar-foreground md:w-1/2 md:p-12 border-b md:border-b-0 md:border-r border-sidebar-border">
                 <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-3">
-                        <div className="flex size-11 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground border-2 border-sidebar-foreground shadow-ink-sm">
-                            <Wrench className="size-6" />
-                        </div>
-                        <span className="text-2xl font-bold font-display">
-                            OficinaPro
-                        </span>
-                    </div>
+                    <BrandLogo variant="on-dark" size="lg" priority />
                     <ThemeToggle />
                 </div>
 
@@ -88,7 +82,7 @@ export default function LoginPage() {
                 <p className="text-xs text-sidebar-foreground/60 font-medium">
                     {'© '}
                     {new Date().getFullYear()}
-                    {' OficinaPro. Todos os direitos reservados.'}
+                    {' CAR TOON. Todos os direitos reservados.'}
                 </p>
             </div>
 
@@ -180,8 +174,8 @@ export default function LoginPage() {
                         </FieldGroup>
                     </form>
 
-                    <div className="mt-8 rounded-xl border-2 border-border bg-card p-4 shadow-ink-sm">
-                        <p className="mb-3 text-xs font-bold font-display uppercase tracking-wider text-muted-foreground">
+                    <div className="mt-8 rounded-xl border border-border/80 bg-card p-4 shadow-xs">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Contas de demonstração
                         </p>
                         <div className="flex flex-col gap-2.5">
@@ -190,13 +184,13 @@ export default function LoginPage() {
                                 onClick={() =>
                                     preencher(oficinaAtiva?.email ?? '')
                                 }
-                                className="flex items-center gap-3 rounded-lg border-2 border-border bg-secondary/50 p-3 text-left transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-ink-sm hover:bg-secondary cursor-pointer"
+                                className="flex items-center gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3 text-left transition-all hover:bg-secondary hover:border-border active:scale-[0.99] cursor-pointer"
                             >
-                                <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground">
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-xs">
                                     <Store className="size-4" />
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-bold font-display text-foreground">
+                                    <span className="text-sm font-semibold text-foreground">
                                         Oficina
                                     </span>
                                     <span className="text-xs text-muted-foreground font-medium truncate">
@@ -207,13 +201,13 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={() => preencher(ADMIN_EMAIL)}
-                                className="flex items-center gap-3 rounded-lg border-2 border-border bg-secondary/50 p-3 text-left transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-ink-sm hover:bg-secondary cursor-pointer"
+                                className="flex items-center gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3 text-left transition-all hover:bg-secondary hover:border-border active:scale-[0.99] cursor-pointer"
                             >
-                                <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
                                     <ShieldCheck className="size-4" />
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                    <span className="text-sm font-bold font-display text-foreground">
+                                    <span className="text-sm font-semibold text-foreground">
                                         Administrador
                                     </span>
                                     <span className="text-xs text-muted-foreground font-medium truncate">

@@ -71,3 +71,4 @@ export const Footer: React.FC<FooterProps> = ({ onOpenTerms, onOpenPrivacy }) =>
     </footer>
   );
 };
+
