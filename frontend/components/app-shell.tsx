@@ -9,7 +9,6 @@ import {
   BookOpen,
   FileText,
   LogOut,
-  Wrench,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -17,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "./theme-toggle";
+import { BrandLogo } from "./brand-logo";
 
 const nav = [
   { href: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -51,20 +51,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-svh bg-background">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-sidebar text-sidebar-foreground md:flex">
-        <div className="flex items-center gap-2 border-b border-sidebar-border px-5 py-4">
-          <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-            <Wrench className="size-5" />
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="font-semibold">OficinaPro</span>
-            <span className="text-xs text-sidebar-foreground/60">
-              Gestão da oficina
-            </span>
-          </div>
+      <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-sidebar text-sidebar-foreground md:flex border-r border-sidebar-border">
+        <div className="flex items-center gap-2.5 border-b border-sidebar-border px-5 py-4">
+          <BrandLogo variant="on-dark" size="sm" priority />
+          <span className="text-xs text-sidebar-foreground/60 font-medium">
+            Gestão
+          </span>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 p-3">
+        <nav className="flex flex-1 flex-col gap-1.5 p-3">
           {nav.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -75,10 +70,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
                   active
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-ink-sm"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground font-medium",
                 )}
               >
                 <Icon className="size-4" />
@@ -89,16 +84,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
-          <div className="flex items-center justify-between gap-3 rounded-md px-2 py-2">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <Avatar className="size-9 shrink-0">
-                <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground text-xs font-semibold">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-sidebar-border bg-sidebar-accent/50 p-2.5">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <Avatar className="size-9 shrink-0 border border-sidebar-foreground/30">
+                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-xs font-bold font-display">
                   {user.nome.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div className="flex min-w-0 flex-1 flex-col leading-tight">
-                <span className="truncate text-sm font-medium">{user.nome}</span>
-                <span className="truncate text-xs text-sidebar-foreground/60">
+                <span className="truncate text-sm font-semibold">{user.nome}</span>
+                <span className="truncate text-xs text-sidebar-foreground/70">
                   {user.email}
                 </span>
               </div>
@@ -107,7 +102,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <Button
             variant="ghost"
-            className="mt-1 w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="mt-2 w-full justify-start text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground font-medium"
             onClick={handleLogout}
           >
             <LogOut data-icon="inline-start" />
@@ -120,10 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col md:pl-64">
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-sidebar px-4 py-3 text-sidebar-foreground md:hidden">
           <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-              <Wrench className="size-4" />
-            </div>
-            <span className="font-semibold">OficinaPro</span>
+            <BrandLogo variant="on-dark" size="xs" priority />
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -134,7 +126,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <nav className="flex gap-1 overflow-x-auto border-b border-border bg-card px-2 py-2 md:hidden">
+        <nav className="flex gap-1.5 overflow-x-auto border-b border-border bg-card px-3 py-2 md:hidden">
           {nav.map((item) => {
             const active = item.exact
               ? pathname === item.href
@@ -145,10 +137,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium",
+                  "flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-semibold transition-all",
                   active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent",
+                    ? "bg-primary text-primary-foreground shadow-ink-sm"
+                    : "text-muted-foreground hover:bg-secondary font-medium",
                 )}
               >
                 <Icon className="size-4" />

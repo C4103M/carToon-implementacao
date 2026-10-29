@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Wrench, AlertCircle, ShieldCheck, Store } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Store } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Spinner } from '@/components/ui/spinner';
 import { ADMIN_EMAIL, seedOficinas } from '@/lib/mock-data';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { BrandLogo } from '@/components/brand-logo';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -59,36 +60,29 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="flex min-h-svh flex-col md:flex-row">
+        <div className="flex min-h-svh flex-col md:flex-row bg-background">
             {/* Painel de marca */}
-            <div className="relative flex flex-col justify-between bg-sidebar p-8 text-sidebar-foreground md:w-1/2 md:p-12">
+            <div className="relative flex flex-col justify-between bg-sidebar p-8 text-sidebar-foreground md:w-1/2 md:p-12 border-b md:border-b-0 md:border-r border-sidebar-border">
                 <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-2">
-                        <div className="flex size-10 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-                            <Wrench className="size-5" />
-                        </div>
-                        <span className="text-lg font-semibold">
-                            OficinaPro
-                        </span>
-                    </div>
+                    <BrandLogo variant="on-dark" size="lg" priority />
                     <ThemeToggle />
                 </div>
 
                 <div className="my-10 flex max-w-md flex-col gap-4">
-                    <h1 className="text-balance text-3xl font-semibold leading-tight md:text-4xl">
+                    <h1 className="text-balance text-4xl font-extrabold font-display leading-[1.08] md:text-5xl">
                         Orçamentos precisos, do seu jeito.
                     </h1>
-                    <p className="text-pretty text-sidebar-foreground/70">
+                    <p className="text-pretty text-sidebar-foreground/80 font-medium leading-relaxed">
                         Gerencie clientes, veículos e monte orçamentos com
                         valores de mão de obra ajustados automaticamente pelo
                         valor de mercado de cada veículo.
                     </p>
                 </div>
 
-                <p className="text-xs text-sidebar-foreground/50">
+                <p className="text-xs text-sidebar-foreground/60 font-medium">
                     {'© '}
                     {new Date().getFullYear()}
-                    {' OficinaPro. Todos os direitos reservados.'}
+                    {' CAR TOON. Todos os direitos reservados.'}
                 </p>
             </div>
 
@@ -96,10 +90,10 @@ export default function LoginPage() {
             <div className="flex flex-1 items-center justify-center p-6 md:p-12">
                 <div className="w-full max-w-sm">
                     <div className="mb-8 flex flex-col gap-2">
-                        <h2 className="text-2xl font-semibold tracking-tight">
+                        <h2 className="text-3xl font-extrabold font-display tracking-tight text-foreground">
                             Entrar
                         </h2>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm font-medium text-muted-foreground">
                             Acesse com seu e-mail e senha. O sistema identifica
                             automaticamente o tipo de conta.
                         </p>
@@ -130,7 +124,7 @@ export default function LoginPage() {
                     <form onSubmit={handleSubmit}>
                         <FieldGroup>
                             <Field data-invalid={emailInvalido || undefined}>
-                                <FieldLabel htmlFor="email">E-mail</FieldLabel>
+                                <FieldLabel htmlFor="email" className="font-bold font-display">E-mail</FieldLabel>
                                 <Input
                                     id="email"
                                     type="email"
@@ -141,14 +135,14 @@ export default function LoginPage() {
                                     autoComplete="email"
                                 />
                                 {emailInvalido && (
-                                    <FieldDescription className="text-destructive">
+                                    <FieldDescription className="text-destructive font-medium">
                                         Informe um e-mail válido.
                                     </FieldDescription>
                                 )}
                             </Field>
 
                             <Field>
-                                <FieldLabel htmlFor="senha">Senha</FieldLabel>
+                                <FieldLabel htmlFor="senha" className="font-bold font-display">Senha</FieldLabel>
                                 <Input
                                     id="senha"
                                     type="password"
@@ -160,7 +154,7 @@ export default function LoginPage() {
                                 <FieldDescription>
                                     <button
                                         type="button"
-                                        className="text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                                        className="text-muted-foreground font-medium underline-offset-4 hover:text-foreground hover:underline"
                                     >
                                         Esqueci minha senha
                                     </button>
@@ -170,7 +164,7 @@ export default function LoginPage() {
                             <Button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full"
+                                className="w-full mt-2 h-10 text-base font-bold font-display shadow-ink"
                             >
                                 {loading && (
                                     <Spinner data-icon="inline-start" />
@@ -180,24 +174,26 @@ export default function LoginPage() {
                         </FieldGroup>
                     </form>
 
-                    <div className="mt-8 rounded-lg border border-dashed border-border bg-muted/40 p-4">
-                        <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <div className="mt-8 rounded-xl border border-border/80 bg-card p-4 shadow-xs">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Contas de demonstração
                         </p>
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-2.5">
                             <button
                                 type="button"
                                 onClick={() =>
                                     preencher(oficinaAtiva?.email ?? '')
                                 }
-                                className="flex items-center gap-3 rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-primary/50"
+                                className="flex items-center gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3 text-left transition-all hover:bg-secondary hover:border-border active:scale-[0.99] cursor-pointer"
                             >
-                                <Store className="size-4 text-primary" />
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium">
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-xs">
+                                    <Store className="size-4" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-semibold text-foreground">
                                         Oficina
                                     </span>
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-xs text-muted-foreground font-medium truncate">
                                         {oficinaAtiva?.email}
                                     </span>
                                 </div>
@@ -205,20 +201,22 @@ export default function LoginPage() {
                             <button
                                 type="button"
                                 onClick={() => preencher(ADMIN_EMAIL)}
-                                className="flex items-center gap-3 rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-primary/50"
+                                className="flex items-center gap-3 rounded-lg border border-border/70 bg-secondary/40 p-3 text-left transition-all hover:bg-secondary hover:border-border active:scale-[0.99] cursor-pointer"
                             >
-                                <ShieldCheck className="size-4 text-primary" />
-                                <div className="flex flex-col">
-                                    <span className="text-sm font-medium">
+                                <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
+                                    <ShieldCheck className="size-4" />
+                                </div>
+                                <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-semibold text-foreground">
                                         Administrador
                                     </span>
-                                    <span className="text-xs text-muted-foreground">
+                                    <span className="text-xs text-muted-foreground font-medium truncate">
                                         {ADMIN_EMAIL}
                                     </span>
                                 </div>
                             </button>
                         </div>
-                        <p className="mt-3 text-xs text-muted-foreground">
+                        <p className="mt-3 text-xs text-muted-foreground font-medium">
                             Qualquer senha funciona neste protótipo.
                         </p>
                     </div>
