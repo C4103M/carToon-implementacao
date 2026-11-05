@@ -118,7 +118,7 @@ public class ClienteService {
         }
 
         if (oficinaId != null) {
-            if (clienteRepository.existsByOficinaIdAndCpf(oficinaId, request.getCpf())) {
+            if (clienteRepository.existsByCpfAndOficinaId(request.getCpf(), oficinaId) || clienteRepository.existsByOficinaIdAndCpf(oficinaId, request.getCpf())) {
                 throw new ConflitoException("Cliente já cadastrado com este CPF.");
             }
         } else {
@@ -143,7 +143,7 @@ public class ClienteService {
         Integer oficinaId = cliente.getOficina() != null ? cliente.getOficina().getId() : null;
         if (!cliente.getCpf().equals(request.getCpf())) {
             if (oficinaId != null) {
-                if (clienteRepository.existsByOficinaIdAndCpfAndIdNot(oficinaId, request.getCpf(), id)) {
+                if (clienteRepository.existsByCpfAndOficinaIdAndIdNot(request.getCpf(), oficinaId, id) || clienteRepository.existsByOficinaIdAndCpfAndIdNot(oficinaId, request.getCpf(), id)) {
                     throw new ConflitoException("Cliente já cadastrado com este CPF.");
                 }
             } else if (clienteRepository.existsByCpf(request.getCpf())) {
