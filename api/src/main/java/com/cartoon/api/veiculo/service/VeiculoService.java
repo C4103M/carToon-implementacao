@@ -104,7 +104,8 @@ public class VeiculoService {
         String placaNormalizada = normalizarPlaca(request.placa());
         boolean placaExiste;
         if (cliente.getOficina() != null && cliente.getOficina().getId() != null) {
-            placaExiste = veiculoRepository.existsByClienteOficinaIdAndPlacaIgnoreCase(cliente.getOficina().getId(), placaNormalizada);
+            placaExiste = veiculoRepository.existsByPlacaIgnoreCaseAndClienteOficinaId(placaNormalizada, cliente.getOficina().getId())
+                    || veiculoRepository.existsByClienteOficinaIdAndPlacaIgnoreCase(cliente.getOficina().getId(), placaNormalizada);
         } else {
             placaExiste = veiculoRepository.existsByPlacaIgnoreCase(placaNormalizada);
         }
@@ -145,7 +146,8 @@ public class VeiculoService {
             Integer oficinaId = (clienteEfetivo != null && clienteEfetivo.getOficina() != null) ? clienteEfetivo.getOficina().getId() : null;
             boolean placaExiste;
             if (oficinaId != null) {
-                placaExiste = veiculoRepository.existsByClienteOficinaIdAndPlacaIgnoreCaseAndIdNot(oficinaId, placaNormalizada, id);
+                placaExiste = veiculoRepository.existsByPlacaIgnoreCaseAndClienteOficinaIdAndIdNot(placaNormalizada, oficinaId, id)
+                        || veiculoRepository.existsByClienteOficinaIdAndPlacaIgnoreCaseAndIdNot(oficinaId, placaNormalizada, id);
             } else {
                 placaExiste = veiculoRepository.existsByPlacaIgnoreCaseAndIdNot(placaNormalizada, id);
             }

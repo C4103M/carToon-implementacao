@@ -21,6 +21,10 @@ public interface VeiculoRepository extends JpaRepository<Veiculo, Integer>, JpaS
 
     boolean existsByClienteOficinaIdAndPlacaIgnoreCaseAndIdNot(Integer oficinaId, String placa, Integer id);
 
+    boolean existsByPlacaIgnoreCaseAndClienteOficinaId(String placa, Integer oficinaId);
+
+    boolean existsByPlacaIgnoreCaseAndClienteOficinaIdAndIdNot(String placa, Integer oficinaId, Integer id);
+
     Optional<Veiculo> findByPlacaIgnoreCase(String placa);
 
     @EntityGraph(attributePaths = {"cliente"})

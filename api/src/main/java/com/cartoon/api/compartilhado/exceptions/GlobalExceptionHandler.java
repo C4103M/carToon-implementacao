@@ -135,6 +135,10 @@ public class GlobalExceptionHandler {
             mensagem = "Já existe uma oficina com esse e-mail.";
         } else if (causa.contains("uk_usuario_email")) {
             mensagem = "Já existe um usuário com esse e-mail.";
+        } else if (causa.contains("uk_cliente_cpf_oficina") || causa.contains("uk_cliente_oficina_cpf") || causa.contains("uk_cliente_cpf")) {
+            mensagem = "Já existe um cliente com esse CPF nesta oficina.";
+        } else if (causa.contains("placa")) {
+            mensagem = "Já existe um veículo com essa placa nesta oficina.";
         }
 
         Map<String, Object> body = new LinkedHashMap<>();

@@ -15,7 +15,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
 @Table(name = "cliente", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_cliente_oficina_cpf", columnNames = {"oficina_id", "cpf"})
+        @UniqueConstraint(name = "uk_cliente_cpf_oficina", columnNames = {"cpf", "oficina_id"})
 })
 public class Cliente {
     @Id
