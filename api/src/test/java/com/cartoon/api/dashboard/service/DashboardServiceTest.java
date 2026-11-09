@@ -60,7 +60,8 @@ class DashboardServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(HOJE.atStartOfDay(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault());
-        service = new DashboardService(repository, tenantGuard, clock);
+        service = new DashboardService(repository, tenantGuard, new CalculadoraFaturamento(),
+                new CalculadoraOrdens(), new CalculadoraDesempenhoMecanico(), clock);
 
         Oficina oficina = new Oficina();
         oficina.setId(OFICINA_ID);
