@@ -14,9 +14,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Consultas somente-leitura do dashboard. Todas são filtradas pela oficina (multi-tenant).
- */
 public interface DashboardRepository extends Repository<OrdemServico, Integer> {
 
     @Query("""

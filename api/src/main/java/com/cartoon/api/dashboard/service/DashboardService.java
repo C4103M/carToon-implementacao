@@ -38,15 +38,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Calcula as métricas do dashboard do ADMIN, sempre restritas à oficina do usuário logado.
- */
 @Service
 public class DashboardService {
 
-    /** Acima deste número de dias as séries passam a ser agrupadas por mês. */
     static final int LIMITE_DIAS_GRANULARIDADE_DIARIA = 62;
-    /** Intervalo máximo aceito para o filtro de período. */
     static final int LIMITE_DIAS_PERIODO = 366 * 5;
     static final int MESES_FATURAMENTO_MENSAL = 12;
 
@@ -87,7 +82,6 @@ public class DashboardService {
         YearMonth primeiroMes = ultimoMes.minusMonths(MESES_FATURAMENTO_MENSAL - 1L);
         LocalDate inicioConsulta = min(inicioAnterior, primeiroMes.atDay(1));
 
-        // Uma única leitura cobre período, período anterior e os últimos 12 meses.
         List<OsFinalizadaProjecao> finalizadas = dashboardRepository.listarFinalizadas(oficinaId, inicioConsulta, fimEfetivo);
         List<OsFinalizadaProjecao> noPeriodo = filtrar(finalizadas, inicioEfetivo, fimEfetivo);
         List<OsFinalizadaProjecao> noAnterior = filtrar(finalizadas, inicioAnterior, fimAnterior);
@@ -132,10 +126,6 @@ public class DashboardService {
         }
     }
 
-    /**
-     * Separa a receita líquida entre serviços e peças. Como o desconto é aplicado sobre o total da OS,
-     * ele é rateado proporcionalmente ao valor bruto de cada tipo.
-     */
     private ReceitaPorTipo receitaPorTipo(Integer oficinaId, LocalDate inicio, LocalDate fim,
                                           List<OsFinalizadaProjecao> noPeriodo) {
         if (noPeriodo.isEmpty()) {
@@ -152,7 +142,6 @@ public class DashboardService {
             BigDecimal servicos = servicosPorOs.getOrDefault(os.id(), BigDecimal.ZERO);
             BigDecimal bruto = pecas.add(servicos);
             if (bruto.signum() == 0) {
-                // Sem itens identificáveis: atribui tudo a serviços para não perder receita.
                 totalServicos = totalServicos.add(liquido);
                 continue;
             }
@@ -259,8 +248,6 @@ public class DashboardService {
                         .thenComparing(DesempenhoMecanico::nome, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                 .toList();
     }
-
-    // ---------------------------------------------------------------- utilitários
 
     private static List<String> chaves(LocalDate inicio, LocalDate fim, Granularidade granularidade) {
         List<String> chaves = new ArrayList<>();

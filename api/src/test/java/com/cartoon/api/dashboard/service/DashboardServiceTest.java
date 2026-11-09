@@ -104,8 +104,8 @@ class DashboardServiceTest {
         when(repository.listarFinalizadas(eq(OFICINA_ID), any(), eq(fim))).thenReturn(List.of(
                 os(1, "2026-11-01", "2026-11-03", "300.00", 10, "Ana"),
                 os(2, "2026-11-02", "2026-11-05", "500.00", 11, "Bruno"),
-                os(3, "2026-10-20", "2026-10-25", "400.00", 10, "Ana"),  // período anterior
-                os(4, "2026-06-01", "2026-06-10", "999.00", 11, "Bruno") // só no histórico mensal
+                os(3, "2026-10-20", "2026-10-25", "400.00", 10, "Ana"),
+                os(4, "2026-06-01", "2026-06-10", "999.00", 11, "Bruno")
         ));
 
         DashboardAdminResponse resp = service.dashboardAdmin(inicio, fim, null, admin);
@@ -132,10 +132,9 @@ class DashboardServiceTest {
     void receitaPorTipo_RateiaDesconto() {
         LocalDate inicio = LocalDate.of(2026, 11, 1);
         LocalDate fim = LocalDate.of(2026, 11, 9);
-        // Bruto 1000 (600 peças + 400 serviços) com 10% de desconto -> total 900
         when(repository.listarFinalizadas(eq(OFICINA_ID), any(), eq(fim))).thenReturn(List.of(
                 os(1, "2026-11-01", "2026-11-02", "900.00", 10, "Ana"),
-                os(2, "2026-11-01", "2026-11-02", "50.00", 10, "Ana") // sem itens: vai para serviços
+                os(2, "2026-11-01", "2026-11-02", "50.00", 10, "Ana")
         ));
         when(repository.somarPecasDasFinalizadas(OFICINA_ID, inicio, fim))
                 .thenReturn(List.of(new SomaPorOsProjecao(1, new BigDecimal("600.00"))));
@@ -156,10 +155,10 @@ class DashboardServiceTest {
         LocalDate inicio = LocalDate.of(2026, 11, 1);
         LocalDate fim = LocalDate.of(2026, 11, 9);
         when(repository.listarFinalizadas(eq(OFICINA_ID), any(), eq(fim))).thenReturn(List.of(
-                os(1, "2026-11-01", "2026-11-03", "300.00", 10, "Ana"),   // 2 dias
-                os(2, "2026-11-02", "2026-11-03", "200.00", 10, "Ana"),   // 1 dia
-                os(3, "2026-11-04", "2026-11-04", "800.00", 11, "Bruno"), // 0 dia
-                os(4, null, "2026-11-05", "100.00", 11, "Bruno")          // sem data de início
+                os(1, "2026-11-01", "2026-11-03", "300.00", 10, "Ana"),
+                os(2, "2026-11-02", "2026-11-03", "200.00", 10, "Ana"),
+                os(3, "2026-11-04", "2026-11-04", "800.00", 11, "Bruno"),
+                os(4, null, "2026-11-05", "100.00", 11, "Bruno")
         ));
         when(repository.contarPorMecanico(OFICINA_ID, StatusServico.EM_ANDAMENTO)).thenReturn(List.of(
                 new ContagemMecanicoProjecao(10, "Ana", 2L),
@@ -233,7 +232,6 @@ class DashboardServiceTest {
         verify(repository).listarFinalizadas(eq(OFICINA_ID), any(), any());
         verify(repository).listarAbertas(eq(OFICINA_ID), any(), any());
         verify(repository).contarPorMecanico(OFICINA_ID, StatusServico.EM_ANDAMENTO);
-        // Sem OS finalizadas no período não há necessidade de somar itens.
         verify(repository, never()).somarPecasDasFinalizadas(any(), any(), any());
     }
 

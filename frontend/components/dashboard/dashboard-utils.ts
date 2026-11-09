@@ -27,7 +27,6 @@ export const STATUS_ORDEM: StatusServico[] = [
 
 const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 
-/** Data local no formato ISO (yyyy-MM-dd), sem passar por UTC. */
 export function toIsoLocal(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
@@ -48,20 +47,17 @@ export function intervaloDoPreset(preset: Exclude<PresetPeriodo, 'personalizado'
   return { inicio: toIsoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), fim }
 }
 
-/** "2026-11-04" -> "04/11/2026" (sem conversão de fuso). */
 export function formatIsoDate(iso: string): string {
   const [y, m, d] = iso.split('-')
   return d && m && y ? `${d}/${m}/${y}` : iso
 }
 
-/** Rótulo curto do eixo X para a chave da série ("yyyy-MM-dd" ou "yyyy-MM"). */
 export function rotuloCurto(chave: string, granularidade: GranularidadeDashboard): string {
   const [y, m, d] = chave.split('-')
   if (granularidade === 'DIA' && d) return `${d}/${m}`
   return `${MESES_CURTOS[Number(m) - 1] ?? m}/${y?.slice(2)}`
 }
 
-/** Rótulo completo para tooltips. */
 export function rotuloLongo(chave: string, granularidade: GranularidadeDashboard): string {
   const [y, m] = chave.split('-')
   if (granularidade === 'DIA') return formatIsoDate(chave)

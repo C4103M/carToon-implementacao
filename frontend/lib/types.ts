@@ -431,14 +431,9 @@ export interface Orcamento {
   itens: OrcamentoItem[];
 }
 
-// ==========================================
-// Dashboard do ADMIN (GET /dashboard/admin)
-// ==========================================
-
 export type GranularidadeDashboard = 'DIA' | 'MES';
 
 export interface DashboardPontoValor {
-  /** "yyyy-MM-dd" (DIA) ou "yyyy-MM" (MES) */
   chave: string;
   valor: number;
 }
@@ -454,7 +449,6 @@ export interface DashboardDesempenhoMecanico {
   faturamento: number;
   osConcluidas: number;
   osEmAndamento: number;
-  /** Média em dias entre início e finalização; null sem dados. */
   tempoMedioDias: number | null;
   ticketMedio: number;
   participacaoPercentual: number;
@@ -473,7 +467,6 @@ export interface DashboardAdminResponse {
     totalAcumulado: number;
     periodo: number;
     periodoAnterior: number;
-    /** null quando o período anterior não teve faturamento. */
     variacaoPercentual: number | null;
     ticketMedio: number;
     osFinalizadas: number;

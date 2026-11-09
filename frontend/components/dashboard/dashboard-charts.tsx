@@ -67,7 +67,6 @@ function TooltipBox({ titulo, linhas }: { titulo: string; linhas: TooltipLinha[]
   )
 }
 
-/** Evolução do faturamento no período (área, série única). */
 export function EvolucaoFaturamentoChart({
   dados,
   granularidade,
@@ -119,7 +118,6 @@ export function EvolucaoFaturamentoChart({
   )
 }
 
-/** Faturamento dos últimos 12 meses, com variação mês a mês no tooltip. */
 export function FaturamentoMensalChart({ dados }: { dados: DashboardPontoValor[] }) {
   const comVariacao = dados.map((p, i) => {
     const anterior = i > 0 ? dados[i - 1].valor : null
@@ -169,7 +167,6 @@ export function FaturamentoMensalChart({ dados }: { dados: DashboardPontoValor[]
   )
 }
 
-/** Volume de OS abertas no período (barras, série única). */
 export function VolumeOrdensChart({
   dados,
   granularidade,
@@ -213,7 +210,6 @@ export function VolumeOrdensChart({
   )
 }
 
-/** Ranking de faturamento por mecânico (barras horizontais). */
 export function RankingMecanicosChart({ dados }: { dados: DashboardDesempenhoMecanico[] }) {
   const top = dados.slice(0, 8)
   const altura = Math.max(120, top.length * 40 + 16)

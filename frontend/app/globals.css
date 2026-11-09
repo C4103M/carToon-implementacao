@@ -84,7 +84,6 @@
     --chart-3: oklch(0.55 0.11 240);
     --chart-4: oklch(0.72 0.15 65);
     --chart-5: oklch(0.5 0.02 70);
-    /* Par categórico validado (CVD) para receita: serviços vs peças */
     --chart-servicos: #2a78d6;
     --chart-pecas: #eb6834;
     --radius: 0.625rem;
@@ -194,7 +193,6 @@
         @apply bg-background text-foreground;
     }
 }
-
 
 @media print {
     @page {

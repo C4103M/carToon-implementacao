@@ -9,10 +9,6 @@ import java.util.Optional;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
-    /**
-     * Carrega o usuário já com a oficina. Usado no filtro JWT, que roda fora de uma
-     * sessão do Hibernate e precisa ler {@code oficina.ativo} sem lazy-loading.
-     */
     @EntityGraph(attributePaths = "oficina")
     Optional<Usuario> findComOficinaById(Integer id);
 

@@ -70,8 +70,6 @@ class SecurityConfigTest {
         assertAccessAllowed("/auth/login", "POST");
     }
 
-    // --- GET /dashboard/admin (somente ADMIN) ---
-
     @Test
     @DisplayName("GET /dashboard/admin - Não autenticado deve ser negado (403)")
     void dashboardAdmin_NaoAutenticado_DeveNegarAcesso() throws Exception {
