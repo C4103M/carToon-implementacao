@@ -115,7 +115,7 @@ class HardeningIteracao4Test {
             Usuario usuarioInativo = new Usuario();
             usuarioInativo.setId(10);
             usuarioInativo.setAtivo(false);
-            when(usuarioRepository.findById(10)).thenReturn(Optional.of(usuarioInativo));
+            when(usuarioRepository.findComOficinaById(10)).thenReturn(Optional.of(usuarioInativo));
 
             filter.doFilter(request, response, filterChain);
 
@@ -142,7 +142,7 @@ class HardeningIteracao4Test {
             usuario.setRole(Role.MECANICO);
             usuario.setOficina(oficinaInativa);
 
-            when(usuarioRepository.findById(10)).thenReturn(Optional.of(usuario));
+            when(usuarioRepository.findComOficinaById(10)).thenReturn(Optional.of(usuario));
 
             filter.doFilter(request, response, filterChain);
 
@@ -171,7 +171,7 @@ class HardeningIteracao4Test {
             usuario.setRole(Role.ADMIN);
             usuario.setOficina(oficinaAtiva);
 
-            when(usuarioRepository.findById(10)).thenReturn(Optional.of(usuario));
+            when(usuarioRepository.findComOficinaById(10)).thenReturn(Optional.of(usuario));
 
             filter.doFilter(request, response, filterChain);
 

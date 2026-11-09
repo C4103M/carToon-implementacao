@@ -59,6 +59,7 @@ public class VeiculoService {
     private final TenantGuard tenantGuard;
     private final OrdemServicoRepository ordemServicoRepository;
 
+    @Autowired
     public VeiculoService(
             VeiculoRepository veiculoRepository,
             ClienteService clienteService,

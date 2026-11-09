@@ -13,6 +13,7 @@ import com.cartoon.api.usuario.service.UsuarioService;
 import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.usuario.model.Usuario;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
@@ -20,7 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @Autowired)
 public class OficinaService {
 
     private static final List<StatusServico> STATUS_EM_ABERTO = List.of(

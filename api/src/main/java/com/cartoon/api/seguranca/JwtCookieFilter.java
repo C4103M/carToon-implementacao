@@ -47,7 +47,7 @@ public class JwtCookieFilter extends OncePerRequestFilter {
                 String role = claims.get("role", String.class);
 
                 if (id != null && usuarioRepository != null) {
-                    Usuario usuario = usuarioRepository.findById(id.intValue()).orElse(null);
+                    Usuario usuario = usuarioRepository.findComOficinaById(id.intValue()).orElse(null);
                     if (usuario == null || !Boolean.TRUE.equals(usuario.getAtivo())) {
                         filterChain.doFilter(request, response);
                         return;
