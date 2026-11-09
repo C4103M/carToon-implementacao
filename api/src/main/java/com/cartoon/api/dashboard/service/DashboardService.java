@@ -66,15 +66,6 @@ public class DashboardService {
         this.clock = clock;
     }
 
-    /**
-     * Regras do dashboard:
-     * <ul>
-     *   <li>Faturamento considera apenas OS FINALIZADO, pela data de finalização.</li>
-     *   <li>Sem período informado, usa o mês atual; o período anterior tem o mesmo número de dias.</li>
-     *   <li>Volume e distribuição por status consideram OS abertas no período, pela data do orçamento.</li>
-     *   <li>O filtro de status afeta apenas o volume de OS, nunca o faturamento.</li>
-     * </ul>
-     */
     @Transactional(readOnly = true)
     public DashboardAdminResponse dashboardAdmin(LocalDate inicio, LocalDate fim, StatusServico status,
                                                  UsuarioAutenticado solicitante) {
@@ -140,8 +131,6 @@ public class DashboardService {
         }
     }
 
-    // O desconto é aplicado sobre o total da OS, então é rateado entre peças e serviços
-    // na proporção do valor bruto de cada tipo.
     private ReceitaPorTipo receitaPorTipo(Integer oficinaId, LocalDate inicio, LocalDate fim,
                                           List<OsFinalizadaProjecao> noPeriodo) {
         if (noPeriodo.isEmpty()) {
@@ -158,7 +147,6 @@ public class DashboardService {
             BigDecimal servicos = servicosPorOs.getOrDefault(os.id(), BigDecimal.ZERO);
             BigDecimal bruto = pecas.add(servicos);
             if (bruto.signum() == 0) {
-                // OS sem itens identificáveis: a receita é atribuída a serviços para não se perder.
                 totalServicos = totalServicos.add(liquido);
                 continue;
             }
@@ -237,13 +225,11 @@ public class DashboardService {
             Acumulador acc = porMecanico.computeIfAbsent(os.mecanicoId(), id -> new Acumulador(id, os.mecanicoNome()));
             acc.faturamento = acc.faturamento.add(nuloComoZero(os.total()));
             acc.concluidas++;
-            // Tempo médio em dias; OS sem data de início fica fora da média.
             if (os.dataInicio() != null && os.dataFinalizacao() != null) {
                 acc.somaDias += Math.max(0, ChronoUnit.DAYS.between(os.dataInicio(), os.dataFinalizacao()));
                 acc.comTempo++;
             }
         }
-        // OS em andamento representam a carga atual do mecânico, independente do período filtrado.
         for (ContagemMecanicoProjecao c : emAndamento) {
             Acumulador acc = porMecanico.computeIfAbsent(c.mecanicoId(), id -> new Acumulador(id, c.mecanicoNome()));
             acc.emAndamento = c.quantidade() != null ? c.quantidade() : 0L;
