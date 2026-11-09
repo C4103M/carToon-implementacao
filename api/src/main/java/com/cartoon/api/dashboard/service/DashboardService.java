@@ -36,7 +36,13 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+
+import static com.cartoon.api.compartilhado.util.BigDecimalUtils.dinheiro;
+import static com.cartoon.api.compartilhado.util.BigDecimalUtils.dividir;
+import static com.cartoon.api.compartilhado.util.BigDecimalUtils.nuloComoZero;
+import static com.cartoon.api.compartilhado.util.BigDecimalUtils.percentual;
+import static com.cartoon.api.compartilhado.util.BigDecimalUtils.variacaoPercentual;
+import static com.cartoon.api.compartilhado.util.BigDecimalUtils.zeroMonetario;
 
 @Service
 public class DashboardService {
@@ -44,8 +50,6 @@ public class DashboardService {
     static final int LIMITE_DIAS_GRANULARIDADE_DIARIA = 62;
     static final int LIMITE_DIAS_PERIODO = 366 * 5;
     static final int MESES_FATURAMENTO_MENSAL = 12;
-
-    private static final BigDecimal CEM = BigDecimal.valueOf(100);
 
     private final DashboardRepository dashboardRepository;
     private final TenantGuard tenantGuard;
@@ -80,7 +84,8 @@ public class DashboardService {
 
         YearMonth ultimoMes = YearMonth.from(fimEfetivo);
         YearMonth primeiroMes = ultimoMes.minusMonths(MESES_FATURAMENTO_MENSAL - 1L);
-        LocalDate inicioConsulta = min(inicioAnterior, primeiroMes.atDay(1));
+        LocalDate inicioMensal = primeiroMes.atDay(1);
+        LocalDate inicioConsulta = inicioAnterior.isBefore(inicioMensal) ? inicioAnterior : inicioMensal;
 
         List<OsFinalizadaProjecao> finalizadas = dashboardRepository.listarFinalizadas(oficinaId, inicioConsulta, fimEfetivo);
         List<OsFinalizadaProjecao> noPeriodo = filtrar(finalizadas, inicioEfetivo, fimEfetivo);
@@ -88,7 +93,7 @@ public class DashboardService {
 
         BigDecimal faturamentoPeriodo = somar(noPeriodo);
         BigDecimal faturamentoAnterior = somar(noAnterior);
-        BigDecimal totalAcumulado = nz(dashboardRepository.somarTotalPorStatus(oficinaId, StatusServico.FINALIZADO));
+        BigDecimal totalAcumulado = nuloComoZero(dashboardRepository.somarTotalPorStatus(oficinaId, StatusServico.FINALIZADO));
 
         Faturamento faturamento = new Faturamento(
                 totalAcumulado,
@@ -129,7 +134,7 @@ public class DashboardService {
     private ReceitaPorTipo receitaPorTipo(Integer oficinaId, LocalDate inicio, LocalDate fim,
                                           List<OsFinalizadaProjecao> noPeriodo) {
         if (noPeriodo.isEmpty()) {
-            return new ReceitaPorTipo(zero(), zero());
+            return new ReceitaPorTipo(zeroMonetario(), zeroMonetario());
         }
         Map<Integer, BigDecimal> pecasPorOs = paraMapa(dashboardRepository.somarPecasDasFinalizadas(oficinaId, inicio, fim));
         Map<Integer, BigDecimal> servicosPorOs = paraMapa(dashboardRepository.somarServicosDasFinalizadas(oficinaId, inicio, fim));
@@ -137,7 +142,7 @@ public class DashboardService {
         BigDecimal totalPecas = BigDecimal.ZERO;
         BigDecimal totalServicos = BigDecimal.ZERO;
         for (OsFinalizadaProjecao os : noPeriodo) {
-            BigDecimal liquido = nz(os.total());
+            BigDecimal liquido = nuloComoZero(os.total());
             BigDecimal pecas = pecasPorOs.getOrDefault(os.id(), BigDecimal.ZERO);
             BigDecimal servicos = servicosPorOs.getOrDefault(os.id(), BigDecimal.ZERO);
             BigDecimal bruto = pecas.add(servicos);
@@ -149,7 +154,7 @@ public class DashboardService {
             totalPecas = totalPecas.add(pecasLiquido);
             totalServicos = totalServicos.add(liquido.subtract(pecasLiquido));
         }
-        return new ReceitaPorTipo(escala(totalServicos), escala(totalPecas));
+        return new ReceitaPorTipo(dinheiro(totalServicos), dinheiro(totalPecas));
     }
 
     private List<PontoValor> faturamentoMensal(List<OsFinalizadaProjecao> finalizadas, YearMonth primeiro,
@@ -163,34 +168,34 @@ public class DashboardService {
             if (data == null || data.isAfter(fim)) {
                 continue;
             }
-            porMes.computeIfPresent(YearMonth.from(data), (k, v) -> v.add(nz(os.total())));
+            porMes.computeIfPresent(YearMonth.from(data), (k, v) -> v.add(nuloComoZero(os.total())));
         }
         List<PontoValor> pontos = new ArrayList<>();
-        porMes.forEach((mes, valor) -> pontos.add(new PontoValor(mes.toString(), escala(valor))));
+        porMes.forEach((mes, valor) -> pontos.add(new PontoValor(mes.toString(), dinheiro(valor))));
         return pontos;
     }
 
     private List<PontoValor> evolucaoFaturamento(List<OsFinalizadaProjecao> noPeriodo, LocalDate inicio,
                                                  LocalDate fim, Granularidade granularidade) {
         Map<String, BigDecimal> serie = new LinkedHashMap<>();
-        chaves(inicio, fim, granularidade).forEach(c -> serie.put(c, BigDecimal.ZERO));
+        SerieTemporal.chaves(inicio, fim, granularidade).forEach(c -> serie.put(c, BigDecimal.ZERO));
         for (OsFinalizadaProjecao os : noPeriodo) {
-            serie.computeIfPresent(chave(os.dataFinalizacao(), granularidade), (k, v) -> v.add(nz(os.total())));
+            serie.computeIfPresent(SerieTemporal.chave(os.dataFinalizacao(), granularidade), (k, v) -> v.add(nuloComoZero(os.total())));
         }
         List<PontoValor> pontos = new ArrayList<>();
-        serie.forEach((k, v) -> pontos.add(new PontoValor(k, escala(v))));
+        serie.forEach((k, v) -> pontos.add(new PontoValor(k, dinheiro(v))));
         return pontos;
     }
 
     private List<PontoQuantidade> volumeOrdens(List<OsAberturaProjecao> abertas, StatusServico status,
                                                LocalDate inicio, LocalDate fim, Granularidade granularidade) {
         Map<String, Long> serie = new LinkedHashMap<>();
-        chaves(inicio, fim, granularidade).forEach(c -> serie.put(c, 0L));
+        SerieTemporal.chaves(inicio, fim, granularidade).forEach(c -> serie.put(c, 0L));
         for (OsAberturaProjecao os : abertas) {
             if (os.dataOrcamento() == null || (status != null && status != os.status())) {
                 continue;
             }
-            serie.computeIfPresent(chave(os.dataOrcamento(), granularidade), (k, v) -> v + 1);
+            serie.computeIfPresent(SerieTemporal.chave(os.dataOrcamento(), granularidade), (k, v) -> v + 1);
         }
         List<PontoQuantidade> pontos = new ArrayList<>();
         serie.forEach((k, v) -> pontos.add(new PontoQuantidade(k, v)));
@@ -218,7 +223,7 @@ public class DashboardService {
         Map<Integer, Acumulador> porMecanico = new LinkedHashMap<>();
         for (OsFinalizadaProjecao os : noPeriodo) {
             Acumulador acc = porMecanico.computeIfAbsent(os.mecanicoId(), id -> new Acumulador(id, os.mecanicoNome()));
-            acc.faturamento = acc.faturamento.add(nz(os.total()));
+            acc.faturamento = acc.faturamento.add(nuloComoZero(os.total()));
             acc.concluidas++;
             if (os.dataInicio() != null && os.dataFinalizacao() != null) {
                 acc.somaDias += Math.max(0, ChronoUnit.DAYS.between(os.dataInicio(), os.dataFinalizacao()));
@@ -234,40 +239,18 @@ public class DashboardService {
                 .map(acc -> new DesempenhoMecanico(
                         acc.id,
                         acc.nome,
-                        escala(acc.faturamento),
+                        dinheiro(acc.faturamento),
                         acc.concluidas,
                         acc.emAndamento,
                         acc.comTempo == 0 ? null
                                 : BigDecimal.valueOf(acc.somaDias).divide(BigDecimal.valueOf(acc.comTempo), 1, RoundingMode.HALF_UP),
                         dividir(acc.faturamento, acc.concluidas),
-                        faturamentoPeriodo.signum() == 0 ? zero()
-                                : acc.faturamento.multiply(CEM).divide(faturamentoPeriodo, 1, RoundingMode.HALF_UP)
+                        percentual(acc.faturamento, faturamentoPeriodo)
                 ))
                 .sorted(Comparator.comparing(DesempenhoMecanico::faturamento).reversed()
                         .thenComparing(Comparator.comparingLong(DesempenhoMecanico::osConcluidas).reversed())
                         .thenComparing(DesempenhoMecanico::nome, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                 .toList();
-    }
-
-    private static List<String> chaves(LocalDate inicio, LocalDate fim, Granularidade granularidade) {
-        List<String> chaves = new ArrayList<>();
-        if (granularidade == Granularidade.DIA) {
-            for (LocalDate d = inicio; !d.isAfter(fim); d = d.plusDays(1)) {
-                chaves.add(d.toString());
-            }
-        } else {
-            for (YearMonth m = YearMonth.from(inicio); !m.isAfter(YearMonth.from(fim)); m = m.plusMonths(1)) {
-                chaves.add(m.toString());
-            }
-        }
-        return chaves;
-    }
-
-    private static String chave(LocalDate data, Granularidade granularidade) {
-        if (data == null) {
-            return "";
-        }
-        return granularidade == Granularidade.DIA ? data.toString() : YearMonth.from(data).toString();
     }
 
     private static List<OsFinalizadaProjecao> filtrar(List<OsFinalizadaProjecao> lista, LocalDate de, LocalDate ate) {
@@ -279,42 +262,15 @@ public class DashboardService {
     }
 
     private static BigDecimal somar(List<OsFinalizadaProjecao> lista) {
-        return escala(lista.stream().map(os -> nz(os.total())).reduce(BigDecimal.ZERO, BigDecimal::add));
+        return dinheiro(lista.stream().map(os -> nuloComoZero(os.total())).reduce(BigDecimal.ZERO, BigDecimal::add));
     }
 
     private static Map<Integer, BigDecimal> paraMapa(List<SomaPorOsProjecao> somas) {
         Map<Integer, BigDecimal> mapa = new HashMap<>();
         for (SomaPorOsProjecao s : somas) {
-            mapa.merge(s.ordemServicoId(), nz(s.valor()), BigDecimal::add);
+            mapa.merge(s.ordemServicoId(), nuloComoZero(s.valor()), BigDecimal::add);
         }
         return mapa;
-    }
-
-    static BigDecimal variacaoPercentual(BigDecimal atual, BigDecimal anterior) {
-        if (anterior == null || anterior.signum() == 0) {
-            return null;
-        }
-        return atual.subtract(anterior).multiply(CEM).divide(anterior, 1, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal dividir(BigDecimal valor, long quantidade) {
-        return quantidade == 0 ? zero() : valor.divide(BigDecimal.valueOf(quantidade), 2, RoundingMode.HALF_UP);
-    }
-
-    private static LocalDate min(LocalDate a, LocalDate b) {
-        return a.isBefore(b) ? a : b;
-    }
-
-    private static BigDecimal nz(BigDecimal v) {
-        return Objects.requireNonNullElse(v, BigDecimal.ZERO);
-    }
-
-    private static BigDecimal escala(BigDecimal v) {
-        return nz(v).setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private static BigDecimal zero() {
-        return BigDecimal.ZERO.setScale(2);
     }
 
     private static final class Acumulador {
