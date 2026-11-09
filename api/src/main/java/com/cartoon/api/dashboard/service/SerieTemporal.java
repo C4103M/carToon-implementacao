@@ -1,6 +1,6 @@
 package com.cartoon.api.dashboard.service;
 
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.Granularidade;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.Granularidade;
 
 import java.time.LocalDate;
 import java.time.YearMonth;

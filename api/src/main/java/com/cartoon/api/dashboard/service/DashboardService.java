@@ -1,15 +1,15 @@
 package com.cartoon.api.dashboard.service;
 
 import com.cartoon.api.auth.UsuarioAutenticado;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.Faturamento;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.ReceitaPorTipo;
 import com.cartoon.api.dashboard.dto.projecao.OsAberturaProjecao;
 import com.cartoon.api.dashboard.dto.projecao.OsFinalizadaProjecao;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.Faturamento;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.ReceitaPorTipo;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse;
 import com.cartoon.api.dashboard.repository.DashboardRepository;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.seguranca.TenantGuard;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +18,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class DashboardService {
 
     private final DashboardRepository dashboardRepository;
@@ -26,30 +27,6 @@ public class DashboardService {
     private final CalculadoraOrdens calculadoraOrdens;
     private final CalculadoraDesempenhoMecanico calculadoraDesempenho;
     private final Clock clock;
-
-    @Autowired
-    public DashboardService(DashboardRepository dashboardRepository,
-                            TenantGuard tenantGuard,
-                            CalculadoraFaturamento calculadoraFaturamento,
-                            CalculadoraOrdens calculadoraOrdens,
-                            CalculadoraDesempenhoMecanico calculadoraDesempenho) {
-        this(dashboardRepository, tenantGuard, calculadoraFaturamento, calculadoraOrdens, calculadoraDesempenho,
-                Clock.systemDefaultZone());
-    }
-
-    DashboardService(DashboardRepository dashboardRepository,
-                     TenantGuard tenantGuard,
-                     CalculadoraFaturamento calculadoraFaturamento,
-                     CalculadoraOrdens calculadoraOrdens,
-                     CalculadoraDesempenhoMecanico calculadoraDesempenho,
-                     Clock clock) {
-        this.dashboardRepository = dashboardRepository;
-        this.tenantGuard = tenantGuard;
-        this.calculadoraFaturamento = calculadoraFaturamento;
-        this.calculadoraOrdens = calculadoraOrdens;
-        this.calculadoraDesempenho = calculadoraDesempenho;
-        this.clock = clock;
-    }
 
     @Transactional(readOnly = true)
     public DashboardAdminResponse dashboardAdmin(LocalDate inicio, LocalDate fim, StatusServico status,

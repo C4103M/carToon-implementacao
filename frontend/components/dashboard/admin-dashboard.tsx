@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { dashboardService } from '@/lib/services'
 import type { DashboardAdminResponse, StatusServico } from '@/lib/types'
-import { formatCurrency } from '@/lib/format'
+import { formatCurrency, formatDias, formatIsoDate, formatPercent } from '@/lib/format'
 import { getErrorMessage } from '@/lib/error-handler'
 import { cn } from '@/lib/utils'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,9 +45,6 @@ import {
   PRESETS,
   STATUS_LABEL,
   STATUS_ORDEM,
-  formatDias,
-  formatIsoDate,
-  formatPercent,
   intervaloDoPreset,
   type PresetPeriodo,
 } from './dashboard-utils'

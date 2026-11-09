@@ -1,4 +1,5 @@
 import type { GranularidadeDashboard, StatusServico } from '@/lib/types'
+import { formatIsoDate } from '@/lib/format'
 
 export type PresetPeriodo = '7d' | 'mes' | 'ano' | 'personalizado'
 
@@ -47,11 +48,6 @@ export function intervaloDoPreset(preset: Exclude<PresetPeriodo, 'personalizado'
   return { inicio: toIsoLocal(new Date(hoje.getFullYear(), hoje.getMonth(), 1)), fim }
 }
 
-export function formatIsoDate(iso: string): string {
-  const [y, m, d] = iso.split('-')
-  return d && m && y ? `${d}/${m}/${y}` : iso
-}
-
 export function rotuloCurto(chave: string, granularidade: GranularidadeDashboard): string {
   const [y, m, d] = chave.split('-')
   if (granularidade === 'DIA' && d) return `${d}/${m}`
@@ -62,23 +58,4 @@ export function rotuloLongo(chave: string, granularidade: GranularidadeDashboard
   const [y, m] = chave.split('-')
   if (granularidade === 'DIA') return formatIsoDate(chave)
   return `${MESES_CURTOS[Number(m) - 1] ?? m}/${y}`
-}
-
-export function formatCompactCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value)
-}
-
-export function formatPercent(value: number, casas = 1): string {
-  return `${value.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`
-}
-
-export function formatDias(value: number | null): string {
-  if (value === null || value === undefined) return '—'
-  const texto = value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
-  return `${texto} ${value === 1 ? 'dia' : 'dias'}`
 }

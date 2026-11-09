@@ -1,4 +1,4 @@
-package com.cartoon.api.dashboard.dto;
+package com.cartoon.api.dashboard.dto.response;
 
 import com.cartoon.api.ordemServico.models.StatusServico;
 

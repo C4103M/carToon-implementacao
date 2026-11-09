@@ -1,7 +1,7 @@
 package com.cartoon.api.dashboard.service;
 
 import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.Granularidade;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.Granularidade;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -1,10 +1,10 @@
 package com.cartoon.api.dashboard.service;
 
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.Faturamento;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.PontoValor;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.ReceitaPorTipo;
 import com.cartoon.api.dashboard.dto.projecao.OsFinalizadaProjecao;
 import com.cartoon.api.dashboard.dto.projecao.SomaPorOsProjecao;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.Faturamento;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.PontoValor;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.ReceitaPorTipo;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

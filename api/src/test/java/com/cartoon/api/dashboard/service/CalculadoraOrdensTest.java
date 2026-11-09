@@ -1,8 +1,8 @@
 package com.cartoon.api.dashboard.service;
 
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.PontoQuantidade;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.QuantidadePorStatus;
 import com.cartoon.api.dashboard.dto.projecao.OsAberturaProjecao;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.PontoQuantidade;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.QuantidadePorStatus;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

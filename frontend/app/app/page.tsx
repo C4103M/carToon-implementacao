@@ -16,7 +16,7 @@ import { formatCurrency, formatDate } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
 import { OrcamentoStatusBadge } from '@/components/status-badge'
 import { EmptyState } from '@/components/empty-state'
-import { AdminDashboard } from '@/components/dashboard/admin-dashboard'
+import { AdminDashboard } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import {

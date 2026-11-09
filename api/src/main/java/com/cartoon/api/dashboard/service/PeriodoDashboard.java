@@ -1,8 +1,8 @@
 package com.cartoon.api.dashboard.service;
 
 import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.Granularidade;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.Periodo;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.Granularidade;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.Periodo;
 import com.cartoon.api.ordemServico.models.StatusServico;
 
 import java.time.LocalDate;

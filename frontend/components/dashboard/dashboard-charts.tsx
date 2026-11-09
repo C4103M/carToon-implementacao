@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { formatCurrency } from '@/lib/format'
+import { formatCurrency, formatCompactCurrency, formatPercent } from '@/lib/format'
 import type {
   DashboardDesempenhoMecanico,
   DashboardPontoQuantidade,
@@ -19,8 +19,6 @@ import type {
   GranularidadeDashboard,
 } from '@/lib/types'
 import {
-  formatCompactCurrency,
-  formatPercent,
   rotuloCurto,
   rotuloLongo,
 } from './dashboard-utils'

@@ -1,7 +1,7 @@
 package com.cartoon.api.dashboard.controller;
 
 import com.cartoon.api.auth.UsuarioAutenticado;
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse;
 import com.cartoon.api.dashboard.service.DashboardService;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import io.swagger.v3.oas.annotations.Operation;

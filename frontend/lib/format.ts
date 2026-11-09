@@ -81,3 +81,27 @@ export function isValidCpf(raw: string): boolean {
 
   return true
 }
+
+export function formatIsoDate(iso: string): string {
+  const [y, m, d] = iso.split('-')
+  return d && m && y ? `${d}/${m}/${y}` : iso
+}
+
+export function formatCompactCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
+export function formatPercent(value: number, casas = 1): string {
+  return `${value.toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })}%`
+}
+
+export function formatDias(value: number | null): string {
+  if (value === null || value === undefined) return '—'
+  const texto = value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+  return `${texto} ${value === 1 ? 'dia' : 'dias'}`
+}

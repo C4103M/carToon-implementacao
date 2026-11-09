@@ -1,8 +1,8 @@
 package com.cartoon.api.dashboard.service;
 
-import com.cartoon.api.dashboard.dto.DashboardAdminResponse.DesempenhoMecanico;
 import com.cartoon.api.dashboard.dto.projecao.ContagemMecanicoProjecao;
 import com.cartoon.api.dashboard.dto.projecao.OsFinalizadaProjecao;
+import com.cartoon.api.dashboard.dto.response.DashboardAdminResponse.DesempenhoMecanico;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
