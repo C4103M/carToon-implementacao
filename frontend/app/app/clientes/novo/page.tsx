@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { useStore } from '@/lib/store'
+import { clientesService } from '@/lib/services/clientes.service'
+import { normalizeError } from '@/lib/error-handler'
 import { formatCpf, isValidCpf } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
 import { Button } from '@/components/ui/button'
@@ -17,12 +18,12 @@ import {
 } from '@/components/ui/field'
 
 export default function NovoClientePage() {
-  const { addCliente } = useStore()
   const router = useRouter()
 
   const [nome, setNome] = useState('')
   const [cpf, setCpf] = useState('')
   const [endereco, setEndereco] = useState('')
+  const [salvando, setSalvando] = useState(false)
 
   // Estados de erro
   const [nomeErro, setNomeErro] = useState(false)
@@ -34,7 +35,7 @@ export default function NovoClientePage() {
     if (cpfErro) setCpfErro(null)
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     let temErro = false
@@ -65,14 +66,20 @@ export default function NovoClientePage() {
 
     if (temErro) return
 
-    addCliente({
-      nome: nome.trim(),
-      cpf: cpf.trim(),
-      endereco: endereco.trim(),
-    })
-
-    toast.success('Cliente cadastrado com sucesso!')
-    router.push('/app/clientes')
+    setSalvando(true)
+    try {
+      const novoCliente = await clientesService.criar({
+        nome: nome.trim(),
+        cpf: cpf.replace(/\D/g, ''),
+        endereco: endereco.trim(),
+      })
+      toast.success('Cliente cadastrado com sucesso!')
+      router.push(`/app/clientes/${novoCliente.id}?novoVeiculo=true`)
+    } catch (err) {
+      toast.error(normalizeError(err).message || 'Erro ao cadastrar cliente.')
+    } finally {
+      setSalvando(false)
+    }
   }
 
   return (
@@ -147,10 +154,13 @@ export default function NovoClientePage() {
                   type="button"
                   variant="outline"
                   onClick={() => router.push('/app/clientes')}
+                  disabled={salvando}
                 >
                   Cancelar
                 </Button>
-                <Button type="submit">Salvar Cliente</Button>
+                <Button type="submit" disabled={salvando}>
+                  {salvando ? 'Salvando...' : 'Salvar Cliente'}
+                </Button>
               </div>
             </FieldGroup>
           </form>

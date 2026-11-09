@@ -16,23 +16,29 @@ public final class VeiculoSpecs {
         return (root, query, cb) -> {
             List<Predicate> condicoes = new ArrayList<>();
 
-            if (filtro.clienteId() != null) {
-                condicoes.add(cb.equal(root.get("cliente").get("id"), filtro.clienteId()));
-            }
-            if (filtro.placa() != null && !filtro.placa().isBlank()) {
-                condicoes.add(cb.like(cb.upper(root.get("placa")), "%" + filtro.placa().trim().toUpperCase() + "%"));
-            }
-            if (filtro.modelo() != null && !filtro.modelo().isBlank()) {
-                condicoes.add(cb.like(cb.upper(root.get("modelo")), "%" + filtro.modelo().trim().toUpperCase() + "%"));
-            }
-            if (filtro.marca() != null && !filtro.marca().isBlank()) {
-                condicoes.add(cb.like(cb.upper(root.get("marca")), "%" + filtro.marca().trim().toUpperCase() + "%"));
-            }
-            if (filtro.ativo() != null) {
-                condicoes.add(cb.equal(root.get("ativo"), filtro.ativo()));
+            if (filtro != null) {
+                if (filtro.clienteId() != null) {
+                    condicoes.add(cb.equal(root.get("cliente").get("id"), filtro.clienteId()));
+                }
+                if (filtro.placa() != null && !filtro.placa().isBlank()) {
+                    condicoes.add(cb.like(cb.upper(root.get("placa")), "%" + filtro.placa().trim().toUpperCase() + "%"));
+                }
+                if (filtro.modelo() != null && !filtro.modelo().isBlank()) {
+                    condicoes.add(cb.like(cb.upper(root.get("modelo")), "%" + filtro.modelo().trim().toUpperCase() + "%"));
+                }
+                if (filtro.marca() != null && !filtro.marca().isBlank()) {
+                    condicoes.add(cb.like(cb.upper(root.get("marca")), "%" + filtro.marca().trim().toUpperCase() + "%"));
+                }
+                if (filtro.ativo() != null) {
+                    condicoes.add(cb.equal(root.get("ativo"), filtro.ativo()));
+                }
             }
 
             return cb.and(condicoes.toArray(new Predicate[0]));
         };
+    }
+
+    public static Specification<Veiculo> porOficinaId(Integer oficinaId) {
+        return (root, query, cb) -> cb.equal(root.get("cliente").get("oficina").get("id"), oficinaId);
     }
 }

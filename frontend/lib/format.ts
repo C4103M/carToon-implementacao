@@ -5,8 +5,10 @@ export function formatCurrency(value: number): string {
   }).format(value)
 }
 
-export function formatDate(value: string | Date): string {
+export function formatDate(value?: string | Date | null): string {
+  if (!value) return '-'
   const date = typeof value === 'string' ? new Date(value) : value
+  if (isNaN(date.getTime())) return '-'
   return new Intl.DateTimeFormat('pt-BR', {
     day: '2-digit',
     month: '2-digit',
@@ -23,6 +25,23 @@ export function formatDateTime(value: string | Date): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(date)
+}
+
+// Máscara de Telefone: (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+export function formatTelefone(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 11)
+  if (digits.length <= 2) return digits.length > 0 ? `(${digits}` : ''
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`
+}
+
+// Validação de telefone brasileiro (10 ou 11 dígitos com DDD)
+export function isValidTelefone(raw: string): boolean {
+  const digits = raw.replace(/\D/g, '')
+  return digits.length >= 10 && digits.length <= 11
 }
 
 // Máscara de CPF: 000.000.000-00

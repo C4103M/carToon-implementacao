@@ -87,7 +87,7 @@ class UsuarioServiceTest {
 
     @Test
     void criarMecanico_deveCriarNaOficinaDoAdminComRoleMecanico() {
-        MecanicoRequest request = new MecanicoRequest("João", "joao@teste.com", "senha1234");
+        MecanicoRequest request = new MecanicoRequest("João", "joao@teste.com", "senha1234", "senha1234");
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
         when(passwordEncoder.encode("senha1234")).thenReturn("HASH_NOVO");
         when(usuarioRepository.saveAndFlush(any(Usuario.class))).thenAnswer(i -> i.getArgument(0));
@@ -108,7 +108,7 @@ class UsuarioServiceTest {
     @Test
     void criarMecanico_adminSemOficina_deveLancarAccessDenied() {
         adminLogado.setOficina(null);
-        MecanicoRequest request = new MecanicoRequest("João", "joao@teste.com", "senha1234");
+        MecanicoRequest request = new MecanicoRequest("João", "joao@teste.com", "senha1234", "senha1234");
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
 
         assertThatThrownBy(() -> service.criarMecanico(request, autenticadoAdmin))
@@ -119,7 +119,7 @@ class UsuarioServiceTest {
     @Test
     void criarMecanico_oficinaInativa_deveLancarConflito() {
         oficina.setAtivo(false);
-        MecanicoRequest request = new MecanicoRequest("João", "joao@teste.com", "senha1234");
+        MecanicoRequest request = new MecanicoRequest("João", "joao@teste.com", "senha1234", "senha1234");
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
 
         assertThatThrownBy(() -> service.criarMecanico(request, autenticadoAdmin))
@@ -129,7 +129,7 @@ class UsuarioServiceTest {
 
     @Test
     void criarAdmin_deveCriarNaOficinaInformadaComRoleAdmin() {
-        AdminRequest request = new AdminRequest("Maria", "maria@teste.com", "senha1234", 1);
+        AdminRequest request = new AdminRequest("Maria", "maria@teste.com", "senha1234", "senha1234", 1);
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
         when(passwordEncoder.encode("senha1234")).thenReturn("HASH_NOVO");
         when(usuarioRepository.saveAndFlush(any(Usuario.class))).thenAnswer(i -> i.getArgument(0));
@@ -146,7 +146,7 @@ class UsuarioServiceTest {
 
     @Test
     void criarAdmin_oficinaInexistente_deveLancarNaoEncontrado() {
-        AdminRequest request = new AdminRequest("Maria", "maria@teste.com", "senha1234", 999);
+        AdminRequest request = new AdminRequest("Maria", "maria@teste.com", "senha1234", "senha1234", 999);
         when(oficinaRepository.findById(999)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.criarAdmin(request))
@@ -157,7 +157,7 @@ class UsuarioServiceTest {
     @Test
     void criarAdmin_oficinaInativa_deveLancarConflito() {
         oficina.setAtivo(false);
-        AdminRequest request = new AdminRequest("Maria", "maria@teste.com", "senha1234", 1);
+        AdminRequest request = new AdminRequest("Maria", "maria@teste.com", "senha1234", "senha1234", 1);
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
 
         assertThatThrownBy(() -> service.criarAdmin(request))
@@ -169,7 +169,7 @@ class UsuarioServiceTest {
     void listar_admin_retornaSoUsuariosDaPropriaOficina() {
         Usuario mecanico = usuario(5, Role.MECANICO, oficina);
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
-        when(usuarioRepository.findAllByAtivoTrueAndOficinaId(1)).thenReturn(List.of(mecanico));
+        when(usuarioRepository.findAllByOficinaId(1)).thenReturn(List.of(mecanico));
 
         List<UsuarioResponse> resultado = service.listar(null, autenticadoAdmin);
 
@@ -178,25 +178,50 @@ class UsuarioServiceTest {
     }
 
     @Test
-    void listar_superAdminSemFiltro_retornaTodosOsAtivos() {
+    void listar_admin_comFiltroAtivo_filtraPorAtivoEOficina() {
+        Usuario mecanico = usuario(5, Role.MECANICO, oficina);
+        when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
+        when(usuarioRepository.findAllByAtivoAndOficinaId(true, 1)).thenReturn(List.of(mecanico));
+
+        List<UsuarioResponse> resultado = service.listar(null, true, autenticadoAdmin);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(5);
+    }
+
+    @Test
+    void listar_mecanico_retornaUsuariosDaPropriaOficina() {
+        Usuario mecanico = usuario(5, Role.MECANICO, oficina);
+        UsuarioAutenticado autenticadoMecanico = new UsuarioAutenticado(5L, "mecanico@teste.com", "ROLE_MECANICO");
+        when(usuarioRepository.findById(5)).thenReturn(Optional.of(mecanico));
+        when(usuarioRepository.findAllByOficinaId(1)).thenReturn(List.of(mecanico));
+
+        List<UsuarioResponse> resultado = service.listar(null, autenticadoMecanico);
+
+        assertThat(resultado).hasSize(1);
+        assertThat(resultado.get(0).id()).isEqualTo(5);
+    }
+
+    @Test
+    void listar_superAdminSemFiltro_retornaTodos() {
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(superAdminLogado));
-        when(usuarioRepository.findAllByAtivoTrue()).thenReturn(List.of(adminLogado));
+        when(usuarioRepository.findAll()).thenReturn(List.of(adminLogado));
 
         List<UsuarioResponse> resultado = service.listar(null, autenticadoSuperAdmin);
 
         assertThat(resultado).hasSize(1);
-        verify(usuarioRepository, never()).findAllByAtivoTrueAndOficinaId(any());
+        verify(usuarioRepository, never()).findAllByOficinaId(any());
     }
 
     @Test
     void listar_superAdminComFiltro_filtraPorOficina() {
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(superAdminLogado));
-        when(usuarioRepository.findAllByAtivoTrueAndOficinaId(1)).thenReturn(List.of(adminLogado));
+        when(usuarioRepository.findAllByOficinaId(1)).thenReturn(List.of(adminLogado));
 
         List<UsuarioResponse> resultado = service.listar(1, autenticadoSuperAdmin);
 
         assertThat(resultado).hasSize(1);
-        verify(usuarioRepository, never()).findAllByAtivoTrue();
+        verify(usuarioRepository, never()).findAll();
     }
 
     @Test
@@ -239,7 +264,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
 
         UsuarioResponse resposta = service.atualizar(5,
-                new AtualizarUsuarioRequest("Novo Nome", "novo@teste.com", null), autenticadoAdmin);
+                new AtualizarUsuarioRequest("Novo Nome", "novo@teste.com", null, null), autenticadoAdmin);
 
         assertThat(mecanico.getNome()).isEqualTo("Novo Nome");
         assertThat(resposta.email()).isEqualTo("novo@teste.com");
@@ -255,7 +280,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
         when(passwordEncoder.encode("novaSenha123")).thenReturn("HASH2");
 
-        service.atualizar(5, new AtualizarUsuarioRequest("Nome", "n@teste.com", "novaSenha123"), autenticadoAdmin);
+        service.atualizar(5, new AtualizarUsuarioRequest("Nome", "n@teste.com", "novaSenha123", "novaSenha123"), autenticadoAdmin);
 
         assertThat(mecanico.getSenha()).isEqualTo("HASH2");
     }
@@ -267,7 +292,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
 
         assertThatThrownBy(() -> service.atualizar(8,
-                new AtualizarUsuarioRequest("X", "x@teste.com", null), autenticadoAdmin))
+                new AtualizarUsuarioRequest("X", "x@teste.com", null, null), autenticadoAdmin))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -277,7 +302,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findById(8)).thenReturn(Optional.of(admin));
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(superAdminLogado));
 
-        service.atualizar(8, new AtualizarUsuarioRequest("Admin Novo", "an@teste.com", null), autenticadoSuperAdmin);
+        service.atualizar(8, new AtualizarUsuarioRequest("Admin Novo", "an@teste.com", null, null), autenticadoSuperAdmin);
 
         assertThat(admin.getNome()).isEqualTo("Admin Novo");
     }
@@ -290,7 +315,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findById(2)).thenReturn(Optional.of(adminLogado));
 
         assertThatThrownBy(() -> service.atualizar(5,
-                new AtualizarUsuarioRequest("X", "x@teste.com", null), autenticadoAdmin))
+                new AtualizarUsuarioRequest("X", "x@teste.com", null, null), autenticadoAdmin))
                 .isInstanceOf(ConflitoException.class);
     }
 
@@ -301,7 +326,7 @@ class UsuarioServiceTest {
         when(usuarioRepository.findById(5)).thenReturn(Optional.of(mecanico));
 
         UsuarioResponse resposta = service.atualizarMeusDados(
-                new AtualizarUsuarioRequest("Meu Novo Nome", "meu@teste.com", null), autenticadoMecanico);
+                new AtualizarUsuarioRequest("Meu Novo Nome", mecanico.getEmail(), null, null), autenticadoMecanico);
 
         assertThat(mecanico.getNome()).isEqualTo("Meu Novo Nome");
         assertThat(resposta.role()).isEqualTo(Role.MECANICO);

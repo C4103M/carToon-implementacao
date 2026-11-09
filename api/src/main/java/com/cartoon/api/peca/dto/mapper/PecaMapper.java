@@ -21,7 +21,9 @@ public final class PecaMapper {
                 peca.getId(),
                 peca.getNome(),
                 peca.getFabricante(),
-                peca.getValorBase()
+                peca.getValorBase(),
+                peca.getOficina() != null ? peca.getOficina().getId() : null,
+                peca.getAtivo()
         );
     }
 

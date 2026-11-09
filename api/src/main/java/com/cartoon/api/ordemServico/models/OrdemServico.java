@@ -9,6 +9,7 @@ import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +26,9 @@ public class OrdemServico {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
+    @Version
+    Long versao;
+
     @Column(name = "descricao", nullable = false)
     String descricao;
 
@@ -37,6 +41,16 @@ public class OrdemServico {
     LocalDate dataInicio;
     @Column(name = "data_finalizacao")
     LocalDate dataFinalizacao;
+
+    @Column(name = "desconto")
+    @Enumerated(EnumType.STRING)
+    Desconto desconto = Desconto.SEM_DESCONTO;
+
+    @Column(name = "valor_bruto")
+    BigDecimal valorBruto = BigDecimal.ZERO;
+
+    @Column(name = "valor_desconto")
+    BigDecimal valorDesconto = BigDecimal.ZERO;
 
     BigDecimal total = BigDecimal.ZERO;
 
@@ -111,7 +125,23 @@ public class OrdemServico {
                     })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        this.total = totalPecas.add(totalServicos);
+        this.valorBruto = totalPecas.add(totalServicos).setScale(2, RoundingMode.HALF_UP);
+
+        Desconto desc = this.desconto != null ? this.desconto : Desconto.SEM_DESCONTO;
+        this.valorDesconto = desc.calcularValorDesconto(this.valorBruto);
+        this.total = this.valorBruto.subtract(this.valorDesconto).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public Desconto getDesconto() {
+        return desconto != null ? desconto : Desconto.SEM_DESCONTO;
+    }
+
+    public BigDecimal getValorBruto() {
+        return valorBruto != null ? valorBruto : (total != null ? total : BigDecimal.ZERO);
+    }
+
+    public BigDecimal getValorDesconto() {
+        return valorDesconto != null ? valorDesconto : BigDecimal.ZERO;
     }
 
     public BigDecimal getTotal() {

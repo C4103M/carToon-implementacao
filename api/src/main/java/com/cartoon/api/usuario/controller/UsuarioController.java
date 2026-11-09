@@ -36,8 +36,9 @@ public class UsuarioController {
 
     @GetMapping
     public List<UsuarioResponse> listar(@RequestParam(required = false) Integer oficinaId,
+                                        @RequestParam(required = false) Boolean ativo,
                                         @AuthenticationPrincipal UsuarioAutenticado autenticado) {
-        return service.listar(oficinaId, autenticado);
+        return service.listar(oficinaId, ativo, autenticado);
     }
 
     @GetMapping("/me")

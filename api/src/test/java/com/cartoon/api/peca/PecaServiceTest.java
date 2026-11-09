@@ -1,12 +1,16 @@
 package com.cartoon.api.peca;
 
+import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
+import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.peca.dto.PecaFiltro;
 import com.cartoon.api.peca.dto.request.PecaRequest;
 import com.cartoon.api.peca.dto.response.PecaResponse;
 import com.cartoon.api.peca.models.Peca;
 import com.cartoon.api.peca.repositories.PecaRepository;
 import com.cartoon.api.peca.service.PecaService;
+import com.cartoon.api.usuario.model.Usuario;
+import com.cartoon.api.usuario.service.UsuarioService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,6 +21,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -32,6 +37,9 @@ class PecaServiceTest {
 
     @Mock
     private PecaRepository pecaRepository;
+
+    @Mock
+    private UsuarioService usuarioService;
 
     @InjectMocks
     private PecaService pecaService;
@@ -50,6 +58,76 @@ class PecaServiceTest {
         assertEquals(1, response.id());
         assertEquals("Filtro de Óleo", response.nome());
         verify(pecaRepository, times(1)).save(any(Peca.class));
+    }
+
+    @Test
+    @DisplayName("Deve salvar uma peça associando à oficina do solicitante")
+    void deveSalvarPecaAssociandoOficina() {
+        Oficina oficina = new Oficina();
+        oficina.setId(10);
+
+        Usuario usuario = new Usuario();
+        usuario.setId(5);
+        usuario.setOficina(oficina);
+
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(5L, "admin@oficina.com", "ADMIN");
+        PecaRequest request = new PecaRequest("Filtro de Óleo", "Bosch", new BigDecimal("50.00"));
+
+        when(usuarioService.buscarEntidade(5)).thenReturn(usuario);
+        when(pecaRepository.save(any(Peca.class))).thenAnswer(inv -> {
+            Peca p = inv.getArgument(0);
+            p.setId(1);
+            return p;
+        });
+
+        PecaResponse response = pecaService.salvar(request, solicitante);
+
+        assertNotNull(response);
+        assertEquals(1, response.id());
+        assertEquals(10, response.oficinaId());
+    }
+
+    @Test
+    @DisplayName("Deve bloquear acesso a peça de outra oficina")
+    void deveBloquearAcessoPecaOutraOficina() {
+        Oficina oficina1 = new Oficina();
+        oficina1.setId(10);
+
+        Oficina oficina2 = new Oficina();
+        oficina2.setId(20);
+
+        Usuario usuario = new Usuario();
+        usuario.setId(5);
+        usuario.setOficina(oficina1);
+
+        Peca pecaOutraOficina = new Peca(1, "Filtro de Óleo", "Bosch", new BigDecimal("50.00"));
+        pecaOutraOficina.setOficina(oficina2);
+
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(5L, "admin@oficina.com", "ADMIN");
+
+        when(pecaRepository.findById(1)).thenReturn(Optional.of(pecaOutraOficina));
+        when(usuarioService.buscarEntidade(5)).thenReturn(usuario);
+
+        assertThrows(AccessDeniedException.class, () -> pecaService.buscar(1, solicitante));
+    }
+
+    @Test
+    @DisplayName("Deve permitir acesso de SUPERADMIN (ROLE_SUPERADMIN) a peça mesmo sem oficina")
+    void devePermitirAcessoSuperAdminMesmoSemOficina() {
+        Oficina oficina = new Oficina();
+        oficina.setId(20);
+
+        Peca peca = new Peca(1, "Filtro de Óleo", "Bosch", new BigDecimal("50.00"));
+        peca.setOficina(oficina);
+
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
+
+        when(pecaRepository.findById(1)).thenReturn(Optional.of(peca));
+
+        PecaResponse response = pecaService.buscar(1, solicitante);
+
+        assertNotNull(response);
+        assertEquals(1, response.id());
     }
 
     @Test
@@ -128,14 +206,16 @@ class PecaServiceTest {
     }
 
     @Test
-    @DisplayName("Deve deletar uma peça com sucesso")
+    @DisplayName("Deve deletar uma peça com sucesso (soft delete)")
     void deveDeletarPecaComSucesso() {
         Peca peca = new Peca(1, "Filtro de Óleo", "Bosch", new BigDecimal("50.00"));
         when(pecaRepository.findById(1)).thenReturn(Optional.of(peca));
-        doNothing().when(pecaRepository).delete(peca);
+        when(pecaRepository.save(any(Peca.class))).thenReturn(peca);
 
-        assertDoesNotThrow(() -> pecaService.deletar(1));
+        UsuarioAutenticado solicitante = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
+        assertDoesNotThrow(() -> pecaService.deletar(1, solicitante));
         verify(pecaRepository, times(1)).findById(1);
-        verify(pecaRepository, times(1)).delete(peca);
+        verify(pecaRepository, times(1)).save(peca);
+        assertFalse(peca.getAtivo());
     }
 }
