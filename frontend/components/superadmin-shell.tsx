@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { LogOut, ShieldCheck, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { authService } from "@/lib/services";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "./theme-toggle";
+import { BrandLogo } from "./brand-logo";
 import { MeusDadosModal } from "./meus-dados-modal";
 
 function isSuperAdminRole(role?: string): boolean {
@@ -79,19 +80,11 @@ export function SuperAdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-svh bg-background">
-      <header className="sticky top-0 z-30 border-b border-border bg-sidebar text-sidebar-foreground">
+      <header className="sticky top-0 z-30 border-b border-sidebar-border bg-sidebar text-sidebar-foreground">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8">
-          <div className="flex items-center gap-2">
-            <div className="flex size-9 items-center justify-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground">
-              <ShieldCheck className="size-5" />
-            </div>
-            <div className="flex flex-col leading-tight">
-              <span className="font-semibold">CarTOON</span>
-              <span className="text-xs text-sidebar-foreground/60">
-                Painel administrativo
-              </span>
-            </div>
-            <Badge variant="secondary" className="ml-2 hidden sm:inline-flex">
+          <div className="flex items-center gap-3">
+            <BrandLogo variant="on-dark" size="sm" priority />
+            <Badge variant="secondary" className="ml-1 hidden sm:inline-flex border border-sidebar-border/60">
               Superadmin
             </Badge>
           </div>

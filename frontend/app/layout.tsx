@@ -1,29 +1,49 @@
 import { Analytics } from '@vercel/analytics/next';
 import type { Metadata, Viewport } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Plus_Jakarta_Sans, Bricolage_Grotesque, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { StoreProvider } from '@/lib/store';
 import { ThemeProvider } from '@/components/theme-provider';
 import './globals.css';
 
-const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' });
-const geistMono = Geist_Mono({
+const fontSans = Plus_Jakarta_Sans({
     subsets: ['latin'],
-    variable: '--font-geist-mono',
+    variable: '--font-sans',
+    display: 'swap',
+});
+
+const fontDisplay = Bricolage_Grotesque({
+    subsets: ['latin'],
+    variable: '--font-display',
+    display: 'swap',
+});
+
+const fontMono = JetBrains_Mono({
+    subsets: ['latin'],
+    variable: '--font-mono',
+    display: 'swap',
 });
 
 export const metadata: Metadata = {
-    title: 'OficinaPro — Gestão para Oficinas Mecânicas',
+    title: 'CAR TOON — Gestão de Oficinas Mecânicas',
     description:
-        'Sistema de gestão para oficinas mecânicas: clientes, veículos, catálogo de serviços e orçamentos.',
+        'Sistema de gestão para oficinas mecânicas: orçamentos inteligentes, tabela FIPE, clientes, veículos e catálogo de serviços.',
     generator: 'v0.app',
+    icons: {
+        icon: [
+            { url: '/icon.png', type: 'image/png' },
+            { url: '/favicon.ico', sizes: '32x32' },
+        ],
+        shortcut: '/icon.png',
+        apple: '/apple-icon.png',
+    },
 };
 
 export const viewport: Viewport = {
     colorScheme: 'light dark',
     themeColor: [
-        { media: '(prefers-color-scheme: light)', color: '#f7f5f0' },
-        { media: '(prefers-color-scheme: dark)', color: '#252220' },
+        { media: '(prefers-color-scheme: light)', color: '#F7F2EA' },
+        { media: '(prefers-color-scheme: dark)', color: '#0F131C' },
     ],
 };
 
@@ -35,10 +55,10 @@ export default function RootLayout({
     return (
         <html
             lang="pt-BR"
-            className={`bg-background ${geistSans.variable} ${geistMono.variable}`}
+            className={`bg-background ${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable}`}
             suppressHydrationWarning
         >
-            <body className="font-sans antialiased">
+            <body className="font-sans antialiased selection:bg-primary selection:text-primary-foreground">
                 <ThemeProvider
                     attribute="class"
                     defaultTheme="system"
