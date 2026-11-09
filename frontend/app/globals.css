@@ -84,6 +84,8 @@
     --chart-3: oklch(0.55 0.11 240);
     --chart-4: oklch(0.72 0.15 65);
     --chart-5: oklch(0.5 0.02 70);
+    --chart-servicos: #2a78d6;
+    --chart-pecas: #eb6834;
     --radius: 0.625rem;
     --sidebar: oklch(0.24 0.015 65);
     --sidebar-foreground: oklch(0.9 0.008 80);
@@ -126,6 +128,8 @@
     --chart-3: oklch(0.62 0.12 240);
     --chart-4: oklch(0.75 0.15 65);
     --chart-5: oklch(0.7 0.01 75);
+    --chart-servicos: #3987e5;
+    --chart-pecas: #d95926;
     --sidebar: oklch(0.14 0.01 65);
     --sidebar-foreground: oklch(0.9 0.008 80);
     --sidebar-primary: oklch(0.72 0.16 58);
@@ -168,6 +172,8 @@
         --chart-3: oklch(0.62 0.12 240);
         --chart-4: oklch(0.75 0.15 65);
         --chart-5: oklch(0.7 0.01 75);
+        --chart-servicos: #3987e5;
+        --chart-pecas: #d95926;
         --sidebar: oklch(0.14 0.01 65);
         --sidebar-foreground: oklch(0.9 0.008 80);
         --sidebar-primary: oklch(0.72 0.16 58);
@@ -187,7 +193,6 @@
         @apply bg-background text-foreground;
     }
 }
-
 
 @media print {
     @page {

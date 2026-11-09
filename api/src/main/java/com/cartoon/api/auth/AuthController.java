@@ -2,6 +2,7 @@ package com.cartoon.api.auth;
 
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -19,6 +20,7 @@ public class AuthController {
     private final AuthService authService;
     private final boolean cookieSecure;
 
+    @Autowired
     public AuthController(AuthService authService,
                           @Value("${app.security.cookie-secure:false}") boolean cookieSecure) {
         this.authService = authService;

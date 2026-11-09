@@ -1,0 +1,495 @@
+{
+  "info": {
+    "name": "CarToon - Dashboard Admin API Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Login como ADMIN",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{emailAdmin}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Cookie jwt recebido', function () { pm.expect(pm.response.headers.get('Set-Cookie')).to.include('jwt='); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Dashboard sem filtros (mês atual)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin",
+        "description": "Sem parâmetros o backend usa o mês atual. Faturamento considera apenas OS FINALIZADO."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "var hoje = new Date();",
+              "var mes = String(hoje.getMonth() + 1).padStart(2, '0');",
+              "pm.test('Período padrão começa no dia 1 do mês atual', function () { pm.expect(j.periodo.inicio).to.eql(hoje.getFullYear() + '-' + mes + '-01'); });",
+              "pm.test('Granularidade diária', function () { pm.expect(j.periodo.granularidade).to.eql('DIA'); });",
+              "pm.test('Faturamento traz todos os indicadores', function () {",
+              "    pm.expect(j.faturamento).to.have.all.keys('totalAcumulado', 'periodo', 'periodoAnterior', 'variacaoPercentual', 'ticketMedio', 'osFinalizadas');",
+              "});",
+              "pm.test('Total acumulado >= faturamento do período', function () { pm.expect(j.faturamento.totalAcumulado).to.be.at.least(j.faturamento.periodo); });",
+              "pm.test('Faturamento mensal com 12 meses', function () { pm.expect(j.faturamentoMensal).to.have.lengthOf(12); });",
+              "pm.test('Distribuição traz os 5 status', function () { pm.expect(j.ordensPorStatus).to.have.lengthOf(5); });",
+              "pm.test('Serviços + peças = faturamento do período', function () {",
+              "    var soma = j.receitaPorTipo.servicos + j.receitaPorTipo.pecas;",
+              "    pm.expect(soma).to.be.closeTo(j.faturamento.periodo, 0.01);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Período personalizado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin?inicio={{inicioPersonalizado}}&fim={{fimPersonalizado}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('Período retornado é o informado', function () {",
+              "    pm.expect(j.periodo.inicio).to.eql(pm.collectionVariables.get('inicioPersonalizado'));",
+              "    pm.expect(j.periodo.fim).to.eql(pm.collectionVariables.get('fimPersonalizado'));",
+              "});",
+              "pm.test('Período anterior tem o mesmo número de dias e termina na véspera', function () {",
+              "    var dia = 24 * 60 * 60 * 1000;",
+              "    var dias = (Date.parse(j.periodo.fim) - Date.parse(j.periodo.inicio)) / dia;",
+              "    var diasAnterior = (Date.parse(j.periodo.fimAnterior) - Date.parse(j.periodo.inicioAnterior)) / dia;",
+              "    pm.expect(diasAnterior).to.eql(dias);",
+              "    pm.expect((Date.parse(j.periodo.inicio) - Date.parse(j.periodo.fimAnterior)) / dia).to.eql(1);",
+              "});",
+              "pm.test('Evolução com um ponto por dia', function () { pm.expect(j.evolucaoFaturamento).to.have.lengthOf(31); });",
+              "pm.test('Soma da evolução = faturamento do período', function () {",
+              "    var soma = j.evolucaoFaturamento.reduce(function (a, p) { return a + p.valor; }, 0);",
+              "    pm.expect(soma).to.be.closeTo(j.faturamento.periodo, 0.01);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Período longo agrupado por mês (ano atual)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin?inicio={{inicioAno}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var hoje = new Date();",
+              "var inicio = new Date(hoje.getFullYear(), 0, 1);",
+              "if ((hoje - inicio) / 86400000 < 63) { inicio = new Date(hoje.getFullYear() - 1, 0, 1); }",
+              "pm.collectionVariables.set('inicioAno', inicio.getFullYear() + '-01-01');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('Granularidade mensal acima de 62 dias', function () { pm.expect(j.periodo.granularidade).to.eql('MES'); });",
+              "pm.test('Chaves no formato yyyy-MM', function () {",
+              "    j.evolucaoFaturamento.forEach(function (p) { pm.expect(p.chave).to.match(/^\\d{4}-\\d{2}$/); });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Filtro de status (PENDENTE)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin?inicio={{inicioPersonalizado}}&fim={{fimHoje}}&status=PENDENTE",
+        "description": "O filtro de status afeta apenas o volume de OS, nunca o faturamento."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var h = new Date();",
+              "pm.collectionVariables.set('fimHoje', h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('Status filtrado é retornado no período', function () { pm.expect(j.periodo.status).to.eql('PENDENTE'); });",
+              "pm.test('Volume conta apenas OS pendentes', function () {",
+              "    var volume = j.volumeOrdens.reduce(function (a, p) { return a + p.quantidade; }, 0);",
+              "    var pendentes = j.ordensPorStatus.find(function (s) { return s.status === 'PENDENTE'; }).quantidade;",
+              "    pm.expect(volume).to.eql(pendentes);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Ranking de mecânicos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin?inicio={{inicioPersonalizado}}&fim={{fimPersonalizado}}",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('Ranking ordenado por faturamento', function () {",
+              "    for (var i = 1; i < j.mecanicos.length; i++) {",
+              "        pm.expect(j.mecanicos[i - 1].faturamento).to.be.at.least(j.mecanicos[i].faturamento);",
+              "    }",
+              "});",
+              "pm.test('Faturamento dos mecânicos = faturamento do período', function () {",
+              "    var soma = j.mecanicos.reduce(function (a, m) { return a + m.faturamento; }, 0);",
+              "    pm.expect(soma).to.be.closeTo(j.faturamento.periodo, 0.01);",
+              "});",
+              "pm.test('Participações somam 100% quando há faturamento', function () {",
+              "    if (j.faturamento.periodo > 0) {",
+              "        var soma = j.mecanicos.reduce(function (a, m) { return a + m.participacaoPercentual; }, 0);",
+              "        pm.expect(soma).to.be.closeTo(100, 0.5);",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Data inicial depois da final -> 400",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin?inicio=2026-05-31&fim=2026-05-01",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 400', function () { pm.response.to.have.status(400); });",
+              "pm.test('Mensagem de período inválido', function () { pm.expect(pm.response.json().message).to.include('data inicial'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Período maior que 5 anos -> 400",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin?inicio=2015-01-01&fim=2026-05-01",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 400', function () { pm.response.to.have.status(400); });",
+              "pm.test('Mensagem de limite de 5 anos', function () { pm.expect(pm.response.json().message).to.include('5 anos'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Logout",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/logout",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 2xx', function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Login como MECANICO",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{emailMecanico}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Cookie jwt recebido', function () { pm.expect(pm.response.headers.get('Set-Cookie')).to.include('jwt='); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Dashboard como MECANICO -> 403",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin",
+        "description": "O dashboard financeiro é exclusivo do ADMIN."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Logout",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/logout",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 2xx', function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Login como SUPERADMIN",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/auth/login",
+        "description": "",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{emailSuperadmin}}\",\n  \"password\": \"{{senhaTeste}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Cookie jwt recebido', function () { pm.expect(pm.response.headers.get('Set-Cookie')).to.include('jwt='); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - Dashboard como SUPERADMIN -> 403",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 - Logout",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": "{{baseUrl}}/api/auth/logout",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 2xx', function () { pm.expect(pm.response.code).to.be.within(200, 299); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 - Dashboard sem autenticação -> 403",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/dashboard/admin",
+        "description": ""
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 403', function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "senhaTeste",
+      "value": "senha123"
+    },
+    {
+      "key": "emailAdmin",
+      "value": "admin@teste.com"
+    },
+    {
+      "key": "emailMecanico",
+      "value": "mecanico@teste.com"
+    },
+    {
+      "key": "emailSuperadmin",
+      "value": "superadmin@teste.com"
+    },
+    {
+      "key": "inicioPersonalizado",
+      "value": "2026-05-01"
+    },
+    {
+      "key": "fimPersonalizado",
+      "value": "2026-05-31"
+    },
+    {
+      "key": "inicioAno",
+      "value": ""
+    },
+    {
+      "key": "fimHoje",
+      "value": ""
+    }
+  ]
+}

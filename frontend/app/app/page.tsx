@@ -16,6 +16,7 @@ import { formatCurrency, formatDate } from '@/lib/format'
 import { PageHeader } from '@/components/page-header'
 import { OrcamentoStatusBadge } from '@/components/status-badge'
 import { EmptyState } from '@/components/empty-state'
+import { AdminDashboard } from '@/components/dashboard'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import {
@@ -28,6 +29,7 @@ import {
 
 export default function DashboardPage() {
   const { user } = useStore()
+  const isAdmin = user?.role?.toUpperCase().replace(/^ROLE_/, '') === 'ADMIN'
   const [pendentes, setPendentes] = useState<OrdemServicoResumo[]>([])
   const [carregando, setCarregando] = useState(true)
 
@@ -55,8 +57,14 @@ export default function DashboardPage() {
     <div>
       <PageHeader
         title={`Olá, ${user?.nome ?? ''}`}
-        description="Aqui está um resumo do que precisa de atenção hoje."
+        description={
+          isAdmin
+            ? 'Acompanhe o faturamento da oficina e o que precisa de atenção hoje.'
+            : 'Aqui está um resumo do que precisa de atenção hoje.'
+        }
       />
+
+      {isAdmin && <AdminDashboard />}
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card className="bg-primary/10 border-primary/30">
