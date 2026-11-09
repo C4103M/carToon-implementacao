@@ -430,3 +430,61 @@ export interface Orcamento {
   status: OrcamentoStatus;
   itens: OrcamentoItem[];
 }
+
+// ==========================================
+// Dashboard do ADMIN (GET /dashboard/admin)
+// ==========================================
+
+export type GranularidadeDashboard = 'DIA' | 'MES';
+
+export interface DashboardPontoValor {
+  /** "yyyy-MM-dd" (DIA) ou "yyyy-MM" (MES) */
+  chave: string;
+  valor: number;
+}
+
+export interface DashboardPontoQuantidade {
+  chave: string;
+  quantidade: number;
+}
+
+export interface DashboardDesempenhoMecanico {
+  mecanicoId: number;
+  nome: string;
+  faturamento: number;
+  osConcluidas: number;
+  osEmAndamento: number;
+  /** Média em dias entre início e finalização; null sem dados. */
+  tempoMedioDias: number | null;
+  ticketMedio: number;
+  participacaoPercentual: number;
+}
+
+export interface DashboardAdminResponse {
+  periodo: {
+    inicio: string;
+    fim: string;
+    inicioAnterior: string;
+    fimAnterior: string;
+    granularidade: GranularidadeDashboard;
+    status: StatusServico | null;
+  };
+  faturamento: {
+    totalAcumulado: number;
+    periodo: number;
+    periodoAnterior: number;
+    /** null quando o período anterior não teve faturamento. */
+    variacaoPercentual: number | null;
+    ticketMedio: number;
+    osFinalizadas: number;
+  };
+  receitaPorTipo: {
+    servicos: number;
+    pecas: number;
+  };
+  faturamentoMensal: DashboardPontoValor[];
+  evolucaoFaturamento: DashboardPontoValor[];
+  volumeOrdens: DashboardPontoQuantidade[];
+  ordensPorStatus: { status: StatusServico; quantidade: number }[];
+  mecanicos: DashboardDesempenhoMecanico[];
+}

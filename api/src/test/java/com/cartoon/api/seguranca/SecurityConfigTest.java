@@ -70,6 +70,38 @@ class SecurityConfigTest {
         assertAccessAllowed("/auth/login", "POST");
     }
 
+    // --- GET /dashboard/admin (somente ADMIN) ---
+
+    @Test
+    @DisplayName("GET /dashboard/admin - Não autenticado deve ser negado (403)")
+    void dashboardAdmin_NaoAutenticado_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(get("/dashboard/admin"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /dashboard/admin - Usuario ADMIN deve ter acesso permitido")
+    void dashboardAdmin_Admin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/dashboard/admin", "GET");
+    }
+
+    @Test
+    @WithMockUser(roles = "MECANICO")
+    @DisplayName("GET /dashboard/admin - Usuario MECANICO deve ter acesso negado (403)")
+    void dashboardAdmin_Mecanico_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(get("/dashboard/admin"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPERADMIN")
+    @DisplayName("GET /dashboard/admin - Usuario SUPERADMIN deve ter acesso negado (403)")
+    void dashboardAdmin_SuperAdmin_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(get("/dashboard/admin"))
+                .andExpect(status().isForbidden());
+    }
+
     // --- GET /ordem-servico/** ---
 
     @Test
