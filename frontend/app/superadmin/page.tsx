@@ -504,16 +504,18 @@ function StatCard({
   const toneClass = {
     default: 'text-foreground',
     success: 'text-success',
-    warning: 'text-warning-foreground',
+    warning: 'text-warning',
     destructive: 'text-destructive',
   }[tone]
   return (
     <Card>
       <CardContent className="flex flex-col gap-1 py-4">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {label}
         </span>
-        <span className={`text-2xl font-semibold ${toneClass}`}>{value}</span>
+        <span className={`font-display text-2xl font-extrabold tracking-tight tabular-nums ${toneClass}`}>
+          {value}
+        </span>
       </CardContent>
     </Card>
   )

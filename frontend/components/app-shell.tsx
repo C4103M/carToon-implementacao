@@ -71,12 +71,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           router.replace("/superadmin");
         } else {
           // Não autenticado ou papel inválido
-          router.replace("/");
+          router.replace("/login");
         }
       })
       .catch(() => {
         if (isMounted) {
-          router.replace("/");
+          router.replace("/login");
         }
       });
 
@@ -116,7 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     await authService.logout();
     storeLogout();
-    router.replace("/");
+    router.replace("/login");
   };
 
   return (

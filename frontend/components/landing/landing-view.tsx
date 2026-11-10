@@ -71,21 +71,12 @@ export function LandingView() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col relative">
-      {/* Subtle Fixed Paper Grain Texture Overlay */}
-      <svg
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-30 h-full w-full opacity-[0.03]"
+      <a
+        href="#conteudo-principal"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:font-display focus:text-sm focus:font-bold focus:text-primary-foreground focus:shadow-ink"
       >
-        <filter id="cartoon-paper-grain">
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.8"
-            numOctaves="3"
-            stitchTiles="stitch"
-          />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#cartoon-paper-grain)" />
-      </svg>
+        Pular para o conteúdo principal
+      </a>
 
       {/* Navigation Header */}
       <Navbar onOpenSimulator={openSimulator} onOpenContact={openContact} />

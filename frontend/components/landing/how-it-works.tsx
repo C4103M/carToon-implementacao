@@ -40,12 +40,12 @@ export const HowItWorks: React.FC = () => {
         }`}
       >
         <div className="max-w-2xl">
-          <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">
-            Como funciona
-          </p>
-          <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+          <h2 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
             Do portão à entrega, em quatro paradas.
           </h2>
+          <p className="mt-4 max-w-[50ch] text-base leading-relaxed text-muted-foreground sm:text-lg font-medium">
+            Cada etapa da Ordem de Serviço acompanha o ritmo real do pátio sem burocracia.
+          </p>
         </div>
 
         {/* Cartoon Ink Road + Car */}

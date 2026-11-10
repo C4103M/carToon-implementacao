@@ -51,12 +51,12 @@ export const Features: React.FC = () => {
       >
         {/* Editorial Section Header */}
         <div className="max-w-2xl">
-          <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">
-            Recursos essenciais
-          </p>
-          <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+          <h2 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
             No nome é cartoon. Na oficina, é ferramenta séria.
           </h2>
+          <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-muted-foreground sm:text-lg font-medium">
+            Quatro pilares desenhados para o dia a dia do pátio, do orçamento à entrega.
+          </p>
         </div>
 
         {/* Cardless Editorial Zig-Zag List */}

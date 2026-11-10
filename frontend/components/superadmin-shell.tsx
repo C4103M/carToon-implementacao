@@ -50,12 +50,12 @@ export function SuperAdminShell({ children }: { children: React.ReactNode }) {
           // Usuário autenticado mas sem permissão de superadmin (ex: admin de oficina ou mecânico)
           router.replace("/app");
         } else {
-          router.replace("/");
+          router.replace("/login");
         }
       })
       .catch(() => {
         if (isMounted) {
-          router.replace("/");
+          router.replace("/login");
         }
       });
 
@@ -75,7 +75,7 @@ export function SuperAdminShell({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     await authService.logout();
     storeLogout();
-    router.replace("/");
+    router.replace("/login");
   };
 
   return (

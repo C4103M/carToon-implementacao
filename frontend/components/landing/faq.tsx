@@ -35,10 +35,7 @@ export const Faq: React.FC = () => {
           {/* Left Sticky Title */}
           <div className="lg:col-span-5">
             <div className="lg:sticky lg:top-28">
-              <p className="font-mono text-xs font-bold uppercase tracking-widest text-primary">
-                Perguntas frequentes
-              </p>
-              <h2 className="mt-3 font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-5xl">
                 Antes de você perguntar.
               </h2>
               <p className="mt-4 max-w-[38ch] text-base leading-relaxed text-muted-foreground font-medium">
@@ -55,7 +52,7 @@ export const Faq: React.FC = () => {
                 open={idx === 0}
                 className="group py-6"
               >
-                <summary className="flex cursor-pointer items-center justify-between gap-6 text-left">
+                <summary className="flex cursor-pointer items-center justify-between gap-6 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50">
                   <h3 className="font-display text-xl font-bold text-foreground transition-colors group-hover:text-primary sm:text-2xl">
                     {faq.question}
                   </h3>

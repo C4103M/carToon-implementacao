@@ -107,25 +107,25 @@ export const LandingDialog: React.FC<DialogProps> = ({
         }`}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between gap-4 border-b-2 border-border px-5 py-4 sm:px-7">
+        <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-4 sm:px-7">
           <div>
-            {subtitle && (
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-widest text-primary">
-                {subtitle}
-              </p>
-            )}
             <h2
               id={titleId}
               className="font-display text-lg font-bold text-foreground sm:text-xl"
             >
               {title}
             </h2>
+            {subtitle && (
+              <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+                {subtitle}
+              </p>
+            )}
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-2 border-border bg-card text-foreground transition-colors hover:bg-primary hover:text-primary-foreground cursor-pointer"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-foreground transition-colors hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
             aria-label="Fechar janela"
           >
             <X className="h-5 w-5" />
@@ -139,7 +139,7 @@ export const LandingDialog: React.FC<DialogProps> = ({
 
         {/* Optional Footer */}
         {footer && (
-          <div className="border-t-2 border-border bg-secondary/40 px-5 py-4 sm:px-7">
+          <div className="border-t border-border bg-secondary/40 px-5 py-4 sm:px-7">
             {footer}
           </div>
         )}

@@ -106,13 +106,16 @@ export const SimulatorDialog: React.FC<SimulatorDialogProps> = ({
       {sim.notice && (
         <div
           role="status"
-          className="mt-4 flex items-center justify-between gap-3 border-l-4 border-primary bg-secondary/50 px-4 py-2.5 text-xs font-semibold text-foreground rounded-r-lg"
+          className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-xs font-semibold text-foreground"
         >
-          <span>{sim.notice}</span>
+          <div className="flex items-center gap-2.5">
+            <span className="size-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />
+            <span>{sim.notice}</span>
+          </div>
           <button
             type="button"
             onClick={() => sim.setNotice(null)}
-            className="text-muted-foreground hover:text-foreground cursor-pointer"
+            className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground hover:bg-primary/10 hover:text-foreground cursor-pointer"
             aria-label="Fechar aviso"
           >
             <X className="h-4 w-4" />

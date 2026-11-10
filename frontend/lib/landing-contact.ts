@@ -3,7 +3,7 @@ import type { LeadFormPayload } from './landing-types';
 export const PHONE_NUMBER = '5511999999999';
 export const PHONE_DISPLAY = '(11) 9999-9999';
 export const COMMERCIAL_EMAIL = 'exemplo.email@cartoon.com';
-export const APP_URL = '/';
+export const APP_URL = '/login';
 
 export function buildWhatsAppUrl(message: string): string {
   const cleanPhone = PHONE_NUMBER.replace(/\D/g, '');
