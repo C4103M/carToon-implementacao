@@ -54,14 +54,14 @@ class AuthServiceTest {
         LoginDTO dto = new LoginDTO("usuario@cartoon.com", "senha123");
         Usuario usuario = usuario(Role.ADMIN, true);
 
-        when(usuarioRepository.findByEmail(dto.email())).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmailIgnoreCase(dto.email())).thenReturn(Optional.of(usuario));
         when(passwordEncoder.matches(dto.password(), usuario.getSenha())).thenReturn(true);
         when(jwtService.gerar(usuario.getEmail(), usuario.getId(), usuario.getRole())).thenReturn("token_jwt_mock");
 
         String token = authService.login(dto);
 
         assertEquals("token_jwt_mock", token);
-        verify(usuarioRepository).findByEmail(dto.email());
+        verify(usuarioRepository).findByEmailIgnoreCase(dto.email());
         verify(passwordEncoder).matches(dto.password(), usuario.getSenha());
         verify(jwtService).gerar(usuario.getEmail(), usuario.getId(), usuario.getRole());
         verify(loginAttemptService).registrarSucesso(dto.email());
@@ -72,7 +72,7 @@ class AuthServiceTest {
     void login_ComEmailInexistente_DeveLancarExcecao() {
         LoginDTO dto = new LoginDTO("inexistente@cartoon.com", "senha123");
 
-        when(usuarioRepository.findByEmail(dto.email())).thenReturn(Optional.empty());
+        when(usuarioRepository.findByEmailIgnoreCase(dto.email())).thenReturn(Optional.empty());
 
         CredenciaisInvalidasException exception = assertThrows(
                 CredenciaisInvalidasException.class,
@@ -80,9 +80,9 @@ class AuthServiceTest {
         );
 
         assertEquals("Email ou senha incorreto", exception.getMessage());
-        verify(usuarioRepository).findByEmail(dto.email());
+        verify(usuarioRepository).findByEmailIgnoreCase(dto.email());
         verify(loginAttemptService).registrarFalha(dto.email());
-        verifyNoInteractions(passwordEncoder);
+        verify(passwordEncoder).matches(eq(dto.password()), anyString());
         verifyNoInteractions(jwtService);
     }
 
@@ -92,7 +92,7 @@ class AuthServiceTest {
         LoginDTO dto = new LoginDTO("usuario@cartoon.com", "senhaErrada");
         Usuario usuario = usuario(Role.ADMIN, true);
 
-        when(usuarioRepository.findByEmail(dto.email())).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmailIgnoreCase(dto.email())).thenReturn(Optional.of(usuario));
         when(passwordEncoder.matches(dto.password(), usuario.getSenha())).thenReturn(false);
 
         CredenciaisInvalidasException exception = assertThrows(
@@ -101,7 +101,7 @@ class AuthServiceTest {
         );
 
         assertEquals("Email ou senha incorreto", exception.getMessage());
-        verify(usuarioRepository).findByEmail(dto.email());
+        verify(usuarioRepository).findByEmailIgnoreCase(dto.email());
         verify(passwordEncoder).matches(dto.password(), usuario.getSenha());
         verify(loginAttemptService).registrarFalha(dto.email());
         verifyNoInteractions(jwtService);
@@ -113,7 +113,7 @@ class AuthServiceTest {
         LoginDTO dto = new LoginDTO("usuario@cartoon.com", "senha123");
         Usuario usuario = usuario(Role.MECANICO, false);
 
-        when(usuarioRepository.findByEmail(dto.email())).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmailIgnoreCase(dto.email())).thenReturn(Optional.of(usuario));
 
         CredenciaisInvalidasException exception = assertThrows(
                 CredenciaisInvalidasException.class,
@@ -149,7 +149,7 @@ class AuthServiceTest {
         LoginDTO dto = new LoginDTO("usuario@cartoon.com", "senhaErrada");
         Usuario usuario = usuario(Role.ADMIN, true);
 
-        when(usuarioRepository.findByEmail(dto.email())).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmailIgnoreCase(dto.email())).thenReturn(Optional.of(usuario));
         when(passwordEncoder.matches(dto.password(), usuario.getSenha())).thenReturn(false);
         when(loginAttemptService.estaBloqueado(dto.email())).thenReturn(false).thenReturn(true);
 

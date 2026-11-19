@@ -2,10 +2,12 @@ package com.cartoon.api.ordemServico.controller;
 
 import com.cartoon.api.compartilhado.exceptions.GlobalExceptionHandler;
 import com.cartoon.api.ordemServico.dto.OrdemServicoResumo;
+import com.cartoon.api.ordemServico.dto.request.DescontoRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemPecaRequest;
 import com.cartoon.api.ordemServico.dto.request.ItemServicoRequest;
 import com.cartoon.api.ordemServico.dto.request.OrdemServicoRequest;
 import com.cartoon.api.ordemServico.dto.response.OrdemServicoResponse;
+import com.cartoon.api.ordemServico.models.Desconto;
 import com.cartoon.api.ordemServico.models.StatusServico;
 import com.cartoon.api.ordemServico.service.OrdemServicoService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -55,7 +57,10 @@ class OrdemServicoControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(ordemServicoController)
                 .setControllerAdvice(new GlobalExceptionHandler())
-                .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+                .setCustomArgumentResolvers(
+                        new PageableHandlerMethodArgumentResolver(),
+                        new org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver()
+                )
                 .build();
 
         sampleResponse = new OrdemServicoResponse(
@@ -79,9 +84,9 @@ class OrdemServicoControllerTest {
     @Test
     @DisplayName("POST /ordem-servico - Deve criar Ordem de Serviço e retornar 201 Created com Header Location")
     void salvar_ComDadosValidos_DeveRetornar201Created() throws Exception {
-        OrdemServicoRequest request = new OrdemServicoRequest(10, 100, 5, "Troca de filtro");
+        OrdemServicoRequest request = new OrdemServicoRequest(10, 5, "Troca de filtro");
 
-        when(ordemServicoService.salvar(any(OrdemServicoRequest.class))).thenReturn(sampleResponse);
+        when(ordemServicoService.salvar(any(OrdemServicoRequest.class), any())).thenReturn(sampleResponse);
 
         mockMvc.perform(post("/ordem-servico")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -96,8 +101,7 @@ class OrdemServicoControllerTest {
     @Test
     @DisplayName("POST /ordem-servico - Deve retornar 400 Bad Request ao passar dados inválidos")
     void salvar_ComDadosInvalidos_DeveRetornar400BadRequest() throws Exception {
-        // request sem veiculoId obrigatório
-        OrdemServicoRequest requestInvalido = new OrdemServicoRequest(null, 100, 5, "Troca de filtro");
+        OrdemServicoRequest requestInvalido = new OrdemServicoRequest(null, 5, "Troca de filtro");
 
         mockMvc.perform(post("/ordem-servico")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -108,7 +112,7 @@ class OrdemServicoControllerTest {
     @Test
     @DisplayName("GET /ordem-servico/{id} - Deve buscar Ordem de Serviço por ID e retornar 200 OK")
     void buscar_DeveRetornar200OK() throws Exception {
-        when(ordemServicoService.buscar(1)).thenReturn(sampleResponse);
+        when(ordemServicoService.buscar(eq(1), any())).thenReturn(sampleResponse);
 
         mockMvc.perform(get("/ordem-servico/1"))
                 .andExpect(status().isOk())
@@ -122,7 +126,7 @@ class OrdemServicoControllerTest {
         OrdemServicoResumo resumo = new OrdemServicoResumo(1, StatusServico.PENDENTE, "ABC-1234", "Mecanico Joao");
         PageImpl<OrdemServicoResumo> page = new PageImpl<>(List.of(resumo), PageRequest.of(0, 10), 1);
 
-        when(ordemServicoService.listar(any(), any())).thenReturn(page);
+        when(ordemServicoService.listar(any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/ordem-servico")
                         .param("page", "0")
@@ -138,7 +142,7 @@ class OrdemServicoControllerTest {
         OrdemServicoResponse aceitoResponse = new OrdemServicoResponse(
                 1, StatusServico.ACEITO, null,null,null,null,"Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
 
-        when(ordemServicoService.aceitar(1)).thenReturn(aceitoResponse);
+        when(ordemServicoService.aceitar(eq(1), any())).thenReturn(aceitoResponse);
 
         mockMvc.perform(post("/ordem-servico/1/aceitar"))
                 .andExpect(status().isOk())
@@ -151,7 +155,7 @@ class OrdemServicoControllerTest {
         OrdemServicoResponse emAndamentoResponse = new OrdemServicoResponse(
                 1, StatusServico.EM_ANDAMENTO,null,null,null,null, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
 
-        when(ordemServicoService.iniciar(1)).thenReturn(emAndamentoResponse);
+        when(ordemServicoService.iniciar(eq(1), any())).thenReturn(emAndamentoResponse);
 
         mockMvc.perform(post("/ordem-servico/1/iniciar"))
                 .andExpect(status().isOk())
@@ -164,7 +168,7 @@ class OrdemServicoControllerTest {
         OrdemServicoResponse finalizadoResponse = new OrdemServicoResponse(
                 1, StatusServico.FINALIZADO,null,null,null,null, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
 
-        when(ordemServicoService.finalizar(1)).thenReturn(finalizadoResponse);
+        when(ordemServicoService.finalizar(eq(1), any())).thenReturn(finalizadoResponse);
 
         mockMvc.perform(post("/ordem-servico/1/finalizar"))
                 .andExpect(status().isOk())
@@ -177,7 +181,7 @@ class OrdemServicoControllerTest {
         OrdemServicoResponse rejeitadoResponse = new OrdemServicoResponse(
                 1, StatusServico.REJEITADO,null,null,null,null, "Troca de filtro", 10, "ABC-1234", 100, 5, "Mecanico Joao", Collections.emptyList(), BigDecimal.valueOf(150.00));
 
-        when(ordemServicoService.rejeitar(1)).thenReturn(rejeitadoResponse);
+        when(ordemServicoService.rejeitar(eq(1), any())).thenReturn(rejeitadoResponse);
 
         mockMvc.perform(post("/ordem-servico/1/rejeitar"))
                 .andExpect(status().isOk())
@@ -189,7 +193,7 @@ class OrdemServicoControllerTest {
     void adicionarPeca_DeveRetornar200OK() throws Exception {
         ItemPecaRequest request = new ItemPecaRequest(50, 2);
 
-        when(ordemServicoService.adicionarPeca(eq(1), any(ItemPecaRequest.class))).thenReturn(sampleResponse);
+        when(ordemServicoService.adicionarPeca(eq(1), any(ItemPecaRequest.class), any())).thenReturn(sampleResponse);
 
         mockMvc.perform(post("/ordem-servico/1/itens-peca")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -212,7 +216,7 @@ class OrdemServicoControllerTest {
     @Test
     @DisplayName("DELETE /ordem-servico/{id}/itens-peca/{itemId} - Deve remover item de peça da Ordem de Serviço")
     void removerPeca_DeveRetornar200OK() throws Exception {
-        when(ordemServicoService.removerPeca(1, 100)).thenReturn(sampleResponse);
+        when(ordemServicoService.removerPeca(eq(1), eq(100), any())).thenReturn(sampleResponse);
 
         mockMvc.perform(delete("/ordem-servico/1/itens-peca/100"))
                 .andExpect(status().isOk())
@@ -224,7 +228,7 @@ class OrdemServicoControllerTest {
     void adicionarServico_ComDadosValidos_DeveRetornar200OK() throws Exception {
         ItemServicoRequest request = new ItemServicoRequest(5, 2);
 
-        when(ordemServicoService.adicionarServico(eq(1), any(ItemServicoRequest.class))).thenReturn(sampleResponse);
+        when(ordemServicoService.adicionarServico(eq(1), any(ItemServicoRequest.class), any())).thenReturn(sampleResponse);
 
         mockMvc.perform(post("/ordem-servico/1/itens-servico")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -247,9 +251,24 @@ class OrdemServicoControllerTest {
     @Test
     @DisplayName("DELETE /ordem-servico/{id}/itens-servico/{itemId} - Deve remover item de serviço da Ordem de Serviço")
     void removerServico_DeveRetornar200OK() throws Exception {
-        when(ordemServicoService.removerServico(1, 200)).thenReturn(sampleResponse);
+        when(ordemServicoService.removerServico(eq(1), eq(200), any())).thenReturn(sampleResponse);
 
         mockMvc.perform(delete("/ordem-servico/1/itens-servico/200"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(1)));
+    }
+
+    @Test
+    @DisplayName("PATCH /ordem-servico/{id}/desconto - Deve aplicar desconto na Ordem de Serviço")
+    void aplicarDesconto_DeveRetornar200OK() throws Exception {
+        DescontoRequest request = new DescontoRequest(Desconto.DEZ_PORCENTO);
+
+        when(ordemServicoService.aplicarDesconto(eq(1), any(DescontoRequest.class), any()))
+                .thenReturn(sampleResponse);
+
+        mockMvc.perform(patch("/ordem-servico/1/desconto")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)));
     }

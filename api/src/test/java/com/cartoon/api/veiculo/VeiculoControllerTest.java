@@ -81,7 +81,7 @@ class VeiculoControllerTest {
                 "12345678901"
         );
 
-        when(veiculoService.cadastrar(any(VeiculoRequest.class))).thenReturn(response);
+        when(veiculoService.cadastrar(any(VeiculoRequest.class), any())).thenReturn(response);
 
         mockMvc.perform(post("/veiculos")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -115,7 +115,7 @@ class VeiculoControllerTest {
                 null
         );
 
-        when(veiculoService.cadastrar(any(VeiculoRequest.class)))
+        when(veiculoService.cadastrar(any(VeiculoRequest.class), any()))
                 .thenThrow(new ConflitoException("Já existe um veículo cadastrado com esta placa no sistema."));
 
         mockMvc.perform(post("/veiculos")
@@ -158,7 +158,7 @@ class VeiculoControllerTest {
                 "12345678901"
         );
 
-        when(veiculoService.atualizar(eq(1), any(VeiculoAtualizacaoRequest.class))).thenReturn(response);
+        when(veiculoService.atualizar(eq(1), any(VeiculoAtualizacaoRequest.class), any())).thenReturn(response);
 
         mockMvc.perform(put("/veiculos/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -195,7 +195,7 @@ class VeiculoControllerTest {
         VeiculoResponse response = new VeiculoResponse(
                 1, "XYZ-9876", "Ford", "Ka", 2019, "Flex", null, null, null, false, 1, "João", "12345678901"
         );
-        when(veiculoService.inativar(1)).thenReturn(response);
+        when(veiculoService.inativar(eq(1), any())).thenReturn(response);
 
         mockMvc.perform(patch("/veiculos/1/inativar"))
                 .andExpect(status().isOk())
@@ -226,7 +226,7 @@ class VeiculoControllerTest {
                 1
         );
 
-        when(veiculoService.consultarHistorico("XYZ-9876")).thenReturn(historico);
+        when(veiculoService.consultarHistorico(eq("XYZ-9876"), any())).thenReturn(historico);
 
         mockMvc.perform(get("/veiculos/XYZ-9876/historico"))
                 .andExpect(status().isOk())
@@ -247,7 +247,7 @@ class VeiculoControllerTest {
                 0
         );
 
-        when(veiculoService.consultarHistorico("XYZ-9876")).thenReturn(historico);
+        when(veiculoService.consultarHistorico(eq("XYZ-9876"), any())).thenReturn(historico);
 
         mockMvc.perform(get("/veiculos/XYZ-9876/historico"))
                 .andExpect(status().isOk())
@@ -258,7 +258,7 @@ class VeiculoControllerTest {
     @Test
     @DisplayName("UC06 - Teste 03: GET /veiculos/{placa}/historico para placa inexistente retorna 404")
     void deveRetornar404ParaPlacaInexistenteNoHistorico() throws Exception {
-        when(veiculoService.consultarHistorico("NAO-0000"))
+        when(veiculoService.consultarHistorico(eq("NAO-0000"), any()))
                 .thenThrow(new RecursoNaoEncontradoException("Veículo", "NAO-0000"));
 
         mockMvc.perform(get("/veiculos/NAO-0000/historico"))

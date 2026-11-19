@@ -70,6 +70,36 @@ class SecurityConfigTest {
         assertAccessAllowed("/auth/login", "POST");
     }
 
+    @Test
+    @DisplayName("GET /dashboard/admin - Não autenticado deve ser negado (403)")
+    void dashboardAdmin_NaoAutenticado_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(get("/dashboard/admin"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /dashboard/admin - Usuario ADMIN deve ter acesso permitido")
+    void dashboardAdmin_Admin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/dashboard/admin", "GET");
+    }
+
+    @Test
+    @WithMockUser(roles = "MECANICO")
+    @DisplayName("GET /dashboard/admin - Usuario MECANICO deve ter acesso negado (403)")
+    void dashboardAdmin_Mecanico_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(get("/dashboard/admin"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPERADMIN")
+    @DisplayName("GET /dashboard/admin - Usuario SUPERADMIN deve ter acesso negado (403)")
+    void dashboardAdmin_SuperAdmin_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(get("/dashboard/admin"))
+                .andExpect(status().isForbidden());
+    }
+
     // --- GET /ordem-servico/** ---
 
     @Test
@@ -177,5 +207,37 @@ class SecurityConfigTest {
     void deleteOrdemServico_SuperAdmin_DeveNegarAcesso() throws Exception {
         mockMvc.perform(delete("/ordem-servico/1"))
                 .andExpect(status().isForbidden());
+    }
+// --- GET /usuario e /usuario/* ---
+
+    @Test
+    @DisplayName("GET /usuario - Nao autenticado deve ser negado (403)")
+    void getUsuario_NaoAutenticado_DeveNegarAcesso() throws Exception {
+        mockMvc.perform(get("/usuario"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "MECANICO")
+    @DisplayName("GET /usuario - Usuario MECANICO deve ter acesso permitido")
+    void getUsuario_Mecanico_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/usuario", "GET");
+        assertAccessAllowed("/usuario/1", "GET");
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /usuario - Usuario ADMIN deve ter acesso permitido")
+    void getUsuario_Admin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/usuario", "GET");
+        assertAccessAllowed("/usuario/1", "GET");
+    }
+
+    @Test
+    @WithMockUser(roles = "SUPERADMIN")
+    @DisplayName("GET /usuario - Usuario SUPERADMIN deve ter acesso permitido")
+    void getUsuario_SuperAdmin_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/usuario", "GET");
+        assertAccessAllowed("/usuario/1", "GET");
     }
 }

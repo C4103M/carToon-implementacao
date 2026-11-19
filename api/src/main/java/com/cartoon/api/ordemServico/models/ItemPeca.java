@@ -24,6 +24,10 @@ public class ItemPeca {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
     Integer quantidade;
+    @Column(name = "valor_base")
+    BigDecimal valorBase;
+    @Column(name = "margem", precision = 6, scale = 4)
+    BigDecimal margem;
     @Column(name = "valor_unitario")
     BigDecimal valorUnitario;
     BigDecimal subtotal;
@@ -36,6 +40,16 @@ public class ItemPeca {
     private OrdemServico ordemServico;
 
     public void calcSubtotal(){
-        this.subtotal = valorUnitario.multiply(BigDecimal.valueOf(quantidade));
+        this.subtotal = (valorUnitario != null && quantidade != null)
+                ? valorUnitario.multiply(BigDecimal.valueOf(quantidade))
+                : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getSubtotalBruto() {
+        BigDecimal base = valorBase != null ? valorBase : (peca != null ? peca.getValorBase() : valorUnitario);
+        if (base == null || quantidade == null) {
+            return BigDecimal.ZERO;
+        }
+        return base.multiply(BigDecimal.valueOf(quantidade));
     }
 }

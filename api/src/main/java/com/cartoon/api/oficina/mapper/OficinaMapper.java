@@ -6,7 +6,7 @@ import com.cartoon.api.oficina.model.Oficina;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OficinaMapper{
+public class OficinaMapper {
 
     public Oficina toEntity(OficinaRequest request) {
         Oficina oficina = new Oficina();
@@ -20,6 +20,10 @@ public class OficinaMapper{
                 oficina.getNome(),
                 oficina.getEndereco(),
                 oficina.getTelefone(),
+                oficina.getEmail(),
+                oficina.getValorHora(),
+                oficina.getTaxaRisco(),
+                oficina.getMargemPeca(),
                 oficina.getAtivo()
         );
     }
@@ -28,6 +32,18 @@ public class OficinaMapper{
         oficina.setNome(request.nome().trim());
         oficina.setEndereco(request.endereco());
         oficina.setTelefone(normalizarTelefone(request.telefone()));
+        oficina.setEmail(request.email() != null && !request.email().isBlank()
+                ? request.email().trim().toLowerCase()
+                : null);
+        if (request.valorHora() != null) {
+            oficina.setValorHora(request.valorHora());
+        }
+        if (request.taxaRisco() != null) {
+            oficina.setTaxaRisco(request.taxaRisco());
+        }
+        if (request.margemPeca() != null) {
+            oficina.setMargemPeca(request.margemPeca());
+        }
     }
 
     private String normalizarTelefone(String telefone) {
