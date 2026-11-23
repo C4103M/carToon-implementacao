@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowUpRight, ShieldCheck, Store, Wrench } from 'lucide-react';
+import { AlertCircle, ArrowUpRight } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { authService } from '@/lib/services';
 import { Button } from '@/components/ui/button';
@@ -63,14 +63,6 @@ export default function LoginPage() {
             setMensagemErro(res.error || 'Falha ao autenticar.');
             setLoading(false);
         }
-    };
-
-    const handlePreencherDemo = (demoEmail: string, demoSenha: string) => {
-        setEmail(demoEmail);
-        setSenha(demoSenha);
-        setEmailInvalido(false);
-        setErro(null);
-        setMensagemErro('');
     };
 
     return (
@@ -201,53 +193,6 @@ export default function LoginPage() {
                             </Button>
                         </FieldGroup>
                     </form>
-
-                    <div className="mt-8 border-t border-border/80 pt-5">
-                        <p className="mb-3 text-xs font-semibold text-muted-foreground">
-                            Acesso rápido de demonstração
-                        </p>
-                        <div className="grid grid-cols-3 gap-2">
-                            <button
-                                type="button"
-                                onClick={() => handlePreencherDemo('admin@teste.com', 'senha123')}
-                                className="flex flex-col items-start gap-1 rounded-lg border border-border/80 bg-card p-2.5 text-left transition-all hover:border-primary/50 hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-                            >
-                                <span className="inline-flex items-center gap-1.5 font-display text-xs font-bold text-foreground">
-                                    <Store className="size-3.5 text-primary" />
-                                    Admin
-                                </span>
-                                <span className="text-[11px] text-muted-foreground font-medium">
-                                    Gestão e KPIs
-                                </span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handlePreencherDemo('mecanico@teste.com', 'senha123')}
-                                className="flex flex-col items-start gap-1 rounded-lg border border-border/80 bg-card p-2.5 text-left transition-all hover:border-primary/50 hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-                            >
-                                <span className="inline-flex items-center gap-1.5 font-display text-xs font-bold text-foreground">
-                                    <Wrench className="size-3.5 text-primary" />
-                                    Mecânico
-                                </span>
-                                <span className="text-[11px] text-muted-foreground font-medium">
-                                    Pátio e OS
-                                </span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handlePreencherDemo('superadmin@teste.com', 'senha123')}
-                                className="flex flex-col items-start gap-1 rounded-lg border border-border/80 bg-card p-2.5 text-left transition-all hover:border-primary/50 hover:bg-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer"
-                            >
-                                <span className="inline-flex items-center gap-1.5 font-display text-xs font-bold text-foreground">
-                                    <ShieldCheck className="size-3.5 text-primary" />
-                                    Superadmin
-                                </span>
-                                <span className="text-[11px] text-muted-foreground font-medium">
-                                    Plataforma
-                                </span>
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
