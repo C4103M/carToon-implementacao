@@ -1,3 +1,4 @@
 .idea
 .env
 node_modules/
+cartoon-ec2.pem

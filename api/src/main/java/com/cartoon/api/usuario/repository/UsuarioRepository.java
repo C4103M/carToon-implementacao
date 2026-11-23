@@ -1,5 +1,6 @@
 package com.cartoon.api.usuario.repository;
 
+import com.cartoon.api.usuario.model.Role;
 import com.cartoon.api.usuario.model.Usuario;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
 
     @EntityGraph(attributePaths = "oficina")
     Optional<Usuario> findComOficinaById(Integer id);
+
+    boolean existsByRole(Role role);
 
     Optional<Usuario> findByEmail(String email);
 

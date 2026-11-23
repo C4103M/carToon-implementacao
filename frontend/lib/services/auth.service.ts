@@ -68,7 +68,10 @@ export function getApiUrl(endpoint: string): string {
             : `/api${cleanEndpoint}`;
     }
 
-    const cleanBase = (envUrl || 'http://localhost:8080').replace(/\/+$/, '');
+    const baseUrl = isBrowser
+        ? envUrl || 'http://localhost:8080'
+        : process.env.BACKEND_URL || envUrl || 'http://localhost:8080';
+    const cleanBase = baseUrl.replace(/\/+$/, '');
     const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
     if (cleanBase.endsWith('/api') && cleanEndpoint.startsWith('/api')) {
