@@ -7,6 +7,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.env.MockEnvironment;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
@@ -16,9 +18,14 @@ import org.springframework.test.context.web.WebAppConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
+import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -60,6 +67,35 @@ class SecurityConfigTest {
                     assertNotEquals(401, status, "Request should not be unauthorized (401)");
                     assertNotEquals(403, status, "Request should not be forbidden (403)");
                 });
+    }
+
+    // --- /actuator/health (PermitAll) ---
+
+    @Test
+    @DisplayName("Permissões /actuator/health - Não autenticado deve ter acesso permitido")
+    void actuatorHealth_NaoAutenticado_DevePermitirAcesso() throws Exception {
+        assertAccessAllowed("/actuator/health", "GET");
+        assertAccessAllowed("/actuator/health/readiness", "GET");
+    }
+
+    // --- CORS configurável ---
+
+    @Test
+    @DisplayName("CORS - Usa origens configuradas em app.cors.allowed-origins e fallback local")
+    void cors_DeveUsarOrigensConfiguradasEFallback() {
+        SecurityConfig defaultConfig = new SecurityConfig(new MockEnvironment());
+        CorsConfiguration defaultCors = defaultConfig.corsConfigurationSource()
+                .getCorsConfiguration(new MockHttpServletRequest());
+        assertNotNull(defaultCors);
+        assertEquals(List.of("http://localhost:[*]", "http://127.0.0.1:[*]"), defaultCors.getAllowedOriginPatterns());
+
+        MockEnvironment prodEnv = new MockEnvironment()
+                .withProperty("app.cors.allowed-origins", "https://app.cartoon.com.br, https://admin.cartoon.com.br ");
+        SecurityConfig prodConfig = new SecurityConfig(prodEnv);
+        CorsConfiguration prodCors = prodConfig.corsConfigurationSource()
+                .getCorsConfiguration(new MockHttpServletRequest());
+        assertNotNull(prodCors);
+        assertEquals(List.of("https://app.cartoon.com.br", "https://admin.cartoon.com.br"), prodCors.getAllowedOriginPatterns());
     }
 
     // --- /auth/** (PermitAll) ---

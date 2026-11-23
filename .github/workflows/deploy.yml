@@ -1,0 +1,181 @@
+name: Deploy CarToon (EC2)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test-and-build:
+    name: Testes e Build das Imagens
+    runs-on: ubuntu-latest
+    outputs:
+      api_image: ${{ steps.meta.outputs.api_image }}
+      frontend_image: ${{ steps.meta.outputs.frontend_image }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 21 e cache Maven
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+          cache-dependency-path: api/pom.xml
+
+      - name: Executar testes da API
+        working-directory: api
+        run: |
+          chmod +x mvnw
+          ./mvnw test
+
+      - name: Definir nomes e tag das imagens (GHCR)
+        id: meta
+        run: |
+          OWNER_LOWER=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          SHORT_SHA="${GITHUB_SHA::7}"
+          echo "api_image=ghcr.io/${OWNER_LOWER}/cartoon-api" >> "$GITHUB_OUTPUT"
+          echo "frontend_image=ghcr.io/${OWNER_LOWER}/cartoon-frontend" >> "$GITHUB_OUTPUT"
+          echo "image_tag=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Login no GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build e push da imagem da API
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.api_image }}:${{ steps.meta.outputs.image_tag }}
+            ${{ steps.meta.outputs.api_image }}:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build e push da imagem do Frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            BACKEND_URL=http://api:8080
+          tags: |
+            ${{ steps.meta.outputs.frontend_image }}:${{ steps.meta.outputs.image_tag }}
+            ${{ steps.meta.outputs.frontend_image }}:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  deploy:
+    name: Deploy na EC2
+    needs: test-and-build
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout dos arquivos de implantacao
+        uses: actions/checkout@v4
+
+      - name: Validar secrets obrigatorios
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          for var in EC2_HOST EC2_SSH_KEY DB_USER DB_PASSWORD JWT_SECRET; do
+            if [ -z "${!var:-}" ]; then
+              echo "::error::Secret obrigatoria ausente no environment 'production': $var"
+              exit 1
+            fi
+          done
+
+      - name: Configurar acesso SSH
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          umask 077
+          printf '%s\n' "$EC2_SSH_KEY" > "$RUNNER_TEMP/deploy_key"
+          chmod 600 "$RUNNER_TEMP/deploy_key"
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+
+      - name: Gerar arquivo .env de producao
+        env:
+          API_IMAGE: ${{ needs.test-and-build.outputs.api_image }}:${{ needs.test-and-build.outputs.image_tag }}
+          FRONTEND_IMAGE: ${{ needs.test-and-build.outputs.frontend_image }}:${{ needs.test-and-build.outputs.image_tag }}
+          SPRING_PROFILES_ACTIVE: ${{ vars.SPRING_PROFILES_ACTIVE || 'prod' }}
+          DB_URL: ${{ vars.DB_URL || 'jdbc:postgresql://db:5432/oficina' }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DOMAIN: ${{ vars.DOMAIN || ':80' }}
+          APP_SECURITY_COOKIE_SECURE: ${{ vars.APP_SECURITY_COOKIE_SECURE || 'true' }}
+          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS || 'http://localhost:[*],http://127.0.0.1:[*]' }}
+          FIPE_TOKEN: ${{ secrets.FIPE_TOKEN }}
+          BOOTSTRAP_SUPERADMIN_NOME: ${{ vars.BOOTSTRAP_SUPERADMIN_NOME || 'Super Administrador' }}
+          BOOTSTRAP_SUPERADMIN_EMAIL: ${{ vars.BOOTSTRAP_SUPERADMIN_EMAIL }}
+          BOOTSTRAP_SUPERADMIN_PASSWORD: ${{ secrets.BOOTSTRAP_SUPERADMIN_PASSWORD }}
+          NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS: ${{ vars.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS || 'false' }}
+        run: |
+          umask 077
+          {
+            printf 'API_IMAGE=%s\n' "$API_IMAGE"
+            printf 'FRONTEND_IMAGE=%s\n' "$FRONTEND_IMAGE"
+            printf 'SPRING_PROFILES_ACTIVE=%s\n' "$SPRING_PROFILES_ACTIVE"
+            printf 'DB_URL=%s\n' "$DB_URL"
+            printf 'DB_USER=%s\n' "$DB_USER"
+            printf 'DB_PASSWORD=%s\n' "$DB_PASSWORD"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET"
+            printf 'DOMAIN=%s\n' "$DOMAIN"
+            printf 'APP_SECURITY_COOKIE_SECURE=%s\n' "$APP_SECURITY_COOKIE_SECURE"
+            printf 'CORS_ALLOWED_ORIGINS=%s\n' "$CORS_ALLOWED_ORIGINS"
+            printf 'FIPE_TOKEN=%s\n' "${FIPE_TOKEN:-}"
+            printf 'BOOTSTRAP_SUPERADMIN_NOME=%s\n' "$BOOTSTRAP_SUPERADMIN_NOME"
+            printf 'BOOTSTRAP_SUPERADMIN_EMAIL=%s\n' "${BOOTSTRAP_SUPERADMIN_EMAIL:-}"
+            printf 'BOOTSTRAP_SUPERADMIN_PASSWORD=%s\n' "${BOOTSTRAP_SUPERADMIN_PASSWORD:-}"
+            printf 'NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS=%s\n' "$NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS"
+          } > "$RUNNER_TEMP/deploy.env"
+
+      - name: Enviar arquivos e atualizar containers na EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER || vars.EC2_USER || 'ubuntu' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          scp -i "$RUNNER_TEMP/deploy_key" -o StrictHostKeyChecking=yes \
+            docker-compose.prod.yml Caddyfile "${EC2_USER}@${EC2_HOST}:/opt/cartoon/"
+          scp -i "$RUNNER_TEMP/deploy_key" -o StrictHostKeyChecking=yes \
+            "$RUNNER_TEMP/deploy.env" "${EC2_USER}@${EC2_HOST}:/opt/cartoon/.env"
+
+          printf '%s' "$GITHUB_TOKEN" | ssh -i "$RUNNER_TEMP/deploy_key" -o StrictHostKeyChecking=yes "${EC2_USER}@${EC2_HOST}" \
+            "set -eu; trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT; chmod 600 /opt/cartoon/.env; docker login ghcr.io -u '${GITHUB_ACTOR}' --password-stdin; cd /opt/cartoon; docker compose -f docker-compose.prod.yml pull; docker compose -f docker-compose.prod.yml up -d --remove-orphans; docker image prune -f; docker compose -f docker-compose.prod.yml ps"
+
+      - name: Limpar arquivos temporarios do runner
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/deploy_key" "$RUNNER_TEMP/deploy.env"
