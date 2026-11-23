@@ -14,7 +14,9 @@ import java.util.List;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Entity
-@Table
+@Table(name = "cliente", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_cliente_oficina_cpf", columnNames = {"oficina_id", "cpf"})
+})
 public class Cliente {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,7 +25,7 @@ public class Cliente {
     @Column(nullable = false)
     String nome;
 
-    @Column(nullable = false, unique = true, length = 11)
+    @Column(nullable = false, length = 11)
     String cpf;
 
     String endereco;

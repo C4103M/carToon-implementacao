@@ -62,9 +62,10 @@ class OficinaServiceTest {
         oficina.setNome("Oficina Centro");
         oficina.setEndereco("Rua das Flores, 200");
         oficina.setTelefone("11988887777");
+        oficina.setEmail("centro@oficina.com");
         oficina.setAtivo(true);
 
-        response = new OficinaResponse(1, "Oficina Centro", "Rua das Flores, 200", "11988887777", true);
+        response = new OficinaResponse(1, "Oficina Centro", "Rua das Flores, 200", "11988887777", "centro@oficina.com", true);
         superAdmin = new UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
         admin = new UsuarioAutenticado(2L, "admin@teste.com", "ROLE_ADMIN");
     }
@@ -79,7 +80,7 @@ class OficinaServiceTest {
 
     @Test
     void criar_deveSalvarERetornarResponse() {
-        OficinaRequest request = new OficinaRequest("Oficina Centro", "Rua das Flores, 200", "11988887777");
+        OficinaRequest request = new OficinaRequest("Oficina Centro", "Rua das Flores, 200", "11988887777", "centro@oficina.com");
         when(mapper.toEntity(request)).thenReturn(oficina);
         when(oficinaRepository.saveAndFlush(oficina)).thenReturn(oficina);
         when(mapper.toResponse(oficina)).thenReturn(response);
@@ -87,6 +88,7 @@ class OficinaServiceTest {
         OficinaResponse resultado = service.criar(request);
 
         assertThat(resultado.id()).isEqualTo(1);
+        assertThat(resultado.email()).isEqualTo("centro@oficina.com");
         assertThat(resultado.ativo()).isTrue();
         verify(oficinaRepository).saveAndFlush(oficina);
     }
@@ -94,15 +96,25 @@ class OficinaServiceTest {
     // ---------- listar e buscar ----------
 
     @Test
-    void listar_deveBuscarApenasAtivas() {
-        when(oficinaRepository.findAllByAtivoTrue()).thenReturn(List.of(oficina));
+    void listar_semFiltro_deveBuscarTodas() {
+        when(oficinaRepository.findAll()).thenReturn(List.of(oficina));
         when(mapper.toResponse(oficina)).thenReturn(response);
 
-        List<OficinaResponse> resultado = service.listar();
+        List<OficinaResponse> resultado = service.listar(null, superAdmin);
 
         assertThat(resultado).hasSize(1);
-        verify(oficinaRepository).findAllByAtivoTrue();
-        verify(oficinaRepository, never()).findAll();
+        verify(oficinaRepository).findAll();
+    }
+
+    @Test
+    void listar_comFiltroAtivo_deveBuscarPorAtivo() {
+        when(oficinaRepository.findAllByAtivo(true)).thenReturn(List.of(oficina));
+        when(mapper.toResponse(oficina)).thenReturn(response);
+
+        List<OficinaResponse> resultado = service.listar(true, superAdmin);
+
+        assertThat(resultado).hasSize(1);
+        verify(oficinaRepository).findAllByAtivo(true);
     }
 
     @Test
@@ -110,16 +122,17 @@ class OficinaServiceTest {
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
         when(mapper.toResponse(oficina)).thenReturn(response);
 
-        OficinaResponse resultado = service.buscarPorId(1);
+        OficinaResponse resultado = service.buscarPorId(1, superAdmin);
 
         assertThat(resultado.nome()).isEqualTo("Oficina Centro");
+        assertThat(resultado.email()).isEqualTo("centro@oficina.com");
     }
 
     @Test
     void buscarPorId_quandoNaoExiste_deveLancarExcecao() {
         when(oficinaRepository.findById(999)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.buscarPorId(999))
+        assertThatThrownBy(() -> service.buscarPorId(999, superAdmin))
                 .isInstanceOf(RecursoNaoEncontradoException.class);
     }
 
@@ -127,7 +140,7 @@ class OficinaServiceTest {
 
     @Test
     void atualizar_superAdmin_editaQualquerOficinaSemConsultarUsuario() {
-        OficinaRequest request = new OficinaRequest("Novo Nome", "Av. Brasil, 1500", "11977776666");
+        OficinaRequest request = new OficinaRequest("Novo Nome", "Av. Brasil, 1500", "11977776666", "novo@oficina.com");
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
         when(mapper.toResponse(oficina)).thenReturn(response);
 
@@ -140,7 +153,7 @@ class OficinaServiceTest {
 
     @Test
     void atualizar_adminDaPropriaOficina_deveAplicarMudancas() {
-        OficinaRequest request = new OficinaRequest("Novo Nome", "Av. Brasil, 1500", "11977776666");
+        OficinaRequest request = new OficinaRequest("Novo Nome", "Av. Brasil, 1500", "11977776666", "novo@oficina.com");
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
         when(usuarioService.buscarEntidade(2)).thenReturn(usuarioComOficina(oficina));
         when(mapper.toResponse(oficina)).thenReturn(response);
@@ -155,7 +168,7 @@ class OficinaServiceTest {
     void atualizar_adminDeOutraOficina_deveLancarAccessDenied() {
         Oficina outra = new Oficina();
         outra.setId(2);
-        OficinaRequest request = new OficinaRequest("Novo Nome", "Rua X", "11977776666");
+        OficinaRequest request = new OficinaRequest("Novo Nome", "Rua X", "11977776666", "novo@oficina.com");
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
         when(usuarioService.buscarEntidade(2)).thenReturn(usuarioComOficina(outra));
 
@@ -166,7 +179,7 @@ class OficinaServiceTest {
 
     @Test
     void atualizar_adminSemOficina_deveLancarAccessDenied() {
-        OficinaRequest request = new OficinaRequest("Novo Nome", "Rua X", "11977776666");
+        OficinaRequest request = new OficinaRequest("Novo Nome", "Rua X", "11977776666", "novo@oficina.com");
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
         when(usuarioService.buscarEntidade(2)).thenReturn(usuarioComOficina(null));
 
@@ -178,7 +191,7 @@ class OficinaServiceTest {
     @Test
     void atualizar_oficinaInativa_deveLancarConflito() {
         oficina.setAtivo(false);
-        OficinaRequest request = new OficinaRequest("Novo Nome", "Rua X", "11977776666");
+        OficinaRequest request = new OficinaRequest("Novo Nome", "Rua X", "11977776666", "novo@oficina.com");
         when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
 
         assertThatThrownBy(() -> service.atualizar(1, request, superAdmin))
@@ -224,5 +237,36 @@ class OficinaServiceTest {
         service.ativar(1);
 
         assertThat(oficina.getAtivo()).isTrue();
+    }
+
+    @Test
+    void buscarPorId_usuarioOutraOficina_deveLancarAccessDenied() {
+        Oficina outraOficina = new Oficina();
+        outraOficina.setId(2);
+
+        Usuario usuario = new Usuario();
+        usuario.setId(2);
+        usuario.setOficina(outraOficina);
+
+        when(oficinaRepository.findById(1)).thenReturn(Optional.of(oficina));
+        when(usuarioService.buscarEntidade(2)).thenReturn(usuario);
+
+        assertThatThrownBy(() -> service.buscarPorId(1, admin))
+                .isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void listar_usuarioOficina_deveRetornarApenasSuaOficina() {
+        Usuario usuario = new Usuario();
+        usuario.setId(2);
+        usuario.setOficina(oficina);
+
+        when(usuarioService.buscarEntidade(2)).thenReturn(usuario);
+        when(mapper.toResponse(oficina)).thenReturn(response);
+
+        List<OficinaResponse> lista = service.listar(null, admin);
+
+        assertThat(lista).containsExactly(response);
+        verify(oficinaRepository, never()).findAll();
     }
 }

@@ -49,14 +49,25 @@ class VeiculoServiceTest {
     @Mock
     private ClienteService clienteService;
 
+    @Mock
+    private com.cartoon.api.ordemServico.service.OrdemServicoService ordemServicoService;
+
+    @Mock
+    private com.cartoon.api.fipe.service.FipeService fipeService;
+
+    @Mock
+    private com.cartoon.api.seguranca.TenantGuard tenantGuard;
+
     @InjectMocks
     private VeiculoService veiculoService;
 
     private Cliente clienteValido;
     private Veiculo veiculoValido;
+    private com.cartoon.api.auth.UsuarioAutenticado solicitante;
 
     @BeforeEach
     void setUp() {
+        solicitante = new com.cartoon.api.auth.UsuarioAutenticado(1L, "super@teste.com", "ROLE_SUPERADMIN");
         clienteValido = new Cliente();
         clienteValido.setId(1);
         clienteValido.setNome("João da Silva");
@@ -100,7 +111,7 @@ class VeiculoServiceTest {
             return v;
         });
 
-        VeiculoResponse response = veiculoService.cadastrar(request);
+        VeiculoResponse response = veiculoService.cadastrar(request, solicitante);
 
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(1);
@@ -143,7 +154,7 @@ class VeiculoServiceTest {
             return v;
         });
 
-        VeiculoResponse response = veiculoService.cadastrar(request);
+        VeiculoResponse response = veiculoService.cadastrar(request, solicitante);
 
         assertThat(response).isNotNull();
         assertThat(response.placa()).isEqualTo("ABC1D23");
@@ -170,7 +181,7 @@ class VeiculoServiceTest {
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
         when(veiculoRepository.existsByPlacaIgnoreCase("XYZ-9876")).thenReturn(true);
 
-        assertThatThrownBy(() -> veiculoService.cadastrar(request))
+        assertThatThrownBy(() -> veiculoService.cadastrar(request, solicitante))
                 .isInstanceOf(ConflitoException.class)
                 .hasMessage("Já existe um veículo cadastrado com esta placa no sistema.");
 
@@ -196,7 +207,7 @@ class VeiculoServiceTest {
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
         when(veiculoRepository.save(any(Veiculo.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        VeiculoResponse response = veiculoService.atualizar(1, request);
+        VeiculoResponse response = veiculoService.atualizar(1, request, solicitante);
 
         assertThat(response).isNotNull();
         assertThat(response.marca()).isEqualTo("Ford Atualizada");
@@ -228,7 +239,7 @@ class VeiculoServiceTest {
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
-        assertThatThrownBy(() -> veiculoService.cadastrar(request))
+        assertThatThrownBy(() -> veiculoService.cadastrar(request, solicitante))
                 .isInstanceOf(PlacaInvalidaException.class)
                 .hasMessage("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
 
@@ -252,7 +263,7 @@ class VeiculoServiceTest {
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
-        assertThatThrownBy(() -> veiculoService.cadastrar(request))
+        assertThatThrownBy(() -> veiculoService.cadastrar(request, solicitante))
                 .isInstanceOf(PlacaInvalidaException.class)
                 .hasMessage("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
 
@@ -277,7 +288,7 @@ class VeiculoServiceTest {
 
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
 
-        assertThatThrownBy(() -> veiculoService.cadastrar(request))
+        assertThatThrownBy(() -> veiculoService.cadastrar(request, solicitante))
                 .isInstanceOf(ClienteInativoException.class)
                 .hasMessage("Cliente inativo no sistema.");
 
@@ -298,7 +309,7 @@ class VeiculoServiceTest {
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
         when(clienteService.buscarEntidade(2)).thenReturn(novoClienteInativo);
 
-        assertThatThrownBy(() -> veiculoService.atualizar(1, request))
+        assertThatThrownBy(() -> veiculoService.atualizar(1, request, solicitante))
                 .isInstanceOf(ClienteInativoException.class)
                 .hasMessage("Cliente inativo no sistema.");
 
@@ -314,7 +325,7 @@ class VeiculoServiceTest {
 
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
 
-        assertThatThrownBy(() -> veiculoService.atualizar(1, request))
+        assertThatThrownBy(() -> veiculoService.atualizar(1, request, solicitante))
                 .isInstanceOf(PlacaInvalidaException.class)
                 .hasMessage("Formato de placa inválido. Utilize o padrão AAA-1234 ou Mercosul.");
 
@@ -327,7 +338,7 @@ class VeiculoServiceTest {
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
         when(veiculoRepository.save(any(Veiculo.class))).thenAnswer(i -> i.getArgument(0));
 
-        VeiculoResponse response = veiculoService.inativar(1);
+        VeiculoResponse response = veiculoService.inativar(1, solicitante);
 
         assertThat(response).isNotNull();
         assertThat(response.ativo()).isFalse();
@@ -342,7 +353,7 @@ class VeiculoServiceTest {
         when(veiculoRepository.findById(1)).thenReturn(Optional.of(veiculoValido));
         when(veiculoRepository.save(any(Veiculo.class))).thenAnswer(i -> i.getArgument(0));
 
-        VeiculoResponse response = veiculoService.reativar(1);
+        VeiculoResponse response = veiculoService.reativar(1, solicitante);
 
         assertThat(response).isNotNull();
         assertThat(response.ativo()).isTrue();
@@ -355,7 +366,7 @@ class VeiculoServiceTest {
     void deveBuscarVeiculoPorId() {
         when(veiculoRepository.findComClienteById(1)).thenReturn(Optional.of(veiculoValido));
 
-        VeiculoResponse response = veiculoService.buscarPorId(1);
+        VeiculoResponse response = veiculoService.buscarPorId(1, solicitante);
 
         assertThat(response).isNotNull();
         assertThat(response.id()).isEqualTo(1);
@@ -367,7 +378,7 @@ class VeiculoServiceTest {
     void deveBuscarVeiculoPorPlaca() {
         when(veiculoRepository.findComClienteByPlacaIgnoreCase("XYZ-9876")).thenReturn(Optional.of(veiculoValido));
 
-        VeiculoResponse response = veiculoService.buscarPorPlaca("XYZ-9876");
+        VeiculoResponse response = veiculoService.buscarPorPlaca("XYZ-9876", solicitante);
 
         assertThat(response).isNotNull();
         assertThat(response.placa()).isEqualTo("XYZ-9876");
@@ -378,7 +389,7 @@ class VeiculoServiceTest {
     void deveLancarExcecaoQuandoVeiculoNaoEncontradoPorPlaca() {
         when(veiculoRepository.findComClienteByPlacaIgnoreCase("NAO-0000")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> veiculoService.buscarPorPlaca("NAO-0000"))
+        assertThatThrownBy(() -> veiculoService.buscarPorPlaca("NAO-0000", solicitante))
                 .isInstanceOf(RecursoNaoEncontradoException.class)
                 .hasMessage("Veículo não encontrado.");
     }
@@ -392,7 +403,7 @@ class VeiculoServiceTest {
 
         when(veiculoRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
-        Page<VeiculoResponse> resultado = veiculoService.listar(filtro, pageable);
+        Page<VeiculoResponse> resultado = veiculoService.listar(filtro, pageable, solicitante);
 
         assertThat(resultado).isNotNull();
         assertThat(resultado.getContent()).hasSize(1);
@@ -405,7 +416,7 @@ class VeiculoServiceTest {
         when(clienteService.buscarEntidade(1)).thenReturn(clienteValido);
         when(veiculoRepository.findByClienteId(1)).thenReturn(List.of(veiculoValido));
 
-        List<VeiculoResponse> lista = veiculoService.listarPorCliente(1);
+        List<VeiculoResponse> lista = veiculoService.listarPorCliente(1, solicitante);
 
         assertThat(lista).hasSize(1);
         assertThat(lista.get(0).clienteId()).isEqualTo(1);
@@ -428,7 +439,7 @@ class VeiculoServiceTest {
 
         when(veiculoRepository.findComClienteByPlacaIgnoreCase("XYZ-9876")).thenReturn(Optional.of(veiculoValido));
 
-        HistoricoVeiculoResponse historico = veiculoService.consultarHistorico("XYZ-9876");
+        HistoricoVeiculoResponse historico = veiculoService.consultarHistorico("XYZ-9876", solicitante);
 
         assertThat(historico).isNotNull();
         assertThat(historico.veiculo().placa()).isEqualTo("XYZ-9876");

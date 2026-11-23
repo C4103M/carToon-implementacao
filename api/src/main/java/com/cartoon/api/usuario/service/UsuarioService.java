@@ -3,6 +3,7 @@ package com.cartoon.api.usuario.service;
 import com.cartoon.api.auth.UsuarioAutenticado;
 import com.cartoon.api.compartilhado.exceptions.ConflitoException;
 import com.cartoon.api.compartilhado.exceptions.RecursoNaoEncontradoException;
+import com.cartoon.api.compartilhado.exceptions.RegraDeNegocioException;
 import com.cartoon.api.oficina.model.Oficina;
 import com.cartoon.api.oficina.repository.OficinaRepository;
 import com.cartoon.api.ordemServico.models.StatusServico;
@@ -53,19 +54,33 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<UsuarioResponse> listar(Integer oficinaId, UsuarioAutenticado autenticado) {
+        return listar(oficinaId, null, autenticado);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UsuarioResponse> listar(Integer oficinaId, Boolean ativo, UsuarioAutenticado autenticado) {
         Usuario usuarioLogado = buscarUsuarioLogado(autenticado);
-        List<Usuario> usuariosAtivos;
+        List<Usuario> usuarios;
         if (usuarioLogado.getRole() == Role.SUPERADMIN) {
-            usuariosAtivos = (oficinaId == null)
-                    ? usuarioRepository.findAllByAtivoTrue()
-                    : usuarioRepository.findAllByAtivoTrueAndOficinaId(oficinaId);
+            if (oficinaId == null) {
+                usuarios = (ativo == null)
+                        ? usuarioRepository.findAll()
+                        : usuarioRepository.findAllByAtivo(ativo);
+            } else {
+                usuarios = (ativo == null)
+                        ? usuarioRepository.findAllByOficinaId(oficinaId)
+                        : usuarioRepository.findAllByAtivoAndOficinaId(ativo, oficinaId);
+            }
         } else {
             Integer oficinaDoLogado = exigirOficinaDoUsuario(usuarioLogado).getId();
-            usuariosAtivos = usuarioRepository.findAllByAtivoTrueAndOficinaId(oficinaDoLogado).stream()
+            List<Usuario> listaBase = (ativo == null)
+                    ? usuarioRepository.findAllByOficinaId(oficinaDoLogado)
+                    : usuarioRepository.findAllByAtivoAndOficinaId(ativo, oficinaDoLogado);
+            usuarios = listaBase.stream()
                     .filter(usuario -> usuario.getRole() != Role.SUPERADMIN)
                     .toList();
         }
-        return usuariosAtivos.stream().map(this::paraResponse).toList();
+        return usuarios.stream().map(this::paraResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -90,12 +105,36 @@ public class UsuarioService {
         if (!usuarioAlvo.getAtivo()) {
             throw new ConflitoException("Usuário inativo. Reative-o antes de editar.");
         }
+        if (request.role() != null && request.role() != usuarioAlvo.getRole()) {
+            if (usuarioLogado.getRole() != Role.SUPERADMIN && request.role() == Role.SUPERADMIN) {
+                throw new AccessDeniedException("Apenas SUPERADMIN pode atribuir o perfil SUPERADMIN.");
+            }
+            if (usuarioAlvo.getId().equals(usuarioLogado.getId()) && usuarioAlvo.getRole() == Role.ADMIN && request.role() == Role.MECANICO) {
+                throw new ConflitoException("Você não pode rebaixar o seu próprio perfil de administrador.");
+            }
+            usuarioAlvo.setRole(request.role());
+        }
+        if (usuarioAlvo.getId().equals(usuarioLogado.getId())) {
+            validarSenhaAtualSeNecessario(usuarioAlvo, request);
+        }
         return aplicarAtualizacao(usuarioAlvo, request);
     }
 
     @Transactional
     public UsuarioResponse atualizarMeusDados(AtualizarUsuarioRequest request, UsuarioAutenticado autenticado) {
-        return aplicarAtualizacao(buscarUsuarioLogado(autenticado), request);
+        Usuario usuarioLogado = buscarUsuarioLogado(autenticado);
+        validarSenhaAtualSeNecessario(usuarioLogado, request);
+        return aplicarAtualizacao(usuarioLogado, request);
+    }
+
+    private void validarSenhaAtualSeNecessario(Usuario usuario, AtualizarUsuarioRequest request) {
+        boolean alterandoSenha = request.senha() != null && !request.senha().isBlank();
+        boolean alterandoEmail = request.email() != null && !usuario.getEmail().equalsIgnoreCase(request.email().trim());
+        if (alterandoSenha || alterandoEmail) {
+            if (request.senhaAtual() == null || !passwordEncoder.matches(request.senhaAtual(), usuario.getSenha())) {
+                throw new RegraDeNegocioException("A senha atual é obrigatória e deve estar correta para alterar e-mail ou senha.");
+            }
+        }
     }
 
     @Transactional
@@ -118,6 +157,9 @@ public class UsuarioService {
         Usuario usuarioAlvo = buscarEntidade(id);
         Usuario usuarioLogado = buscarUsuarioLogado(autenticado);
         exigirPermissaoParaGerenciar(usuarioAlvo, usuarioLogado);
+        if (usuarioAlvo.getOficina() != null && !Boolean.TRUE.equals(usuarioAlvo.getOficina().getAtivo())) {
+            throw new ConflitoException("Não é possível reativar usuário de uma oficina inativa.");
+        }
         usuarioAlvo.setAtivo(true);
     }
 
@@ -178,16 +220,17 @@ public class UsuarioService {
         }
         Usuario novoUsuario = new Usuario();
         novoUsuario.setNome(nome.trim());
-        novoUsuario.setEmail(email.trim());
+        novoUsuario.setEmail(email.trim().toLowerCase());
         novoUsuario.setSenha(passwordEncoder.encode(senha));
         novoUsuario.setRole(role);
         novoUsuario.setOficina(oficina);
+        novoUsuario.setAtivo(true);
         return paraResponse(usuarioRepository.saveAndFlush(novoUsuario));
     }
 
     private UsuarioResponse aplicarAtualizacao(Usuario usuario, AtualizarUsuarioRequest request) {
         usuario.setNome(request.nome().trim());
-        usuario.setEmail(request.email().trim());
+        usuario.setEmail(request.email().trim().toLowerCase());
         if (request.senha() != null) {
             usuario.setSenha(passwordEncoder.encode(request.senha()));
         }

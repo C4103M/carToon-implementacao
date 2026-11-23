@@ -4,6 +4,8 @@ import com.cartoon.api.servico.dto.request.ServicoRequest;
 import com.cartoon.api.servico.dto.response.ServicoResponse;
 import com.cartoon.api.servico.models.Servico;
 
+import java.math.BigDecimal;
+
 public final class ServicoMapper {
 
     private ServicoMapper() {}
@@ -11,27 +13,35 @@ public final class ServicoMapper {
     public static Servico paraServico(ServicoRequest request) {
         Servico servico = new Servico();
         servico.setNome(request.nome());
-        servico.setValorBase(request.valorBase());
+        servico.setTempo(request.tempo());
         servico.setDescricao(request.descricao());
-        servico.setTempoEstimado(request.tempoEstimado());
+        if (request.pesoServico() != null) {
+            servico.setPesoServicoPadrao(request.pesoServico());
+        }
         return servico;
     }
 
     public static ServicoResponse paraServicoResponse(Servico servico) {
+        BigDecimal peso = servico.getPesoServicoPadrao() != null ? servico.getPesoServicoPadrao() : new BigDecimal("0.5");
         return new ServicoResponse(
                 servico.getId(),
                 servico.getNome(),
-                servico.getValorBase(),
+                servico.getTempo(),
+                servico.getQuantidadeHoras(),
                 servico.getDescricao(),
-                servico.getTempoEstimado()
+                peso,
+                servico.getOficina() != null ? servico.getOficina().getId() : null,
+                servico.getAtivo()
         );
     }
 
     public static void atualizarEntidade(Servico servico, ServicoRequest request) {
         servico.setNome(request.nome());
-        servico.setValorBase(request.valorBase());
+        servico.setTempo(request.tempo());
         servico.setDescricao(request.descricao());
-        servico.setTempoEstimado(request.tempoEstimado());
+        if (request.pesoServico() != null) {
+            servico.setPesoServicoPadrao(request.pesoServico());
+        }
     }
 
     public static ServicoResponse toResponse(Servico servico) {
